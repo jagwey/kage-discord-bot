@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
-import { aiYanitiUret } from '../services/aiServisi.js';
+import { aiDanis } from '../services/aiServisi.js';
 import { tumMangalariGetir } from '../services/mangaServisi.js';
 
 export const data = new SlashCommandBuilder()
@@ -30,7 +30,7 @@ export async function execute(interaction) {
   const aiPrompt = `Bir manga okuru senden şu tarz bir manga önerisi istiyor: "${istek}".\n${mevcutMangalarMetni}\n\nLütfen ona 2-3 adet harika manga tavsiyesi ver. Neden seveceğini kısaca açıkla. Eğer kütüphanemizdeki serilerden uyumlu olan varsa mutlaka öncelikli belirt. Samuray/Kage üslubuyla yanıtla.`;
 
   try {
-    const { cevap, saglayici } = await aiYanitiUret(aiPrompt);
+    const { cevap, saglayici } = await aiDanis(aiPrompt);
 
     const embed = kageEmbed({
       baslik: `📜 GÖLGE VEZİRİ MANGA TAVSİYESİ`,

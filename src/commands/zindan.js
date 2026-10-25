@@ -4,7 +4,7 @@ import { zindanZaferiKaydet } from '../services/ekonomiServisi.js';
 
 export const data = new SlashCommandBuilder()
   .setName('zindan')
-  .setDescription('Kage indie oyun evreninde tehlikeli bir zindana keşfe çıkarak canavarlarla savaşır ve Ryo kazanırsınız.');
+  .setDescription('Kage indie evreninde zindana inip canavarlarla savaşır ve Ryo kazanırsınız.');
 
 const BOLGELER = [
   { ad: '⛩️ Kanlı Torii Geçidi', canavar: 'Ruhsuz Samuray Muhafızı', zorluk: 'Kolay', minRyo: 50, maxRyo: 150 },

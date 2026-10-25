@@ -36,21 +36,23 @@ export async function execute(client) {
     status: 'online'
   });
 
-  // Komutları Discord API'ye otomatik eşitle (Çift komut sorununu önlemek için önce globali temizle)
+  // Komutları Discord API'ye otomatik eşitle (Tüm bağlı sunuculara anında yükle)
   try {
     const komutlar = client.commands.map(cmd => cmd.data.toJSON());
-    const guildId = process.env.GUILD_ID || '1563941845367787682';
-
-    if (guildId) {
-      // Global komutları temizle (Böylece sunucuda her komut iki kez görünmez!)
-      await client.application.commands.set([]);
-      // Sadece bu sunucuya yükle (Anında ve tekil görünür)
-      await client.application.commands.set(komutlar, guildId);
-      console.log(`[Kage] ${komutlar.length} komut ${guildId} sunucusuna TEKİL olarak eşitlendi (Çift komutlar temizlendi)! ⚡`);
-    } else {
-      await client.application.commands.set(komutlar);
-      console.log(`[Kage] ${komutlar.length} komut genel olarak eşitlendi.`);
+    
+    // 1. Botun bulunduğu TÜM sunuculara anında komutları yükle (0 saniye bekleme)
+    for (const [gId, guild] of client.guilds.cache) {
+      try {
+        await client.application.commands.set(komutlar, gId);
+        console.log(`[Kage] ${komutlar.length} komut "${guild.name}" (${gId}) sunucusuna anında yüklendi! ⚡`);
+      } catch (err) {
+        console.warn(`[Kage] ${guild.name} sunucusuna komut yüklenemedi:`, err.message);
+      }
     }
+
+    // 2. Global olarak da eşitle (Tüm yeni sunucular ve genel erişim için)
+    await client.application.commands.set(komutlar);
+    console.log(`[Kage] ${komutlar.length} komut genel olarak da Discord API'ye eşitlendi.`);
   } catch (err) {
     console.error('[Kage] Komutlar eşitlenirken hata oluştu:', err);
   }

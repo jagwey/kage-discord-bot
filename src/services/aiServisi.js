@@ -218,3 +218,6 @@ export async function aiDanis(mesaj, baglam = {}) {
     saglayici: 'Kage-95'
   };
 }
+
+export const aiYanitiUret = aiDanis;
+
