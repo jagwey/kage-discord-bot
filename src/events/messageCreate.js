@@ -96,7 +96,7 @@ export async function execute(message) {
   // NORMAL KULLANICILAR İÇİN: KAGE CHAT BOT (AI ve Sunucu Yönetimi Yok)
   // =========================================================================
   if (!yetkiliMi) {
-    const chatBotEmbed = chatBotYanitla(talimat, message.author);
+    const chatBotEmbed = chatBotYanitla(talimat, message.author, message.guild);
     return message.reply({
       embeds: [chatBotEmbed],
       allowedMentions: { repliedUser: false }
