@@ -22,11 +22,14 @@ export function yardimKartiOlustur() {
         inline: false
       },
       {
-        name: `⚔️ Samuray Düello, Zindan & Ekonomi (Ryo)`,
-        value: '`• /duello @rakip [bahis]` : Tur tabanlı interaktif samuray düellosu!\n' +
-          '`• /zindan` : Kage indie oyun evreninde zindan temizleyip Ryo yağmalar.\n' +
-          '`• /gunluk` : Günlük Ryo maaşı ve giriş serisi (streak).\n' +
-          '`• /bakiye [@kullanıcı]` : Cüzdan, klan sıralaması ve dövüş sicili.',
+        name: `⚔️ Samuray Düello, Demirci, Pazar & Ekonomi (Ryo)`,
+        value: '`• /duello @rakip [bahis]` : Katana bonuslu turnuva düellosu!\n' +
+          '`• /zindan` : İblis avlayıp gizli sandıkları yağmalarsınız.\n' +
+          '`• /demirci` : Katananızı demircide dövüp düello gücünüzü katlarsınız.\n' +
+          '`• /market` : Ryo ile samuray unvanları ve şans muskaları satın alır.\n' +
+          '`• /envanter` : Katananızı, unvanınızı ve savaş sicilinizi gösterir.\n' +
+          '`• /gunluk` : Günlük Ryo maaşı ve seri (streak).\n' +
+          '`• /bakiye` : Cüzdan ve bakiye dökümü.',
         inline: false
       },
       {

@@ -5,7 +5,7 @@ import { ryoEkle } from './ekonomiServisi.js';
 import { duyuruKanaliniBul } from './duyuruServisi.js';
 
 /**
- * AI tarafından çağrılan Discord eylemlerini yetki kontrolüyle güvenli şekilde yürütür.
+ * AI tarafından çağrılan Discord eylemlerini yetki kontrolüyle güvenli ve kusursuz şekilde yürütür.
  */
 export async function aiEylemiCalistir({ eylem, parametreler = {}, guild, channel, member, client }) {
   if (!guild || !member) {
@@ -15,6 +15,8 @@ export async function aiEylemiCalistir({ eylem, parametreler = {}, guild, channe
   const isAdmin = member.permissions.has(PermissionFlagsBits.Administrator);
   const isManager = member.permissions.has(PermissionFlagsBits.ManageGuild);
   const isMod = member.permissions.has(PermissionFlagsBits.ManageMessages);
+  const canChannels = member.permissions.has(PermissionFlagsBits.ManageChannels);
+  const canRoles = member.permissions.has(PermissionFlagsBits.ManageRoles);
 
   try {
     switch (eylem) {
@@ -29,7 +31,6 @@ export async function aiEylemiCalistir({ eylem, parametreler = {}, guild, channe
         await eskiRolleriTemizle(guild);
         const sonuclar = await kageMimarisiInsaEt(guild, { user: member.user });
 
-        // Geçici kanalı sil
         setTimeout(async () => {
           try {
             const c = await guild.channels.fetch(cmdChanId).catch(() => null);
@@ -39,7 +40,7 @@ export async function aiEylemiCalistir({ eylem, parametreler = {}, guild, channe
 
         return {
           basarili: true,
-          detay: 'Tüm eski kanallar ve roller silindi. Yeni Kage 95 mimarisi başarıyla inşa edildi! (Bu kanal 5 saniye içinde silinecektir)'
+          detay: 'Tüm eski kanallar ve roller silindi. Yeni Kage 95 mimarisi başarıyla inşa edildi! (Bu geçici kanal 5 saniye içinde silinecektir)'
         };
       }
 
@@ -55,135 +56,173 @@ export async function aiEylemiCalistir({ eylem, parametreler = {}, guild, channe
         };
       }
 
-      // 3. Mesaj Silme (Bulk Delete)
-      case 'mesaj_sil': {
-        if (!isMod && !isManager && !isAdmin) {
-          return { basarili: false, hata: 'Mesajları temizlemek için Moderatör yetkisi gerekir.' };
+      // 3. Yeni Kategori Oluşturma (Kage Punk Estetiğinde)
+      case 'kategori_olustur': {
+        if (!canChannels && !isAdmin) {
+          return { basarili: false, hata: 'Kategori açmak için Kanalları Yönet yetkisi gereklidir.' };
         }
-        const sayi = Math.min(100, Math.max(1, parseInt(parametreler.sayi || 10, 10)));
-        const silinenler = await channel.bulkDelete(sayi, true);
+        const hamIsim = parametreler.isim || 'YENİ ALAN';
+        const susluIsim = hamIsim.includes('━━━') ? hamIsim : `╭━━━ ${hamIsim.toUpperCase()} ━━━╮`;
+        
+        const yeniKat = await guild.channels.create({
+          name: susluIsim,
+          type: ChannelType.GuildCategory,
+          reason: `Kage-95 AI talimatı: ${member.user.tag}`
+        });
+
+        // Eğer kategori içine hemen kanal da eklenmesi istenmişse
+        if (parametreler.kanallar && Array.isArray(parametreler.kanallar)) {
+          for (const kAd of parametreler.kanallar) {
+            await guild.channels.create({
+              name: kAd.toLowerCase().replace(/\s+/g, '-'),
+              type: ChannelType.GuildText,
+              parent: yeniKat.id
+            });
+          }
+        }
+
         return {
           basarili: true,
-          detay: `${silinenler.size} adet mesaj gölgelere çekilerek yok edildi.`
+          detay: `\`${susluIsim}\` kategorisi oluşturuldu.${parametreler.kanallar ? ` İçine ${parametreler.kanallar.length} adet kanal eklendi.` : ''}`
         };
       }
 
-      // 4. Yeni Kanal Oluşturma
+      // 4. Yeni Kanal Oluşturma (Metin / Ses / Kategoriye Bağlı)
       case 'kanal_olustur': {
-        if (!isManager && !isAdmin) {
+        if (!canChannels && !isAdmin) {
           return { basarili: false, hata: 'Kanal açmak için Kanalları Yönet yetkisi gereklidir.' };
         }
-        const isim = (parametreler.isim || 'yeni-kanal').toLowerCase().replace(/\s+/g, '-');
+        let isim = (parametreler.isim || 'yeni-kanal').toLowerCase().replace(/\s+/g, '-');
+        if (parametreler.emoji && !isim.includes(parametreler.emoji)) {
+          isim = `${parametreler.emoji}・${isim}`;
+        }
         const tip = parametreler.tur === 'ses' ? ChannelType.GuildVoice : ChannelType.GuildText;
+
+        // Hedef kategori bul
+        let parentId = null;
+        if (parametreler.kategori) {
+          const kat = guild.channels.cache.find(c => 
+            c.type === ChannelType.GuildCategory && 
+            c.name.toLowerCase().includes(parametreler.kategori.toLowerCase())
+          );
+          if (kat) parentId = kat.id;
+        } else if (channel.parentId) {
+          parentId = channel.parentId;
+        }
+
         const yeniKanal = await guild.channels.create({
           name: isim,
           type: tip,
-          reason: 'Kage-95 AI talimatı'
+          parent: parentId,
+          topic: parametreler.aciklama || 'Kage 95 Meclisi',
+          reason: `Kage-95 AI talimatı: ${member.user.tag}`
         });
+
         return {
           basarili: true,
-          detay: `${yeniKanal} kanalı başarıyla açıldı.`
+          detay: `${yeniKanal} kanalı başarıyla inşa edildi.${parentId ? ' (İlgili kategoriye bağlandı)' : ''}`
         };
       }
 
       // 5. Kanal Silme
       case 'kanal_sil': {
-        if (!isManager && !isAdmin) {
+        if (!canChannels && !isAdmin) {
           return { basarili: false, hata: 'Kanal silmek için Kanalları Yönet yetkisi gereklidir.' };
         }
         let hedefKanal = null;
         if (parametreler.kanal_id) {
           hedefKanal = await guild.channels.fetch(parametreler.kanal_id).catch(() => null);
         } else if (parametreler.isim) {
-          hedefKanal = guild.channels.cache.find(c => c.name.includes(parametreler.isim.toLowerCase()));
+          const aranan = parametreler.isim.toLowerCase().replace('#', '').trim();
+          hedefKanal = guild.channels.cache.find(c => c.name.toLowerCase().includes(aranan));
         }
         if (!hedefKanal) {
-          return { basarili: false, hata: 'Silinecek kanal bulunamadı.' };
+          return { basarili: false, hata: `Silinecek kanal (\`${parametreler.isim || parametreler.kanal_id}\`) bulunamadı.` };
         }
         const silinenAd = hedefKanal.name;
-        await hedefKanal.delete('Kage-95 AI talimatı');
+        await hedefKanal.delete(`Kage-95 AI talimatı: ${member.user.tag}`);
         return {
           basarili: true,
-          detay: `\`#${silinenAd}\` kanalı silindi.`
+          detay: `\`#${silinenAd}\` kanalı silindi ve ortadan kaldırıldı.`
         };
       }
 
-      // 6. Duyuru Yapma
-      case 'duyuru_yap': {
-        if (!isMod && !isManager && !isAdmin) {
-          return { basarili: false, hata: 'Duyuru yayınlamak için yetkiniz yetersiz.' };
+      // 6. Kanal Düzenleme (İsim, Konu, Yavaş Mod Değiştirme)
+      case 'kanal_duzenle': {
+        if (!canChannels && !isAdmin) {
+          return { basarili: false, hata: 'Kanal düzenlemek için Kanalları Yönet yetkisi gereklidir.' };
         }
-        const duyuruKanali = duyuruKanaliniBul(client) || channel;
-        const baslik = parametreler.baslik || 'Önemli Klan Duyurusu';
-        const icerik = parametreler.icerik || parametreler.mesaj || 'Kalede yeni bir ferman ilan edildi.';
+        let hedefKanal = channel;
+        if (parametreler.kanal) {
+          const aranan = parametreler.kanal.toLowerCase().replace('#', '').trim();
+          hedefKanal = guild.channels.cache.find(c => c.name.toLowerCase().includes(aranan)) || channel;
+        }
 
-        const embed = kageEmbed({
-          baslik: `📢 ${baslik.toUpperCase()}`,
-          renk: TEMA.RENKLER.KAN_KIRMIZISI,
-          aciklama: icerik,
-          footer: `Kage Fermanı • Emreden: ${member.displayName}`
+        const guncellemeler = {};
+        if (parametreler.yeni_isim) guncellemeler.name = parametreler.yeni_isim.toLowerCase().replace(/\s+/g, '-');
+        if (parametreler.konu) guncellemeler.topic = parametreler.konu;
+        if (parametreler.yavasmod !== undefined) guncellemeler.rateLimitPerUser = parseInt(parametreler.yavasmod, 10);
+
+        await hedefKanal.edit(guncellemeler);
+        return {
+          basarili: true,
+          detay: `${hedefKanal} kanalı başarıyla güncellendi.`
+        };
+      }
+
+      // 7. Yeni Rol Oluşturma (Özel Renk, Yetki ve İsimle)
+      case 'rol_olustur': {
+        if (!canRoles && !isAdmin) {
+          return { basarili: false, hata: 'Rol oluşturmak için Rolleri Yönet yetkisi gereklidir.' };
+        }
+        const isim = parametreler.isim || 'Yeni Rol';
+        let renk = 0xe53935; // Varsayılan Kage Kırmızısı
+        if (parametreler.renk) {
+          const rLower = parametreler.renk.toLowerCase();
+          if (rLower === 'altin' || rLower === 'sari') renk = 0xffd700;
+          else if (rLower === 'mor') renk = 0x9c27b0;
+          else if (rLower === 'mavi') renk = 0x2196f3;
+          else if (rLower === 'yesil') renk = 0x4caf50;
+          else if (rLower === 'siyah') renk = 0x212121;
+          else if (rLower === 'beyaz') renk = 0xffffff;
+          else if (parametreler.renk.startsWith('#')) renk = parseInt(parametreler.renk.slice(1), 16);
+          else if (!isNaN(parseInt(parametreler.renk, 16))) renk = parseInt(parametreler.renk, 16);
+        }
+
+        const yeniRol = await guild.roles.create({
+          name: isim,
+          color: renk,
+          hoist: parametreler.ayri_goster !== false,
+          mentionable: true,
+          reason: `Kage-95 AI talimatı: ${member.user.tag}`
         });
 
-        await duyuruKanali.send({ embeds: [embed] });
         return {
           basarili: true,
-          detay: `Duyurunuz ${duyuruKanali} kanalında klan üyelerine ilan edildi.`
+          detay: `**${yeniRol.name}** rolü kalede oluşturuldu! (Renk: \`#${renk.toString(16)}\`)`
         };
       }
 
-      // 7. Kullanıcı Susturma (Timeout)
-      case 'kullanici_sustur': {
-        if (!isMod && !isManager && !isAdmin) {
-          return { basarili: false, hata: 'Üye susturmak için Moderatör yetkisi gerekir.' };
+      // 8. Rol Silme
+      case 'rol_sil': {
+        if (!canRoles && !isAdmin) {
+          return { basarili: false, hata: 'Rol silmek için Rolleri Yönet yetkisi gereklidir.' };
         }
-        const target = await hedefUyeBul(guild, parametreler.kullanici);
-        if (!target) return { basarili: false, hata: 'Hedef üye sunucuda bulunamadı.' };
+        const aranan = (parametreler.isim || '').toLowerCase();
+        const rol = guild.roles.cache.find(r => r.name.toLowerCase().includes(aranan));
+        if (!rol) return { basarili: false, hata: `\`${parametreler.isim}\` rolü bulunamadı.` };
 
-        const dakika = parseInt(parametreler.dakika || 10, 10);
-        const sebep = parametreler.sebep || 'Kage AI Veziri kararı';
-
-        await target.timeout(dakika * 60 * 1000, sebep);
+        const silinenAd = rol.name;
+        await rol.delete(`Kage-95 AI talimatı: ${member.user.tag}`);
         return {
           basarili: true,
-          detay: `${target} kullanıcısı ${dakika} dakika boyunca sessizliğe mahkum edildi. (Sebep: ${sebep})`
+          detay: `\`${silinenAd}\` rolü sunucudan tamamen silindi.`
         };
       }
 
-      // 8. Kullanıcı Atma (Kick)
-      case 'kullanici_at': {
-        if (!member.permissions.has(PermissionFlagsBits.KickMembers) && !isAdmin) {
-          return { basarili: false, hata: 'Üye atmak için Üyeleri At yetkisi gerekir.' };
-        }
-        const target = await hedefUyeBul(guild, parametreler.kullanici);
-        if (!target) return { basarili: false, hata: 'Hedef üye bulunamadı.' };
-
-        const sebep = parametreler.sebep || 'Kage AI Veziri kararı';
-        await target.kick(sebep);
-        return {
-          basarili: true,
-          detay: `${target.user.tag} sunucudan sürüldü.`
-        };
-      }
-
-      // 9. Kullanıcı Yasaklama (Ban)
-      case 'kullanici_yasakla': {
-        if (!member.permissions.has(PermissionFlagsBits.BanMembers) && !isAdmin) {
-          return { basarili: false, hata: 'Üye yasaklamak için Üyeleri Yasakla yetkisi gerekir.' };
-        }
-        const target = await hedefUyeBul(guild, parametreler.kullanici);
-        if (!target) return { basarili: false, hata: 'Hedef üye bulunamadı.' };
-
-        const sebep = parametreler.sebep || 'Kage AI Veziri kararı';
-        await target.ban({ reason: sebep });
-        return {
-          basarili: true,
-          detay: `${target.user.tag} sunucudan ebediyen aforoz edildi (banlandı).`
-        };
-      }
-
-      // 10. Rol Verme
+      // 9. Rol Verme
       case 'rol_ver': {
-        if (!member.permissions.has(PermissionFlagsBits.ManageRoles) && !isAdmin) {
+        if (!canRoles && !isAdmin) {
           return { basarili: false, hata: 'Rol vermek için Rolleri Yönet yetkisi gerekir.' };
         }
         const target = await hedefUyeBul(guild, parametreler.kullanici);
@@ -199,9 +238,9 @@ export async function aiEylemiCalistir({ eylem, parametreler = {}, guild, channe
         };
       }
 
-      // 11. Rol Alma
+      // 10. Rol Alma
       case 'rol_al': {
-        if (!member.permissions.has(PermissionFlagsBits.ManageRoles) && !isAdmin) {
+        if (!canRoles && !isAdmin) {
           return { basarili: false, hata: 'Rol almak için Rolleri Yönet yetkisi gerekir.' };
         }
         const target = await hedefUyeBul(guild, parametreler.kullanici);
@@ -217,7 +256,150 @@ export async function aiEylemiCalistir({ eylem, parametreler = {}, guild, channe
         };
       }
 
-      // 12. Yavaş Mod Ayarla
+      // 11. Toplu Mesaj Temizleme
+      case 'mesaj_sil': {
+        if (!isMod && !isManager && !isAdmin) {
+          return { basarili: false, hata: 'Mesajları temizlemek için Moderatör yetkisi gerekir.' };
+        }
+        const sayi = Math.min(100, Math.max(1, parseInt(parametreler.sayi || 10, 10)));
+        const silinenler = await channel.bulkDelete(sayi, true);
+        return {
+          basarili: true,
+          detay: `${silinenler.size} adet mesaj gölgelere çekilerek yok edildi.`
+        };
+      }
+
+      // 12. Duyuru Yayınlama (Gelişmiş)
+      case 'duyuru_yap': {
+        if (!isMod && !isManager && !isAdmin) {
+          return { basarili: false, hata: 'Duyuru yayınlamak için yetkiniz yetersiz.' };
+        }
+        const duyuruKanali = duyuruKanaliniBul(client) || channel;
+        const baslik = parametreler.baslik || 'Önemli Klan Duyurusu';
+        const icerik = parametreler.icerik || parametreler.mesaj || 'Kalede yeni bir ferman ilan edildi.';
+
+        const embed = kageEmbed({
+          baslik: `📢 ${baslik.toUpperCase()}`,
+          renk: TEMA.RENKLER.KAN_KIRMIZISI,
+          aciklama: icerik,
+          footer: `Kage Fermanı • Emreden: ${member.displayName}`
+        });
+
+        await duyuruKanali.send({
+          content: parametreler.etiket ? '@everyone' : undefined,
+          embeds: [embed]
+        });
+        return {
+          basarili: true,
+          detay: `Duyurunuz ${duyuruKanali} kanalında klan üyelerine ilan edildi.`
+        };
+      }
+
+      // 13. Kurallara Yeni Madde Ekleme
+      case 'kural_ekle': {
+        if (!isManager && !isAdmin) {
+          return { basarili: false, hata: 'Kuralları güncellemek için Yönetici yetkisi gereklidir.' };
+        }
+        const kuralKanali = guild.channels.cache.find(c => c.name.includes('kural') && c.isTextBased());
+        if (!kuralKanali) return { basarili: false, hata: 'Kurallar kanalı bulunamadı.' };
+
+        const yeniKural = parametreler.kural || parametreler.metin || 'Yetkililere saygısızlık yasaktır.';
+        const kuralEmbed = kageEmbed({
+          baslik: '📜 KALE KANUNLARINA YENİ MADDE EKLENDİ',
+          renk: TEMA.RENKLER.KAN_KIRMIZISI,
+          aciklama: `**Şogun ${member} tarafından yürürlüğe koyulan yeni kanun:**\n\n⚖️ **${yeniKural}**\n\n*Bu kurala uymayanlar sürgün edilecektir.*`
+        });
+
+        await kuralKanali.send({ embeds: [kuralEmbed] });
+        return {
+          basarili: true,
+          detay: `Yeni kural maddesi ${kuralKanali} kanalına başarıyla asıldı.`
+        };
+      }
+
+      // 14. Anket Başlatma
+      case 'anket_yap': {
+        if (!isMod && !isManager && !isAdmin) {
+          return { basarili: false, hata: 'Anket başlatmak için Moderatör yetkisi gerekir.' };
+        }
+        const soru = parametreler.soru || 'Bu kararı onaylıyor musunuz?';
+        const secenekler = parametreler.secenekler || ['Evet', 'Hayır'];
+        const emojiler = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣'];
+
+        let aciklama = `**${soru}**\n\n`;
+        secenekler.forEach((s, i) => {
+          aciklama += `${emojiler[i] || '▫️'} **${s}**\n`;
+        });
+
+        const anketEmbed = kageEmbed({
+          baslik: '🗳️ KLAN OYLAMASI & ANKET',
+          renk: TEMA.RENKLER.UYARI_SARI,
+          aciklama,
+          footer: `Oyunuzu aşağıdaki reaksiyonlarla belirtin • ${member.displayName}`
+        });
+
+        const msg = await channel.send({ embeds: [anketEmbed] });
+        for (let i = 0; i < secenekler.length && i < emojiler.length; i++) {
+          await msg.react(emojiler[i]).catch(() => {});
+        }
+
+        return {
+          basarili: true,
+          detay: `Anket bu kanalda başlatıldı ve oylama açıldı.`
+        };
+      }
+
+      // 15. Kullanıcı Susturma (Timeout)
+      case 'kullanici_sustur': {
+        if (!isMod && !isManager && !isAdmin) {
+          return { basarili: false, hata: 'Üye susturmak için Moderatör yetkisi gerekir.' };
+        }
+        const target = await hedefUyeBul(guild, parametreler.kullanici);
+        if (!target) return { basarili: false, hata: 'Hedef üye bulunamadı.' };
+
+        const dakika = parseInt(parametreler.dakika || 10, 10);
+        const sebep = parametreler.sebep || 'Kage AI Veziri kararı';
+
+        await target.timeout(dakika * 60 * 1000, sebep);
+        return {
+          basarili: true,
+          detay: `${target} kullanıcısı ${dakika} dakika susturuldu. (Sebep: ${sebep})`
+        };
+      }
+
+      // 16. Kullanıcı Atma (Kick)
+      case 'kullanici_at': {
+        if (!member.permissions.has(PermissionFlagsBits.KickMembers) && !isAdmin) {
+          return { basarili: false, hata: 'Üye atmak için Üyeleri At yetkisi gerekir.' };
+        }
+        const target = await hedefUyeBul(guild, parametreler.kullanici);
+        if (!target) return { basarili: false, hata: 'Hedef üye bulunamadı.' };
+
+        const sebep = parametreler.sebep || 'Kage AI Veziri kararı';
+        await target.kick(sebep);
+        return {
+          basarili: true,
+          detay: `${target.user.tag} kaleden sürüldü.`
+        };
+      }
+
+      // 17. Kullanıcı Yasaklama (Ban)
+      case 'kullanici_yasakla': {
+        if (!member.permissions.has(PermissionFlagsBits.BanMembers) && !isAdmin) {
+          return { basarili: false, hata: 'Üye yasaklamak için Üyeleri Yasakla yetkisi gerekir.' };
+        }
+        const target = await hedefUyeBul(guild, parametreler.kullanici);
+        if (!target) return { basarili: false, hata: 'Hedef üye bulunamadı.' };
+
+        const sebep = parametreler.sebep || 'Kage AI Veziri kararı';
+        await target.ban({ reason: sebep });
+        return {
+          basarili: true,
+          detay: `${target.user.tag} kaleden ebediyen yasaklandı.`
+        };
+      }
+
+      // 18. Yavaş Mod Ayarla
       case 'yavasmod_ayarla': {
         if (!isMod && !isManager && !isAdmin) {
           return { basarili: false, hata: 'Yavaş mod için yetkiniz yetersiz.' };
@@ -230,9 +412,9 @@ export async function aiEylemiCalistir({ eylem, parametreler = {}, guild, channe
         };
       }
 
-      // 13. Kanal Kilitle / Aç
+      // 19. Kanal Kilitle / Aç
       case 'kilit_ayarla': {
-        if (!isManager && !isAdmin) {
+        if (!canChannels && !isAdmin) {
           return { basarili: false, hata: 'Kanal kilidi için Kanalları Yönet yetkisi gerekir.' };
         }
         const kilitle = parametreler.durum === 'kapat' || parametreler.durum === 'kilitle';
@@ -241,11 +423,11 @@ export async function aiEylemiCalistir({ eylem, parametreler = {}, guild, channe
         });
         return {
           basarili: true,
-          detay: kilitle ? 'Kanalın kapıları kilitlendi; üyelerin mesaj göndermesi engellendi.' : 'Kanalın kilidi açıldı; üyeler yeniden yazabilir.'
+          detay: kilitle ? 'Kanal kilitlendi; üyelerin mesaj göndermesi engellendi.' : 'Kanalın kilidi açıldı; üyeler yeniden yazabilir.'
         };
       }
 
-      // 14. Ryo Para Ekleme (Yönetici)
+      // 20. Ryo Para Ekleme (Şogun / Admin)
       case 'ryo_ekle': {
         if (!isAdmin) {
           return { basarili: false, hata: 'Ryo hazinesini yönetmek için Şogun (Admin) yetkisi gerekir.' };

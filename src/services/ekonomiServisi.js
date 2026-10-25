@@ -9,6 +9,21 @@ const EKONOMI_FILE = path.join(DATA_DIR, 'ekonomi.json');
 
 let ekonomiVerisi = {};
 
+export const KILIC_SEVIYELERI = [
+  { seviye: 1, ad: '🗡️ Tahta Katana', bonus: 0, maliyet: 0, desc: 'Acemi bir samurayın ilk kılıcı.' },
+  { seviye: 2, ad: '⚔️ Çelik Katana', bonus: 10, maliyet: 500, desc: 'Dövülmüş çelik. Düello ve zindanda +%10 kazanma bonusu.' },
+  { seviye: 3, ad: '🩸 Kanlı Muramasa', bonus: 20, maliyet: 1500, desc: 'Lanetli keskinlik. +%20 kazanma bonusu.' },
+  { seviye: 4, ad: '🐉 Kage Ejder Kılıcı', bonus: 35, maliyet: 3500, desc: 'Ateşle dövülmüş efsanevi katana. +%35 kazanma bonusu.' },
+  { seviye: 5, ad: '👑 Efsanevi Gölge Kılıcı', bonus: 50, maliyet: 8000, desc: 'Şogunların kadim yadigarı. +%50 nihai kazanma bonusu.' }
+];
+
+export const MARKET_URUNLERI = [
+  { id: 'unvan_golge', ad: '🥷 Gölge Suikastçısı Unvanı', fiyat: 800, tip: 'unvan', deger: 'Gölge Suikastçısı', desc: 'Profilinizde görünen havalı bir samuray unvanı.' },
+  { id: 'unvan_ronin', ad: '📜 Başıboş Ronin Unvanı', fiyat: 400, tip: 'unvan', deger: 'Başıboş Ronin', desc: 'Yalnız bir kılıç ustasının unvanı.' },
+  { id: 'unvan_onur', ad: '⛩️ Onurlu Daimyo Unvanı', fiyat: 2000, tip: 'unvan', deger: 'Onurlu Daimyo', desc: 'Klan meclisinin en saygın unvanı.' },
+  { id: 'muska_sans', ad: '🏮 Kızıl Şans Muskası', fiyat: 600, tip: 'muska', deger: 'sans_muskasi', desc: 'Zindan seferlerinde ganimeti %25 artırır.' }
+];
+
 function veriyiYukle() {
   try {
     if (!fs.existsSync(DATA_DIR)) {
@@ -46,6 +61,8 @@ function kullaniciHesabi(userId) {
       duelloZafer: 0,
       duelloMaglubiyet: 0,
       zindanZafer: 0,
+      kilicSeviye: 1,
+      aktifUnvan: 'Acemi Samuray',
       envanter: [],
       guncellemeTarihi: new Date().toISOString()
     };
@@ -56,6 +73,7 @@ function kullaniciHesabi(userId) {
 
 export function bakiyeGetir(userId) {
   const h = kullaniciHesabi(userId);
+  const kilic = KILIC_SEVIYELERI.find(k => k.seviye === (h.kilicSeviye || 1)) || KILIC_SEVIYELERI[0];
   return {
     ryo: h.ryo || 0,
     banka: h.banka || 0,
@@ -63,7 +81,10 @@ export function bakiyeGetir(userId) {
     streak: h.streak || 0,
     duelloZafer: h.duelloZafer || 0,
     duelloMaglubiyet: h.duelloMaglubiyet || 0,
-    zindanZafer: h.zindanZafer || 0
+    zindanZafer: h.zindanZafer || 0,
+    kilic,
+    unvan: h.aktifUnvan || 'Acemi Samuray',
+    envanter: h.envanter || []
   };
 }
 
@@ -103,7 +124,6 @@ export function gunlukAl(userId) {
       };
     }
 
-    // 48 saati geçtiyse seri bozulur
     if (gecenZaman > 2 * gunMs) {
       h.streak = 1;
     } else {
@@ -113,7 +133,6 @@ export function gunlukAl(userId) {
     h.streak = 1;
   }
 
-  // Taban 250 Ryo + her streak günü için +50 Ryo (maks 500)
   const streakBonus = Math.min((h.streak - 1) * 50, 500);
   const kazanc = 250 + streakBonus;
 
@@ -151,6 +170,64 @@ export function zindanZaferiKaydet(userId, kazanilanRyo) {
   veriyiKaydet();
 }
 
+export function kilicGelistir(userId) {
+  const h = kullaniciHesabi(userId);
+  const mevcutSeviye = h.kilicSeviye || 1;
+  if (mevcutSeviye >= 5) {
+    return { basarili: false, mesaj: 'Kılıcınız zaten en üst seviye olan **Efsanevi Gölge Kılıcı** kademesindedir!' };
+  }
+
+  const sonrakiKilic = KILIC_SEVIYELERI.find(k => k.seviye === mevcutSeviye + 1);
+  if (!sonrakiKilic) {
+    return { basarili: false, mesaj: 'Geliştirilecek üst kademe kılıç bulunamadı.' };
+  }
+
+  if ((h.ryo || 0) < sonrakiKilic.maliyet) {
+    return {
+      basarili: false,
+      mesaj: `Yetersiz Ryo! Bu kılıcı dövmek için **${sonrakiKilic.maliyet} Ryo** gerekir. Sende olan: **${h.ryo || 0} Ryo**.`
+    };
+  }
+
+  h.ryo -= sonrakiKilic.maliyet;
+  h.kilicSeviye = sonrakiKilic.seviye;
+  veriyiKaydet();
+
+  return {
+    basarili: true,
+    yeniKilic: sonrakiKilic,
+    kalanRyo: h.ryo
+  };
+}
+
+export function marketSatinAl(userId, urunId) {
+  const h = kullaniciHesabi(userId);
+  const urun = MARKET_URUNLERI.find(u => u.id === urunId);
+  if (!urun) return { basarili: false, mesaj: 'Böyle bir pazar eşyası bulunamadı.' };
+
+  if ((h.ryo || 0) < urun.fiyat) {
+    return { basarili: false, mesaj: `Yetersiz Ryo! Bu eşya için **${urun.fiyat} Ryo** gerekir. Sende olan: **${h.ryo || 0} Ryo**.` };
+  }
+
+  if (urun.tip === 'unvan') {
+    h.aktifUnvan = urun.deger;
+  }
+
+  if (!h.envanter) h.envanter = [];
+  if (!h.envanter.includes(urun.ad)) {
+    h.envanter.push(urun.ad);
+  }
+
+  h.ryo -= urun.fiyat;
+  veriyiKaydet();
+
+  return {
+    basarili: true,
+    urun,
+    kalanRyo: h.ryo
+  };
+}
+
 export function liderlikListesi(limit = 10) {
   const sirali = Object.entries(ekonomiVerisi)
     .map(([userId, veri]) => ({
@@ -158,7 +235,8 @@ export function liderlikListesi(limit = 10) {
       toplam: (veri.ryo || 0) + (veri.banka || 0),
       ryo: veri.ryo || 0,
       duelloZafer: veri.duelloZafer || 0,
-      streak: veri.streak || 0
+      streak: veri.streak || 0,
+      unvan: veri.aktifUnvan || 'Acemi Samuray'
     }))
     .sort((a, b) => b.toplam - a.toplam)
     .slice(0, limit);

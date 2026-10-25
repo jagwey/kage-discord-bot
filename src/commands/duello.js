@@ -199,17 +199,21 @@ export async function execute(interaction) {
           else savunmada2 = true;
           sonHamle = `🛡️ **${saldiran.username}** savunma duruşuna geçti! Bir sonraki hasarı %50 kıracak.`;
         } else if (bi.customId === 'hamle_katana') {
-          let hasar = Math.floor(Math.random() * 11) + 20; // 20 - 30
+          const kilic = bakiyeGetir(saldiran.id).kilic;
+          const bonusCarpani = 1 + ((kilic?.bonus || 0) / 100);
+          let hasar = Math.round((Math.floor(Math.random() * 11) + 20) * bonusCarpani); // Katana Bonusu
           if (!isP1 && savunmada1) { hasar = Math.round(hasar * 0.5); savunmada1 = false; }
           if (isP1 && savunmada2) { hasar = Math.round(hasar * 0.5); savunmada2 = false; }
 
           if (isP1) hp2 = Math.max(0, hp2 - hasar);
           else hp1 = Math.max(0, hp1 - hasar);
 
-          sonHamle = `🗡️ **${saldiran.username}** kılıcını savurdu ve **${hasar} Hasar** vurdu!`;
+          sonHamle = `🗡️ **${saldiran.username}** [${kilic.ad}] savurdu ve **${hasar} Hasar** vurdu!`;
         } else if (bi.customId === 'hamle_golge') {
+          const kilic = bakiyeGetir(saldiran.id).kilic;
+          const bonusCarpani = 1 + ((kilic?.bonus || 0) / 100);
           const sans = Math.random();
-          let hasar = Math.floor(Math.random() * 36) + 10; // 10 - 45
+          let hasar = Math.round((Math.floor(Math.random() * 36) + 10) * bonusCarpani);
           let kritik = false;
 
           if (sans > 0.75) {
@@ -224,8 +228,8 @@ export async function execute(interaction) {
           else hp1 = Math.max(0, hp1 - hasar);
 
           sonHamle = kritik
-            ? `💥 **KRİTİK VURUŞ!** **${saldiran.username}** gölge tekniğiyle rakibin arkasından vurup **${hasar} Hasar** indirdi!`
-            : `🌪️ **${saldiran.username}** gölgelere karışarak **${hasar} Hasar** vurdu!`;
+            ? `💥 **KRİTİK VURUŞ!** **${saldiran.username}** [${kilic.ad}] ile rakibin arkasından vurup **${hasar} Hasar** indirdi!`
+            : `🌪️ **${saldiran.username}** [${kilic.ad}] ile gölgelere karışarak **${hasar} Hasar** vurdu!`;
         }
 
         // Kazanan Kontrolü
