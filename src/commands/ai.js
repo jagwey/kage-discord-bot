@@ -26,7 +26,12 @@ export async function execute(interaction) {
   const talimat = interaction.options.getString('talimat');
 
   try {
-    const { cevap, saglayici } = await aiDanis(talimat);
+    const { cevap, saglayici } = await aiDanis(talimat, {
+      guild: interaction.guild,
+      channel: interaction.channel,
+      member: interaction.member,
+      client: interaction.client
+    });
 
     // Discord embed açıklama sınırı 4096 karakterdir
     const formatliCevap = cevap.length > 4000 ? cevap.slice(0, 3990) + '...\n*(Uzun metin kesildi)*' : cevap;

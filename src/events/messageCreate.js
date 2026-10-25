@@ -78,7 +78,12 @@ export async function execute(message) {
   await message.channel.sendTyping();
 
   try {
-    const { cevap, saglayici } = await aiDanis(talimat);
+    const { cevap, saglayici } = await aiDanis(talimat, {
+      guild: message.guild,
+      channel: message.channel,
+      member: message.member,
+      client: message.client
+    });
     const formatliCevap = cevap.length > 4000 ? cevap.slice(0, 3990) + '...\n*(Metin sınırı aşıldı)*' : cevap;
 
     const embed = kageEmbed({

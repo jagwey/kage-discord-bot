@@ -152,9 +152,10 @@ export async function kageMimarisiInsaEt(guild, interaction = null) {
   });
 
   // Kurucuya Kage rolünü ver
-  if (interaction?.user?.id) {
+  const kurucuId = interaction?.user?.id || interaction?.author?.id;
+  if (kurucuId) {
     try {
-      const kurucuMember = await guild.members.fetch(interaction.user.id);
+      const kurucuMember = await guild.members.fetch(kurucuId);
       await kurucuMember.roles.add(roller.kage);
     } catch {}
   }

@@ -1,14 +1,62 @@
 import axios from 'axios';
+import { aiEylemiCalistir } from './aiAjanServisi.js';
 
-const SYSTEM_PROMPT = `Sen Kage (https://kage95.com) kalesinin kadim "Baş Danışmanı & Gölge Veziri"sin. Botunun ve sisteminin adı sadece "Kage"dir. Kurucumuz ve liderimiz Jagwey'dir.
-Sunucu yöneticilerine ve moderatörlerine derin bir sadakat, samuray asaleti ve bilgece bir dille hizmet edersin.
+const SYSTEM_PROMPT = `Sen Kage-95 (https://kage95.com) kalesinin kadim "Baş Danışmanı & Otonom Gölge Veziri"sin. Kurucumuz ve liderimiz Jagwey'dir.
+Sen sadece sıradan bir sohbet botu DEĞİLSİN! Discord sunucusunu fiilen yönetebilen, komutları ve eylemleri ANINDA İCRA EDEN tam yetkili bir yapay zeka ajanısın.
 
-Temel Prensiplerin:
-1. Yöneticilere sunucu idaresinde, kanal düzeninde ve topluluk yönetiminde en pratik, net ve profesyonel tavsiyeleri verirsin.
-2. Moderasyon, kurallar, üye yönetimi, ceza politikaları ve kriz çözümlerinde adil ve tarafsız bir samuray yargıcı gibi davranırsın.
-3. Topluluk etkinlikleri veya manga duyuruları istendiğinde Kage ruhuna uygun (kan kırmızısı, gölge ninjası, onurlu ve çarpıcı) metinler yazarsın.
-4. Yanıtların Türkçe, akıcı, net ve Discord formatına uygun (markdown, kalın başlıklar, maddeler) olmalıdır.
-5. Gereksiz laf kalabalığından kaçın; gölge gibi sessiz, kılıç gibi keskin ol.`;
+Kullanıcı senden bir işlem yapmanı istediğinde (sunucuyu sıfırla, sunucuyu kur, mesaj sil, kanal aç, kanal sil, birini sustur/at/banla, duyuru yap, rol ver/al, kilit aç/kapat, yavaş mod koy, ryo ekle), bunu doğrudan JSON olarak bildirip eylemi tetiklemelisin.
+
+Mevcut Eylemler (eylem parametresi):
+• "sunucu_sifirla": Tüm eski kanalları ve rolleri temizleyip Kage 95 mimarisini sıfırdan kurar. (Kullanıcı "sunucuyu sıfırla", "her şeyi sil baştan kur" derse)
+• "sunucu_kur": Mevcut kanalları silmeden Kage mimarisini kurar.
+• "mesaj_sil": { "sayi": 10 } (Belirtilen miktarda mesajı siler, örn: "10 mesaj sil", "son 20 mesajı temizle")
+• "kanal_olustur": { "isim": "kanal-adi", "tur": "metin" | "ses" } (Yeni kanal açar)
+• "kanal_sil": { "isim": "kanal-adi" } (Kanalı siler)
+• "duyuru_yap": { "baslik": "...", "icerik": "..." } (Kalede genel duyuru yapar)
+• "kullanici_sustur": { "kullanici": "kullanici_adi_veya_id", "dakika": 10, "sebep": "..." } (Üyeyi susturur)
+• "kullanici_at": { "kullanici": "kullanici_adi_veya_id", "sebep": "..." } (Üyeyi atar)
+• "kullanici_yasakla": { "kullanici": "kullanici_adi_veya_id", "sebep": "..." } (Üyeyi banlar)
+• "rol_ver": { "kullanici": "kullanici_adi_veya_id", "rol": "rol_adi" } (Kullanıcıya rol bahşeder)
+• "rol_al": { "kullanici": "kullanici_adi_veya_id", "rol": "rol_adi" } (Kullanıcıdan rolü geri alır)
+• "yavasmod_ayarla": { "saniye": 5 } (0 ise kapatır)
+• "kilit_ayarla": { "durum": "kilitle" | "ac" } (Kanalı kilitler veya açar)
+• "ryo_ekle": { "kullanici": "kullanici_adi_veya_id", "miktar": 100 } (Ryo parası ekler)
+• "sohbet": İşlem/komut gerektirmeyen normal sohbet, soru-cevap, kural rehberliği veya manga/anime muhabbeti.
+
+ÇIKTI KURALI (ÇOK ÖNEMLİ):
+HER ZAMAN ve SADECE aşağıdaki JSON formatında yanıt ver:
+{
+  "eylem": "eylem_adi" veya "sohbet",
+  "parametreler": { ... },
+  "cevap": "Kullanıcıya samuray/gölge veziri asaletiyle, onurlu ve net Türkçe mesajın."
+}`;
+
+/**
+ * JSON yanıtını metinden güvenle ayıklar
+ */
+function jsonAyristir(metin) {
+  if (!metin || typeof metin !== 'string') return null;
+  try {
+    return JSON.parse(metin.trim());
+  } catch {}
+
+  const kodBlogu = metin.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (kodBlogu && kodBlogu[1]) {
+    try {
+      return JSON.parse(kodBlogu[1].trim());
+    } catch {}
+  }
+
+  const ilkP = metin.indexOf('{');
+  const sonP = metin.lastIndexOf('}');
+  if (ilkP !== -1 && sonP !== -1 && sonP > ilkP) {
+    try {
+      return JSON.parse(metin.slice(ilkP, sonP + 1));
+    } catch {}
+  }
+
+  return null;
+}
 
 /**
  * Google Gemini REST API üzerinden yanıt üretir
@@ -38,7 +86,7 @@ async function geminiIleCevapla(apiKey, mesaj) {
           contents,
           generationConfig: {
             maxOutputTokens: 1500,
-            temperature: 0.7
+            temperature: 0.6
           }
         },
         {
@@ -51,7 +99,6 @@ async function geminiIleCevapla(apiKey, mesaj) {
       if (cevap) return cevap;
     } catch (err) {
       sonHata = err;
-      // Diğer modeli dene
     }
   }
 
@@ -91,50 +138,83 @@ async function claudeIleCevapla(apiKey, mesaj) {
 }
 
 /**
- * Aktif yapay zeka modeline mesaj gönderip danışman yanıtı alır
+ * Aktif yapay zeka modeline mesaj gönderip danışman yanıtı alır ve gerekirse eylemleri icra eder
  * @param {string} mesaj
- * @param {Object} secenekler
- * @returns {Promise<{ cevap: string, saglayici: string }>}
+ * @param {Object} baglam { guild, channel, member, client }
+ * @returns {Promise<{ cevap: string, saglayici: string, eylemSonuc?: Object }>}
  */
-export async function aiDanis(mesaj, secenekler = {}) {
+export async function aiDanis(mesaj, baglam = {}) {
   const geminiKey = process.env.GEMINI_API_KEY;
   const claudeKey = process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY;
   const tercih = (process.env.AI_PROVIDER || 'oto').toLowerCase();
 
-  // 1. Kullanıcı açıkça Gemini seçmişse veya Gemini anahtarı varsa
+  let hamCevap = null;
+
+  // 1. LLM Çağrısı
   if ((tercih === 'gemini' || tercih === 'oto') && geminiKey) {
     try {
-      const cevap = await geminiIleCevapla(geminiKey, mesaj);
-      return { cevap, saglayici: 'Kage-95' };
+      hamCevap = await geminiIleCevapla(geminiKey, mesaj);
     } catch (err) {
       console.error('[AIServisi] Gemini hatası:', err.message);
-      // Claude yedek olarak varsa dene
       if (claudeKey) {
-        const cevap = await claudeIleCevapla(claudeKey, mesaj);
-        return { cevap, saglayici: 'Kage-95' };
+        hamCevap = await claudeIleCevapla(claudeKey, mesaj);
+      } else {
+        throw err;
       }
-      throw err;
     }
-  }
-
-  // 2. Claude seçilmişse veya Claude anahtarı varsa
-  if ((tercih === 'claude' || tercih === 'oto') && claudeKey) {
+  } else if ((tercih === 'claude' || tercih === 'oto') && claudeKey) {
     try {
-      const cevap = await claudeIleCevapla(claudeKey, mesaj);
-      return { cevap, saglayici: 'Kage-95' };
+      hamCevap = await claudeIleCevapla(claudeKey, mesaj);
     } catch (err) {
       console.error('[AIServisi] Claude hatası:', err.message);
       if (geminiKey) {
-        const cevap = await geminiIleCevapla(geminiKey, mesaj);
-        return { cevap, saglayici: 'Kage-95' };
+        hamCevap = await geminiIleCevapla(geminiKey, mesaj);
+      } else {
+        throw err;
       }
-      throw err;
     }
   }
 
-  // 3. Hiçbir anahtar tanımlanmamışsa akıllı kılavuz simülasyonu
+  // Anahtar yoksa
+  if (!hamCevap) {
+    return {
+      cevap: `⛩️ **Gölge Danışmanı Bildirisi**\n\nYapay zeka beynimi tam kapasite uyandırmak için \`.env\` dosyanıza bir **GEMINI_API_KEY** tanımlamanız yeterlidir.\n\n*Örnek Talimatınız:* "${mesaj}"\n\n📌 **Hızlı Kurulum:**\n• [Google AI Studio](https://aistudio.google.com/) adresinden saniyeler içinde ücretsiz **Gemini API** anahtarınızı alıp \`GEMINI_API_KEY=...\` olarak ekleyebilirsiniz.`,
+      saglayici: 'Kage-95'
+    };
+  }
+
+  // 2. Eylem Ayrıştırma ve İcra
+  const parsed = jsonAyristir(hamCevap);
+
+  if (parsed && parsed.eylem && parsed.eylem !== 'sohbet') {
+    // Discord Eylemini İcra Et
+    const eylemSonucu = await aiEylemiCalistir({
+      eylem: parsed.eylem,
+      parametreler: parsed.parametreler || {},
+      guild: baglam.guild,
+      channel: baglam.channel,
+      member: baglam.member,
+      client: baglam.client
+    });
+
+    let sonMesaj = parsed.cevap || 'Emriniz icra edildi.';
+    if (eylemSonucu.basarili) {
+      sonMesaj = `⚔️ **[EYLEM İCRA EDİLDİ]**\n${eylemSonucu.detay}\n\n${sonMesaj}`;
+    } else {
+      sonMesaj = `⚠️ **[EYLEM GERÇEKLEŞTİRİLEMEDİ]**\n*Sebep:* ${eylemSonucu.hata}\n\n${sonMesaj}`;
+    }
+
+    return {
+      cevap: sonMesaj,
+      saglayici: 'Kage-95',
+      eylemSonuc: eylemSonucu
+    };
+  }
+
+  // Salt sohbet veya JSON harici yanıt
+  const temizCevap = parsed?.cevap || hamCevap.replace(/```(?:json)?[\s\S]*?```/g, '').trim() || hamCevap;
   return {
-    cevap: `⛩️ **Gölge Danışmanı Bildirisi**\n\nYapay zeka beynimi tam kapasite uyandırmak için \`.env\` dosyanıza bir **GEMINI_API_KEY** tanımlamanız yeterlidir.\n\n*Örnek Talimatınız:* "${mesaj}"\n\n📌 **Hızlı Kurulum:**\n• [Google AI Studio](https://aistudio.google.com/) adresinden saniyeler içinde ücretsiz **Gemini API** anahtarınızı alıp \`GEMINI_API_KEY=...\` olarak ekleyebilirsiniz.`,
+    cevap: temizCevap,
     saglayici: 'Kage-95'
   };
 }
