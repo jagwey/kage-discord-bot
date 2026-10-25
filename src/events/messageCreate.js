@@ -82,10 +82,10 @@ export async function execute(message) {
     const formatliCevap = cevap.length > 4000 ? cevap.slice(0, 3990) + '...\n*(Metin sınırı aşıldı)*' : cevap;
 
     const embed = kageEmbed({
-      baslik: `🔮 GÖLGE VEZİRİ • ${saglayici}`,
+      baslik: `⛩️ GÖLGE VEZİRİ • Kage-95`,
       renk: TEMA.RENKLER.KAN_KIRMIZISI,
       aciklama: formatliCevap,
-      footer: `Kage 95 AI Asistanı • ${message.author.tag}`
+      footer: `Kage-95 AI Asistanı • ${message.author.tag}`
     });
 
     await message.reply({

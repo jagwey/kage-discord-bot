@@ -105,13 +105,13 @@ export async function aiDanis(mesaj, secenekler = {}) {
   if ((tercih === 'gemini' || tercih === 'oto') && geminiKey) {
     try {
       const cevap = await geminiIleCevapla(geminiKey, mesaj);
-      return { cevap, saglayici: 'Google Gemini (Flash)' };
+      return { cevap, saglayici: 'Kage-95' };
     } catch (err) {
       console.error('[AIServisi] Gemini hatası:', err.message);
       // Claude yedek olarak varsa dene
       if (claudeKey) {
         const cevap = await claudeIleCevapla(claudeKey, mesaj);
-        return { cevap, saglayici: 'Anthropic Claude (Yedek)' };
+        return { cevap, saglayici: 'Kage-95' };
       }
       throw err;
     }
@@ -121,12 +121,12 @@ export async function aiDanis(mesaj, secenekler = {}) {
   if ((tercih === 'claude' || tercih === 'oto') && claudeKey) {
     try {
       const cevap = await claudeIleCevapla(claudeKey, mesaj);
-      return { cevap, saglayici: 'Anthropic Claude (Haiku)' };
+      return { cevap, saglayici: 'Kage-95' };
     } catch (err) {
       console.error('[AIServisi] Claude hatası:', err.message);
       if (geminiKey) {
         const cevap = await geminiIleCevapla(geminiKey, mesaj);
-        return { cevap, saglayici: 'Google Gemini (Yedek)' };
+        return { cevap, saglayici: 'Kage-95' };
       }
       throw err;
     }
@@ -135,6 +135,6 @@ export async function aiDanis(mesaj, secenekler = {}) {
   // 3. Hiçbir anahtar tanımlanmamışsa akıllı kılavuz simülasyonu
   return {
     cevap: `⛩️ **Gölge Danışmanı Bildirisi**\n\nYapay zeka beynimi tam kapasite uyandırmak için \`.env\` dosyanıza bir **GEMINI_API_KEY** tanımlamanız yeterlidir.\n\n*Örnek Talimatınız:* "${mesaj}"\n\n📌 **Hızlı Kurulum:**\n• [Google AI Studio](https://aistudio.google.com/) adresinden saniyeler içinde ücretsiz **Gemini API** anahtarınızı alıp \`GEMINI_API_KEY=...\` olarak ekleyebilirsiniz.`,
-    saglayici: 'Çevrimdışı Rehber'
+    saglayici: 'Kage-95'
   };
 }

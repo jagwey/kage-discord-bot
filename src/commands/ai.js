@@ -32,7 +32,7 @@ export async function execute(interaction) {
     const formatliCevap = cevap.length > 4000 ? cevap.slice(0, 3990) + '...\n*(Uzun metin kesildi)*' : cevap;
 
     const embed = kageEmbed({
-      baslik: `GÖLGE VEZİRİ CEVABI • ${saglayici}`,
+      baslik: `⛩️ GÖLGE VEZİRİ CEVABI • Kage-95`,
       renk: TEMA.RENKLER.KAN_KIRMIZISI,
       aciklama: formatliCevap,
       alanlar: [
@@ -42,7 +42,7 @@ export async function execute(interaction) {
           inline: false
         }
       ],
-      altMetin: `Kage 95 AI Danışmanı • İsteyen: ${interaction.user.tag}`
+      altMetin: `Kage-95 AI Danışmanı • İsteyen: ${interaction.user.tag}`
     });
 
     return interaction.editReply({ embeds: [embed] });
