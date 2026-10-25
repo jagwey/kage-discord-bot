@@ -14,8 +14,12 @@ Temel Prensiplerin:
  * Google Gemini REST API üzerinden yanıt üretir
  */
 async function geminiIleCevapla(apiKey, mesaj) {
-  const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  const modeller = [
+    process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite',
+    'gemini-3.5-flash-lite',
+    'gemini-3.8-flash',
+    'gemini-3.5-flash'
+  ];
 
   const contents = [
     {
@@ -24,24 +28,34 @@ async function geminiIleCevapla(apiKey, mesaj) {
     }
   ];
 
-  const yanit = await axios.post(
-    url,
-    {
-      contents,
-      generationConfig: {
-        maxOutputTokens: 1500,
-        temperature: 0.7
-      }
-    },
-    {
-      headers: { 'Content-Type': 'application/json' },
-      timeout: 25000
-    }
-  );
+  let sonHata = null;
+  for (const model of [...new Set(modeller)]) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      const yanit = await axios.post(
+        url,
+        {
+          contents,
+          generationConfig: {
+            maxOutputTokens: 1500,
+            temperature: 0.7
+          }
+        },
+        {
+          headers: { 'Content-Type': 'application/json' },
+          timeout: 20000
+        }
+      );
 
-  const cevap = yanit.data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!cevap) throw new Error('Gemini API boş yanıt döndürdü.');
-  return cevap;
+      const cevap = yanit.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (cevap) return cevap;
+    } catch (err) {
+      sonHata = err;
+      // Diğer modeli dene
+    }
+  }
+
+  throw sonHata || new Error('Gemini API modellerinden yanıt alınamadı.');
 }
 
 /**
