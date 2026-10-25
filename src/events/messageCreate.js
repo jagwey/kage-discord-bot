@@ -1,9 +1,9 @@
 import { Events, PermissionFlagsBits } from 'discord.js';
-import { TEMA, kageEmbed } from '../config/tema.js';
-import { aiDanis } from '../services/aiServisi.js';
 import { chatBotYanitla } from '../services/chatBotServisi.js';
 import { sunucuAyarGetir } from '../services/veritabaniServisi.js';
 import { yardimKartiOlustur } from '../commands/yardim.js';
+import { kageyeSor } from '../services/ai/kageBeyin.js';
+import { gecmiseEkle } from '../services/ai/konusmaGecmisi.js';
 
 export const name = Events.MessageCreate;
 
@@ -13,8 +13,67 @@ const SPOILER_IPUCLARI = [
   'aslında hain', 'aslında babası', 'kurtarıyor ama ölüyor', 'kellesi kesiliyor'
 ];
 
+// Araya girme ayarları
+const ARAYA_GIRME_ACIK = (process.env.KAGE_ARAYA_GIRME || '').toLowerCase() !== 'kapali';
+const ARAYA_GIRME_BEKLEME_MS = 90 * 1000;
+const sonAraGirme = new Map(); // kanalId -> zaman
+
+function sohbetKanaliMi(kanalAdi = '') {
+  const ad = kanalAdi.toLowerCase();
+  return ad.includes('sohbet') || ad.includes('genel') || ad.includes('chat');
+}
+
+function aiKanaliMi(kanal, aiKanalId) {
+  if (aiKanalId && kanal.id === aiKanalId) return true;
+  const ad = kanal.name || '';
+  return ['gölge-veziri', 'golge-veziri', 'kage-ai', 'ai-gölge-veziri', 'yapay-zeka'].some(k => ad.includes(k));
+}
+
+function arayaGirsinMi(message, metin) {
+  if (!ARAYA_GIRME_ACIK || metin.length < 4) return false;
+  if (!sohbetKanaliMi(message.channel.name)) return false;
+  if (Date.now() - (sonAraGirme.get(message.channel.id) || 0) < ARAYA_GIRME_BEKLEME_MS) return false;
+
+  let olasilik = 0.02;
+  if (/kage/i.test(metin)) olasilik = 0.9;
+  else if (metin.includes('?')) olasilik = 0.15;
+  return Math.random() < olasilik;
+}
+
+function parcala(metin, limit = 1900) {
+  const parcalar = [];
+  let kalan = metin;
+  while (kalan.length > limit) {
+    let kes = kalan.lastIndexOf('\n', limit);
+    if (kes < limit / 2) kes = kalan.lastIndexOf(' ', limit);
+    if (kes < limit / 2) kes = limit;
+    parcalar.push(kalan.slice(0, kes));
+    kalan = kalan.slice(kes).trimStart();
+  }
+  if (kalan) parcalar.push(kalan);
+  return parcalar;
+}
+
+async function cevabiGonder(message, sonuc, yanitla = true) {
+  const parcalar = parcala(sonuc.cevap);
+  let ilk = true;
+  for (const p of parcalar) {
+    const secenek = { content: p, allowedMentions: { parse: [], repliedUser: false } };
+    if (ilk && yanitla) await message.reply(secenek).catch(() => message.channel.send(secenek).catch(() => null));
+    else await message.channel.send(secenek).catch(() => null);
+    ilk = false;
+  }
+  for (const o of sonuc.onaylar || []) {
+    await message.channel.send({
+      content: o.metin,
+      components: [o.row],
+      allowedMentions: { parse: [], repliedUser: false }
+    }).catch(() => null);
+  }
+}
+
 /**
- * Mesaj oluşturulduğunda tetiklenir (Metin komutları, AI sohbeti & Kage Chat Bot)
+ * Mesaj oluşturulduğunda tetiklenir (metin komutları, birleşik Kage yapay zekası)
  * @param {import('discord.js').Message} message
  */
 export async function execute(message) {
@@ -25,7 +84,6 @@ export async function execute(message) {
 
   // 1. Akıllı Spoiler Koruması (#manga-tartışma kanalı için)
   if (message.channel.name && message.channel.name.includes('manga-tartışma')) {
-    // Mesaj zaten ||spoiler|| etiketiyle kapatılmamışsa
     if (!message.content.includes('||')) {
       const spoilerMi = SPOILER_IPUCLARI.some(kelime => contentLower.includes(kelime));
       if (spoilerMi) {
@@ -43,13 +101,13 @@ export async function execute(message) {
     }
   }
 
-  // 2. Klasik metin tabanlı yardım komutları: !help, .help, ./help, !yardim
+  // 2. Klasik metin tabanlı yardım komutları
   if (['!help', '.help', './help', '!yardim', '.yardim', 'k!help'].includes(contentLower)) {
     const { embed, row } = yardimKartiOlustur();
     return message.reply({ embeds: [embed], components: [row] }).catch(() => null);
   }
 
-  // 3. Sohbet Ryo Kazanımı (Spam engeliyle şans eseri 1-3 Ryo)
+  // 3. Sohbet Ryo Kazanımı
   if (Math.random() < 0.25) {
     try {
       const { ryoEkle } = await import('../services/ekonomiServisi.js');
@@ -61,83 +119,79 @@ export async function execute(message) {
   const ayarlar = sunucuAyarGetir(message.guild.id);
   const aiKanalId = ayarlar.aiYonetimKanalId || process.env.AI_ADMIN_CHANNEL_ID;
 
-  // 4. Tetikleyici Kontrolleri:
-  // a) "kage" ile başlama: "kage şunu yap", "kage, rol ver", "kage: nasılsın", "kage"
+  // 4. Tetikleyiciler
+  const botMention = new RegExp(`<@!?${botUser.id}>`, 'g');
   const kageMatch = message.content.match(/^kage([,\s:!]+(.*)|$)/i);
-  const kageIleBasliyor = !!kageMatch;
-
-  // b) AI Kanalı (#gölge-veziri-ai)
-  const buKanalAiKanali = (aiKanalId && message.channel.id === aiKanalId) || 
-    message.channel.name?.includes('gölge-veziri') || 
-    message.channel.name?.includes('golge-veziri') ||
-    message.channel.name?.includes('ai-gölge-veziri');
-
-  // c) Bot Etiketlendi
+  const aiMatch = message.content.match(/^(ai|aı|aİ|Aİ)([,\s:!]+(.*)|$)/iu);
   const botEtiketlendi = message.mentions.has(botUser) && !message.mentions.everyone;
+  const aiKanali = aiKanaliMi(message.channel, aiKanalId);
 
-  if (!kageIleBasliyor && !buKanalAiKanali && !botEtiketlendi) return;
-
-  // Talimatı ayıkla
-  let talimat = '';
-  if (kageIleBasliyor) {
-    talimat = (kageMatch[2] || '').trim();
-  } else {
-    talimat = message.content.replace(new RegExp(`<@!?${botUser.id}>`, 'g'), '').trim();
+  let botaYanit = false;
+  if (message.reference?.messageId) {
+    const ref = await message.fetchReference().catch(() => null);
+    botaYanit = ref?.author?.id === botUser.id;
   }
 
-  // Yetkili / Şogun Kontrolü (Sunucu Sahibi, Yönetici, Bot Geliştiricisi)
-  const isGuildOwner = message.guild.ownerId === message.author.id;
-  const isAdmin = message.member?.permissions?.has(PermissionFlagsBits.Administrator);
-  const isAppOwner = message.client.application?.owner?.id === message.author.id;
-  const isEnvOwner = process.env.OWNER_ID && message.author.id === process.env.OWNER_ID;
-  const yetkiliMi = isGuildOwner || isAdmin || isAppOwner || isEnvOwner;
+  let metin = message.content.replace(botMention, '').trim();
+  if (kageMatch) metin = (kageMatch[2] || '').trim();
+  else if (aiMatch) metin = (aiMatch[3] || '').trim();
 
-  // =========================================================================
-  // NORMAL KULLANICILAR İÇİN: KAGE CHAT BOT (AI ve Sunucu Yönetimi Yok)
-  // =========================================================================
-  if (!yetkiliMi) {
-    const { embed, files } = await chatBotYanitla(talimat, message.author, message.guild, message.member, message);
-    return message.reply({
-      embeds: [embed],
-      files: files || [],
-      allowedMentions: { repliedUser: false }
-    }).catch((err) => console.error('[MessageCreate ChatBot Hatası]:', err));
+  const cagrildi = !!kageMatch || !!aiMatch || botEtiketlendi || botaYanit || aiKanali;
+  const yazarAdi = message.member?.displayName || message.author.username;
+
+  if (!cagrildi) {
+    // Çağrılmadı: sohbet kanallarında geçmişe not et, belki araya gir
+    if (!sohbetKanaliMi(message.channel.name) || !message.content.trim()) return;
+    gecmiseEkle(message.channel.id, 'user', yazarAdi, message.content.trim());
+    if (!arayaGirsinMi(message, message.content.trim())) return;
+
+    sonAraGirme.set(message.channel.id, Date.now());
+    try {
+      const sonuc = await kageyeSor({
+        metin: message.content.trim(), yazarAdi, userId: message.author.id,
+        guild: message.guild, channel: message.channel, member: message.member, client: message.client,
+        yonetici: false, araGirme: true, gecmiseYaz: false
+      });
+      if (sonuc.sus || sonuc.hata || sonuc.kota || !sonuc.cevap) {
+        sonAraGirme.delete(message.channel.id);
+        return;
+      }
+      await cevabiGonder(message, sonuc, false);
+    } catch (err) {
+      console.error('[MessageCreate AraGirme] Hata:', err.message);
+    }
+    return;
   }
 
-  // =========================================================================
-  // YETKİLİ / ŞOGUN İÇİN: TAM GÖLGE VEZİRİ AI & SUNUCU MİMARİSİ MOTORU
-  // =========================================================================
-  if (!talimat) {
-    talimat = 'Emrindeyim Şogunum! Kage AI ve Gölge Veziri hazır. Sunucuda ne yapmamı istersiniz?';
-  }
+  if (!metin) metin = '(Seni çağırdı ama bir şey yazmadı)';
 
-  // Yazıyor... durumunu gönder
-  await message.channel.sendTyping();
+  const yetkiliMi =
+    message.guild.ownerId === message.author.id ||
+    message.member?.permissions?.has(PermissionFlagsBits.Administrator) ||
+    message.client.application?.owner?.id === message.author.id ||
+    (process.env.OWNER_ID && message.author.id === process.env.OWNER_ID);
+
+  await message.channel.sendTyping().catch(() => null);
 
   try {
-    const { cevap, saglayici } = await aiDanis(talimat, {
-      guild: message.guild,
-      channel: message.channel,
-      member: message.member,
-      client: message.client
-    });
-    const formatliCevap = cevap.length > 4000 ? cevap.slice(0, 3990) + '...\n*(Metin sınırı aşıldı)*' : cevap;
-
-    const embed = kageEmbed({
-      baslik: `⛩️ GÖLGE VEZİRİ AI • Kage-95`,
-      renk: TEMA.RENKLER.KAN_KIRMIZISI,
-      aciklama: formatliCevap,
-      footer: `Kage-95 AI Mimar • Şogun: ${message.author.tag}`
+    const sonuc = await kageyeSor({
+      metin, yazarAdi, userId: message.author.id,
+      guild: message.guild, channel: message.channel, member: message.member, client: message.client,
+      yonetici: !!yetkiliMi
     });
 
-    await message.reply({
-      embeds: [embed],
-      allowedMentions: { repliedUser: false }
-    });
+    if (sonuc.hata === 'anahtar_yok' || (sonuc.hata && !sonuc.cevap)) {
+      // Eski sohbet motoruna düş
+      const { embed, files } = await chatBotYanitla(metin, message.author, message.guild, message.member, message);
+      return message.reply({ embeds: [embed], files: files || [], allowedMentions: { repliedUser: false } })
+        .catch((err) => console.error('[MessageCreate ChatBot Hatası]:', err));
+    }
+
+    await cevabiGonder(message, sonuc);
   } catch (err) {
     console.error('[MessageCreate AI] Hata:', err.message);
     await message.reply({
-      content: `❌ Gölge veziriyle iletişim kurulamadı: ${err.message}`,
+      content: `❌ Kage şu an cevap veremiyor: ${err.message}`,
       allowedMentions: { repliedUser: false }
     }).catch(() => null);
   }

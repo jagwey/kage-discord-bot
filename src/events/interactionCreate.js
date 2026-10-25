@@ -1,4 +1,5 @@
 import { Events } from 'discord.js';
+import { onayButonuMu, onayButonunuIsle } from '../services/ai/onayServisi.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { ryoEkle } from '../services/ekonomiServisi.js';
 import { kayitModaliOlustur, kayitIsleminiTamamla, kullaniciKayitBilgileriniGetir } from '../services/kayitServisi.js';
@@ -25,6 +26,7 @@ export async function execute(interaction) {
 
   // 2. Buton Tıklamaları (Kayıt Ol, Profil Güncelleme, Kurallar)
   if (interaction.isButton()) {
+    if (onayButonuMu(interaction.customId)) return onayButonunuIsle(interaction);
     if (interaction.customId === 'kage_kayit_ol_btn' || interaction.customId === 'kage_profil_guncelle_btn') {
       const varsayilanlar = kullaniciKayitBilgileriniGetir(interaction.user.id, interaction.member);
       const modal = kayitModaliOlustur(varsayilanlar);
