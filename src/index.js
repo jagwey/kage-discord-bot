@@ -71,6 +71,16 @@ if (fs.existsSync(eventsPath)) {
   }
 }
 
+// 3. Bulut Sunucuları İçin Hafif HTTP Canlılık Sunucusu (Render / Koyeb / Uptime)
+import http from 'http';
+const PORT = process.env.PORT || 3000;
+http.createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
+  res.end('⛩️ Kage Discord Botu 7/24 Aktif ve Görevde!');
+}).listen(PORT, () => {
+  console.log(`[HTTP] Canlılık sunucusu ${PORT} portunda dinlemede.`);
+});
+
 // Beklenmeyen Hataları Yakalama (Çökme Koruması)
 process.on('unhandledRejection', (reason, promise) => {
   console.error('[Hata Koruması] Yakalanmamış Promise Reddi:', reason);
