@@ -1,5 +1,9 @@
 import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
-import { kayitModaliOlustur, kayitIsleminiTamamla } from '../services/kayitServisi.js';
+import {
+  kayitModaliOlustur,
+  kayitIsleminiTamamla,
+  kullaniciKayitBilgileriniGetir
+} from '../services/kayitServisi.js';
 
 export const data = new SlashCommandBuilder()
   .setName('kayit')
@@ -34,9 +38,8 @@ export async function execute(interaction) {
 
   // Eğer hiçbir parametre girilmediyse veya kullanıcı kendisi için yazdıysa doğrudan interaktif Modalı aç
   if (!hedefUser && !cinsiyet && !isim) {
-    const modal = kayitModaliOlustur({
-      isim: interaction.member?.displayName?.replace(/[🌸🗡️]/g, '').trim()
-    });
+    const varsayilanlar = kullaniciKayitBilgileriniGetir(interaction.user.id, interaction.member);
+    const modal = kayitModaliOlustur(varsayilanlar);
     return interaction.showModal(modal);
   }
 
@@ -55,13 +58,18 @@ export async function execute(interaction) {
     return interaction.editReply({ content: '❌ Üye sunucuda bulunamadı.' });
   }
 
-  const { embed, files } = await kayitIsleminiTamamla(interaction, {
+  const { embed, files, row } = await kayitIsleminiTamamla(interaction, {
     hedefUye: targetMember,
     isimYas: isim || targetMember.displayName,
     cinsiyet: cinsiyet || 'Erkek',
     mangaTuru: 'Genel',
+    karakter: 'Gölge Savaşçısı',
     yemin: 'Kage Kalesi Onuru'
   });
 
-  return interaction.editReply({ embeds: [embed], files });
+  return interaction.editReply({
+    embeds: [embed],
+    files,
+    components: row ? [row] : []
+  });
 }

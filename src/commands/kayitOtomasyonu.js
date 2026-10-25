@@ -3,7 +3,13 @@ import {
   PermissionFlagsBits,
   ChannelType
 } from 'discord.js';
-import { kayitPaneliKartiOlustur, kayitModaliOlustur, kayitIsleminiTamamla } from '../services/kayitServisi.js';
+import {
+  kayitPaneliKartiOlustur,
+  kayitModaliOlustur,
+  kayitIsleminiTamamla,
+  kullaniciKayitBilgileriniGetir
+} from '../services/kayitServisi.js';
+import { kageEmbed, TEMA } from '../config/tema.js';
 
 export const data = new SlashCommandBuilder()
   .setName('kayit-otomasyonu')
@@ -24,6 +30,17 @@ export const data = new SlashCommandBuilder()
     sub
       .setName('yeniden-kayit')
       .setDescription('Karakter yolunuzu, isminizi ve profilinizi güncellemek için modal açar.')
+  )
+  .addSubcommand(sub =>
+    sub
+      .setName('sifirla')
+      .setDescription('(Yetkili) Bir üyenin kaydını sıfırlar ve Ronin (Kayıtsız) yapar.')
+      .addUserOption(opt =>
+        opt
+          .setName('uye')
+          .setDescription('Kaydı sıfırlanacak üye')
+          .setRequired(true)
+      )
   )
   .addSubcommand(sub =>
     sub
@@ -57,6 +74,12 @@ export const data = new SlashCommandBuilder()
           .setDescription('Favori manga/anime türü')
           .setRequired(false)
       )
+      .addStringOption(opt =>
+        opt
+          .setName('karakter')
+          .setDescription('Ruh karakteri veya usta (Örn: Zoro, Mikasa)')
+          .setRequired(false)
+      )
   );
 
 export async function execute(interaction) {
@@ -87,13 +110,56 @@ export async function execute(interaction) {
 
   // 2. YENİDEN KAYIT (Kullanıcı modal açar)
   if (sub === 'yeniden-kayit') {
-    const modal = kayitModaliOlustur({
-      isim: interaction.member?.displayName?.replace(/[🌸🗡️]/g, '').trim()
-    });
+    const varsayilanlar = kullaniciKayitBilgileriniGetir(interaction.user.id, interaction.member);
+    const modal = kayitModaliOlustur(varsayilanlar);
     return interaction.showModal(modal);
   }
 
-  // 3. MANUEL KAYIT (Yetkili)
+  // 3. SIFIRLA (Yetkili)
+  if (sub === 'sifirla') {
+    if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageRoles)) {
+      return interaction.reply({
+        content: '⛔ Bir üyenin kaydını sıfırlamak için Rolleri Yönet yetkisi gerekir.',
+        ephemeral: true
+      });
+    }
+
+    await interaction.deferReply({ ephemeral: true });
+    const hedefUser = interaction.options.getUser('uye');
+    const hedefMember = await interaction.guild.members.fetch(hedefUser.id).catch(() => null);
+    if (!hedefMember) {
+      return interaction.editReply({ content: '❌ Hedef üye sunucuda bulunamadı.' });
+    }
+
+    const kunoichiRole = interaction.guild.roles.cache.find(r => r.name.includes('Kunoichi'));
+    const samurayRole = interaction.guild.roles.cache.find(r => r.name.includes('Samurayı'));
+    const shinobiRole = interaction.guild.roles.cache.find(r => r.name.includes('Shinobi'));
+    const roninRole = interaction.guild.roles.cache.find(r => r.name.includes('Ronin') || r.name.includes('Kayıtsız'));
+
+    try {
+      if (kunoichiRole && hedefMember.roles.cache.has(kunoichiRole.id)) await hedefMember.roles.remove(kunoichiRole);
+      if (samurayRole && hedefMember.roles.cache.has(samurayRole.id)) await hedefMember.roles.remove(samurayRole);
+      if (shinobiRole && hedefMember.roles.cache.has(shinobiRole.id)) await hedefMember.roles.remove(shinobiRole);
+      if (roninRole) await hedefMember.roles.add(roninRole);
+
+      const temizIsim = hedefMember.displayName.replace(/[🌸🗡️]/g, '').trim();
+      await hedefMember.setNickname(temizIsim).catch(() => {});
+    } catch (err) {
+      console.warn('[KayitOtomasyonu] Sıfırlama uyarısı:', err.message);
+    }
+
+    const embed = kageEmbed({
+      baslik: '🔄 KAYIT MÜHRÜ SIFIRLANDI',
+      renk: TEMA.RENKLER.UYARI,
+      aciklama: `**${hedefMember}** kullanıcısının klan kaydı sıfırlandı ve \`Ronin (Kayıtsız)\` rolü verildi.\n\n` +
+        `Kullanıcı artık kayıt panelinden veya \`/yeniden-kayit\` komutuyla baştan kayıt olabilir.`,
+      footer: `Yetkili: ${interaction.user.tag}`
+    });
+
+    return interaction.editReply({ embeds: [embed] });
+  }
+
+  // 4. MANUEL KAYIT (Yetkili)
   if (sub === 'manuel') {
     if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageRoles)) {
       return interaction.reply({
@@ -107,20 +173,26 @@ export async function execute(interaction) {
     const cinsiyet = interaction.options.getString('cinsiyet');
     const isimYas = interaction.options.getString('isim_yas') || hedefUser.username;
     const mangaTuru = interaction.options.getString('manga_turu') || 'Genel';
+    const karakter = interaction.options.getString('karakter') || 'Gölge Savaşçısı';
 
     const hedefMember = await interaction.guild.members.fetch(hedefUser.id).catch(() => null);
     if (!hedefMember) {
       return interaction.editReply({ content: '❌ Hedef üye sunucuda bulunamadı.' });
     }
 
-    const { embed, files } = await kayitIsleminiTamamla(interaction, {
+    const { embed, files, row } = await kayitIsleminiTamamla(interaction, {
       hedefUye: hedefMember,
       isimYas,
       cinsiyet,
       mangaTuru,
+      karakter,
       yemin: 'Yetkili tarafından tescil edildi.'
     });
 
-    return interaction.editReply({ embeds: [embed], files });
+    return interaction.editReply({
+      embeds: [embed],
+      files,
+      components: row ? [row] : []
+    });
   }
 }

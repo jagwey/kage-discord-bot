@@ -142,6 +142,17 @@ export function kullaniciNotuEkle(userId, userName, notMetni) {
 }
 
 /**
+ * Kullanıcının mevcut hafıza kaydını getirir
+ * @param {string} userId 
+ * @returns {Object|null}
+ */
+export function kullaniciHafizasiGetir(userId) {
+  if (!userId) return null;
+  const hafiza = hafizaYukle();
+  return hafiza.kullaniciNotlari[userId] || null;
+}
+
+/**
  * Genel bilgi veya kural ekler
  * @param {string} kategori 
  * @param {string} baslik 

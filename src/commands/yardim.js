@@ -15,7 +15,8 @@ export function yardimKartiOlustur() {
     alanlar: [
       {
         name: `⛩️ Otomatik Sunucu Mimarisi & Kayıt`,
-        value: '`• /kayit-otomasyonu [panel|yeniden-kayit]` : Butonlu & modal kayıt otomasyonu.\n' +
+        value: '`• /yeniden-kayit` : Klan kimliğinizi ve profilinizi anında yeniler.\n' +
+          '`• /kayit-otomasyonu [panel|yeniden-kayit|sifirla]` : Butonlu & modal kayıt otomasyonu.\n' +
           '`• /kayit-paneli` : Kanala butonlu otomatik kayıt kapısı kurar.\n' +
           '`• /kayit [üye] [cinsiyet] [isim]` : İnteraktif veya doğrudan kayıt.\n' +
           '`• /sunucu-kur` : Sunucuyu roller, kayıt kapısı, manga ve oyun odalarıyla kurar.\n' +

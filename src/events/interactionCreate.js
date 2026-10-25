@@ -1,7 +1,7 @@
 import { Events } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { ryoEkle } from '../services/ekonomiServisi.js';
-import { kayitModaliOlustur, kayitIsleminiTamamla } from '../services/kayitServisi.js';
+import { kayitModaliOlustur, kayitIsleminiTamamla, kullaniciKayitBilgileriniGetir } from '../services/kayitServisi.js';
 
 export const name = Events.InteractionCreate;
 
@@ -23,15 +23,30 @@ export async function execute(interaction) {
     return;
   }
 
-  // 2. Buton Tıklamaları (Kayıt Ol & Profil Güncelleme)
+  // 2. Buton Tıklamaları (Kayıt Ol, Profil Güncelleme, Kurallar)
   if (interaction.isButton()) {
     if (interaction.customId === 'kage_kayit_ol_btn' || interaction.customId === 'kage_profil_guncelle_btn') {
-      const modal = kayitModaliOlustur({
-        isim: interaction.member?.displayName?.replace(/[🌸🗡️]/g, '').trim()
-      });
+      const varsayilanlar = kullaniciKayitBilgileriniGetir(interaction.user.id, interaction.member);
+      const modal = kayitModaliOlustur(varsayilanlar);
       return interaction.showModal(modal).catch(err => {
         console.error('[InteractionCreate] Modal açma hatası:', err.message);
       });
+    }
+
+    if (interaction.customId === 'kage_kurallar_btn') {
+      const kurallarEmbed = kageEmbed({
+        baslik: '📜 KAGE KALESİ • BUSHIDO KURALLARI',
+        renk: TEMA.RENKLER.BILGI,
+        aciklama: `Kage-95 kalesinin huzuru, saygısı ve onuru aşağıdaki kurallarla korunur:\n\n` +
+          `1️⃣ **Saygı & Nezaket:** Her klan üyesine saygılı davranın. Hakaret, nefret söylemi ve taciz kesinlikle yasaktır.\n` +
+          `2️⃣ **Spoiler Yasağı:** Güncel manga ve anime bölümlerine dair spoilerları \`#spoiler\` odası dışında veya spoiler etiketi olmadan paylaşmayın.\n` +
+          `3️⃣ **Reklam & Spam:** Özelden veya kanallardan yetkisiz sunucu/link reklamı yapmak yasaktır.\n` +
+          `4️⃣ **Kanalların Amacı:** Sohbeti ilgili odalarda (Manga, Zindan, Kumar, Bot Komutları) sürdürün.\n` +
+          `5️⃣ **Yetkili Kararları:** Şogun ve Daimyo moderatörlerinin uyarılarını dikkate alın.\n\n` +
+          `*Onurlu bir samuray veya kunoichi sözünü tutar, kılıcını adaletsizce çekmez.*`,
+        footer: 'Kage Kalesi Onur Yasası'
+      });
+      return interaction.reply({ embeds: [kurallarEmbed], ephemeral: true });
     }
   }
 
@@ -43,20 +58,26 @@ export async function execute(interaction) {
       const isimYas = interaction.fields.getTextInputValue('kayit_isim_yas');
       const cinsiyet = interaction.fields.getTextInputValue('kayit_cinsiyet');
       const mangaTuru = interaction.fields.getTextInputValue('kayit_manga_turu') || 'Genel';
+      let karakter = '';
+      try {
+        karakter = interaction.fields.getTextInputValue('kayit_karakter') || '';
+      } catch {}
       const yemin = interaction.fields.getTextInputValue('kayit_yemin') || 'Kage Kalesi Onuru';
 
       try {
-        const { embed, files } = await kayitIsleminiTamamla(interaction, {
+        const { embed, files, row } = await kayitIsleminiTamamla(interaction, {
           hedefUye: interaction.member,
           isimYas,
           cinsiyet,
           mangaTuru,
+          karakter,
           yemin
         });
 
         return interaction.editReply({
           embeds: [embed],
-          files
+          files,
+          components: row ? [row] : []
         });
       } catch (err) {
         console.error('[InteractionCreate] Kayıt tamamlama hatası:', err.message);
