@@ -41,14 +41,8 @@ export async function execute(client) {
     const guildId = process.env.GUILD_ID;
 
     if (guildId) {
-      const targetGuild = await client.guilds.fetch(guildId).catch(() => null);
-      if (targetGuild) {
-        await targetGuild.commands.set(komutlar);
-        console.log(`[Kage] ${komutlar.length} komut belirtilen sunucuya (${guildId}) eşitlendi.`);
-      } else {
-        await client.application.commands.set(komutlar);
-        console.log(`[Kage] ${komutlar.length} komut genel (global) olarak eşitlendi.`);
-      }
+      await client.application.commands.set(komutlar, guildId);
+      console.log(`[Kage] ${komutlar.length} komut sunucuna (${guildId}) ANINDA eşitlendi! ⚡`);
     } else {
       await client.application.commands.set(komutlar);
       console.log(`[Kage] ${komutlar.length} komut genel (global) olarak eşitlendi.`);
