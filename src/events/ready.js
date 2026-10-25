@@ -50,9 +50,9 @@ export async function execute(client) {
       }
     }
 
-    // 2. Global olarak da eşitle (Tüm yeni sunucular ve genel erişim için)
-    await client.application.commands.set(komutlar);
-    console.log(`[Kage] ${komutlar.length} komut genel olarak da Discord API'ye eşitlendi.`);
+    // 2. Global (genel) komutları temizle (Çift görünme sorununu %100 çözer!)
+    await client.application.commands.set([]);
+    console.log(`[Kage] Eski genel komutlar temizlendi, çift görünme engellendi.`);
   } catch (err) {
     console.error('[Kage] Komutlar eşitlenirken hata oluştu:', err);
   }

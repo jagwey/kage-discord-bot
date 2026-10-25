@@ -165,8 +165,8 @@ http.createServer(async (req, res) => {
 
   res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
   res.end('404 Bulunamadı');
-}).listen(PORT, () => {
-  console.log(`[HTTP API] Entegrasyon ve canlılık sunucusu ${PORT} portunda dinlemede.`);
+}).listen(PORT, '0.0.0.0', () => {
+  console.log(`[HTTP API] Entegrasyon ve canlılık sunucusu 0.0.0.0:${PORT} portunda dinlemede.`);
 });
 
 // Beklenmeyen Hataları Yakalama (Çökme Koruması)
