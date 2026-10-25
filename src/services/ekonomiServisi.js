@@ -170,6 +170,66 @@ export function zindanZaferiKaydet(userId, kazanilanRyo) {
   veriyiKaydet();
 }
 
+export function zindanZaferiDetayli(userId, kazanilanRyo, dusenEsya = null) {
+  const h = kullaniciHesabi(userId);
+  h.zindanZafer = (h.zindanZafer || 0) + 1;
+  h.ryo = (h.ryo || 0) + kazanilanRyo;
+
+  if (dusenEsya) {
+    if (!h.envanter) h.envanter = [];
+    h.envanter.push(dusenEsya);
+  }
+
+  veriyiKaydet();
+  return {
+    ryo: h.ryo,
+    dusenEsya
+  };
+}
+
+export function olumCezasiUygula(userId) {
+  const h = kullaniciHesabi(userId);
+  let kayipMesaji = '';
+
+  // %50 şansla çantadan bir eşya düşer
+  if (h.envanter && h.envanter.length > 0 && Math.random() < 0.5) {
+    const rastgeleIndex = Math.floor(Math.random() * h.envanter.length);
+    const kaybolanEsya = h.envanter.splice(rastgeleIndex, 1)[0];
+    kayipMesaji = `🎒 Ağır darbelerle yere yığılırken çantan parçalandı ve **${kaybolanEsya}** zindanın karanlığında kayboldu!`;
+  } else {
+    // Eşya düşmezse Ryo'nun %15'i yağmalanır
+    const kayipRyo = Math.min(500, Math.round((h.ryo || 0) * 0.15));
+    if (kayipRyo > 0) {
+      h.ryo -= kayipRyo;
+      kayipMesaji = `🪙 Canavarlar seni yere serdiğinde kesenden **${kayipRyo} Ryo** çaldı!`;
+    } else {
+      kayipMesaji = `💀 Zindandan kıl payı canını kurtardın ama katanan ağır hasar aldı.`;
+    }
+  }
+
+  veriyiKaydet();
+  return {
+    kayipMesaji,
+    kalanRyo: h.ryo || 0
+  };
+}
+
+export function esyaVarMi(userId, esyaParcasi) {
+  const h = kullaniciHesabi(userId);
+  if (!h.envanter) return false;
+  return h.envanter.some(e => e.toLowerCase().includes(esyaParcasi.toLowerCase()));
+}
+
+export function esyaHarca(userId, esyaParcasi) {
+  const h = kullaniciHesabi(userId);
+  if (!h.envanter) return false;
+  const idx = h.envanter.findIndex(e => e.toLowerCase().includes(esyaParcasi.toLowerCase()));
+  if (idx === -1) return false;
+  const cikarilan = h.envanter.splice(idx, 1)[0];
+  veriyiKaydet();
+  return cikarilan;
+}
+
 export function kilicGelistir(userId) {
   const h = kullaniciHesabi(userId);
   const mevcutSeviye = h.kilicSeviye || 1;

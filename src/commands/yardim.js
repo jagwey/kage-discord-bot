@@ -22,14 +22,21 @@ export function yardimKartiOlustur() {
         inline: false
       },
       {
-        name: `⚔️ Samuray Düello, Demirci, Pazar & Ekonomi (Ryo)`,
+        name: `⚔️ Samuray Düello, Zindan & Ekonomi (Ryo)`,
         value: '`• /duello @rakip [bahis]` : Katana bonuslu turnuva düellosu!\n' +
-          '`• /zindan` : İblis avlayıp gizli sandıkları yağmalarsınız.\n' +
-          '`• /demirci` : Katananızı demircide dövüp düello gücünüzü katlarsınız.\n' +
-          '`• /market` : Ryo ile samuray unvanları ve şans muskaları satın alır.\n' +
-          '`• /envanter` : Katananızı, unvanınızı ve savaş sicilinizi gösterir.\n' +
+          '`• /zindan` : İblislerle interaktif savaş, ganimet ve ölüm riski!\n' +
+          '`• /demirci` : Katananızı demircide dövüp gücünüzü katlarsınız.\n' +
+          '`• /market` : Ryo ile samuray unvanları ve muskalar satın alır.\n' +
+          '`• /envanter` : Katananızı, çantanızı ve savaş sicilinizi gösterir.\n' +
           '`• /gunluk` : Günlük Ryo maaşı ve seri (streak).\n' +
           '`• /bakiye` : Cüzdan ve bakiye dökümü.',
+        inline: false
+      },
+      {
+        name: `🎲 Kumarcı Köşesi (OwO Bahis Sistemi)`,
+        value: '`• /blackjack [bahis]` : Kage 21 masasında krupiyeye karşı kart çekin/durun!\n' +
+          '`• /slot [bahis]` : 3 makaralı Samuray slot makinesinde 30x büyük ikramiye!\n' +
+          '`• /yazitura [bahis] [seçim]` : 50/50 şansla paranızı ikiye katlayın.',
         inline: false
       },
       {
