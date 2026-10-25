@@ -26,6 +26,9 @@ export async function execute(interaction) {
   if (interaction.isButton()) {
     // A. Kayıt Ol Butonu
     if (interaction.customId === 'kage_kayit_ol_btn') {
+      // Discord 3 saniyelik zaman aşımına düşmesin diye anında deferReply ver
+      await interaction.deferReply({ ephemeral: true });
+
       const guild = interaction.guild;
       const member = interaction.member;
 
@@ -34,18 +37,17 @@ export async function execute(interaction) {
       const mangaRol = guild.roles.cache.find(r => r.name.includes('Manga Okuru'));
 
       if (kayitliRol && member.roles.cache.has(kayitliRol.id)) {
-        return interaction.reply({
-          content: '⛩️ Zaten klan mührüne sahipsin ve kayıtlısın samuray!',
-          ephemeral: true
+        return interaction.editReply({
+          content: '⛩️ Zaten klan mührüne sahipsin ve kayıtlısın samuray!'
         });
       }
 
       try {
         if (kayitsizRol && member.roles.cache.has(kayitsizRol.id)) {
-          await member.roles.remove(kayitsizRol);
+          await member.roles.remove(kayitsizRol).catch(() => {});
         }
-        if (kayitliRol) await member.roles.add(kayitliRol);
-        if (mangaRol) await member.roles.add(mangaRol);
+        if (kayitliRol) await member.roles.add(kayitliRol).catch(() => {});
+        if (mangaRol) await member.roles.add(mangaRol).catch(() => {});
 
         ryoEkle(member.id, 50);
 
@@ -63,14 +65,12 @@ export async function execute(interaction) {
           }).catch(() => {});
         }
 
-        return interaction.reply({
-          content: `⛩️ **Mührün onaylandı ${member}!** Artık resmi bir **Shinobi**sin.\n💰 Cüzdanına \`+50 Ryo\` hoş geldin ödülü aktarıldı!\n📖 Kanalların kilidi açıldı, keyifli okumalar dileriz.`,
-          ephemeral: true
+        return interaction.editReply({
+          content: `⛩️ **Mührün onaylandı ${member}!** Artık resmi bir **Shinobi**sin.\n💰 Cüzdanına \`+50 Ryo\` hoş geldin ödülü aktarıldı!\n📖 Kanalların kilidi açıldı, keyifli okumalar dileriz.`
         });
       } catch (err) {
-        return interaction.reply({
-          content: `❌ Kayıt işlemi sırasında yetki hatası: ${err.message}\nLütfen bot rolünün hiyerarşide üstte olduğundan emin olun.`,
-          ephemeral: true
+        return interaction.editReply({
+          content: `❌ Kayıt işlemi sırasında bir hata oluştu: ${err.message}\nLütfen bot rolünün sunucu ayarlarında diğer rollerin üstünde olduğundan emin olun.`
         });
       }
     }
