@@ -2,16 +2,25 @@ import { Events, PermissionFlagsBits } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { aiDanis } from '../services/aiServisi.js';
 import { sunucuAyarGetir } from '../services/veritabaniServisi.js';
+import { yardimKartiOlustur } from '../commands/yardim.js';
 
 export const name = Events.MessageCreate;
 
 /**
- * Mesaj oluşturulduğunda tetiklenir (Yetkili AI sohbeti ve etiket desteği)
+ * Mesaj oluşturulduğunda tetiklenir (Metin komutları ve Yetkili AI sohbeti)
  * @param {import('discord.js').Message} message
  */
 export async function execute(message) {
   // Botları ve DM'leri yoksay
   if (message.author.bot || !message.guild) return;
+
+  const contentLower = message.content.trim().toLowerCase();
+
+  // 1. Klasik metin tabanlı yardım komutları: !help, .help, ./help, !yardim
+  if (['!help', '.help', './help', '!yardim', '.yardim', 'k!help'].includes(contentLower)) {
+    const { embed, row } = yardimKartiOlustur();
+    return message.reply({ embeds: [embed], components: [row] }).catch(() => null);
+  }
 
   const botUser = message.client.user;
   const ayarlar = sunucuAyarGetir(message.guild.id);
