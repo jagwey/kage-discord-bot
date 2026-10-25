@@ -48,8 +48,9 @@ export function yardimKartiOlustur() {
         inline: false
       },
       {
-        name: `🔮 Yapay Zeka & Topluluk`,
-        value: '`• /ai <soru>` : Yapay zeka danışmanı ile konuşun.\n' +
+        name: `🔮 Yapay Zeka & Derin Hafıza`,
+        value: '`• /ai <soru>` : Sınırsız yetkili yapay zeka gölge vezirine danışın.\n' +
+          '`• /hafiza [durum|ara|ogren|yenile]` : Kage AI kalıcı hafıza bankasını yönetin.\n' +
           '`• /guncelleme` : Son bot sürümü ve yama raporunu gösterir.\n' +
           '`• /oyun` : Kage indie oyun lore ve devlog bilgileri.',
         inline: false

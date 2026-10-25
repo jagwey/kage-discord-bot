@@ -6,6 +6,7 @@ import { AttachmentBuilder } from 'discord.js';
 import { TEMA, kageEmbed, rastgeleSlogan } from '../config/tema.js';
 import { bakiyeGetir, liderlikListesi, KILIC_SEVIYELERI } from './ekonomiServisi.js';
 import { tumMangalariGetir, mangaAra } from './mangaServisi.js';
+import { hafizaBaglamMetniUret, kullaniciNotuEkle, hafizaArama } from './kageHafizaServisi.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -221,15 +222,21 @@ async function geminiPersonaSohbet(kullaniciMesaji, baglam) {
   const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
+  const hafizaBaglami = hafizaBaglamMetniUret(kullaniciMesaji, baglam.userId, baglam.userName);
+
   const prompt = `Sen Kage-95 (https://kage95.com) manga platformunun ve bu Discord kalesinin bilge, zeki, anime sever, samuray muhafızısın. Kurucumuz ve liderimiz Jagwey'dir.
 Konuştuğun kullanıcı: ${baglam.userName} (Kalenin ${baglam.katilimMetni} bir savaşçısı, elinde ${baglam.kilicAd} var, kesesinde ${baglam.ryo} Ryo taşıyor).
+
+${hafizaBaglami}
+
 Kullanıcı sana şunu sordu/söyledi:
 "${kullaniciMesaji}"
 
 GÖREVİN:
 1. Son derece samimi, akıllı, hazırcevap, samuray onuru ve anime kültürüyle yoğrulmuş bilgece Türkçe yanıt ver.
 2. Karşındakinin gerçek bir samuray dostun olduğunu hissettir. Gerektiğinde katanasından, Ryo'sundan veya kage95.com mangasından esprili bahset.
-3. Asla sunucu yönetimi/komut icra ettiğini iddia etme. 1-3 paragraf arası net, akıcı ve büyüleyici konuş.`;
+3. Hafıza bankandaki bilgileri doğal bir bilgelikle kullan, karşındakini tanıdığını ve sitedeki yenilikleri bildiğini hissettir.
+4. Asla sunucu yönetimi/komut icra ettiğini iddia etme. 1-3 paragraf arası net, akıcı ve büyüleyici konuş.`;
 
   try {
     const yanit = await axios.post(
@@ -785,11 +792,28 @@ export async function chatBotYanitla(mesajMetni, user, guild = null, member = nu
   }
 
   // =========================================================================
-  // 17. AÇIK UÇLU YAPAY ZEKA KATMANI (GEMINI PERSONA FALLBACK!)
+  // 17. DOĞRUDAN HAFIZAYA KAYDETME TALEBİ ("Kage bunu aklında tut / unutma")
+  // =========================================================================
+  else if (!aciklama && (metin.includes('aklında tut') || metin.includes('unutma') || metin.includes('hafızana yaz') || metin.includes('bunu kaydet'))) {
+    const notIcerik = mesajMetni.replace(/kage|aklında tut|unutma|hafızana yaz|bunu kaydet|lütfen|şunu|bunu/gi, '').trim();
+    if (notIcerik.length > 3) {
+      kullaniciNotuEkle(user.id, userName, notIcerik);
+      duygu = 'zafer';
+      baslik = isFemale ? '🧠 KUNOICHI HAFIZASI • KALBİME KAZINDI' : '🧠 KAGE HAFIZASI • AKLIMDA TUTTUM';
+      renk = TEMA.RENKLER.BASARI;
+      aciklama = `Bunu derin hafıza bankama (\`data/kage_hafiza.json\`) kalıcı olarak kaydettim **${userName}**!\n\n` +
+        `📝 **Kayıt:** *"${notIcerik}"*\n\n` +
+        `*Artık bana ne zaman sorsan veya kalede sohbet etsek bunu asla unutmayacağım!*`;
+    }
+  }
+
+  // =========================================================================
+  // 18. AÇIK UÇLU YAPAY ZEKA KATMANI (GEMINI PERSONA FALLBACK!)
   // =========================================================================
   if (!aciklama && metin.length > 3) {
     try {
       const aiCevap = await geminiPersonaSohbet(mesajMetni, {
+        userId: user.id,
         userName,
         katilimMetni,
         kilicAd: kilic.ad,

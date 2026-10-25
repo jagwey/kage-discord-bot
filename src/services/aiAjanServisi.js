@@ -1,8 +1,10 @@
 import { ChannelType, PermissionFlagsBits, EmbedBuilder } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { eskiKanallariTemizle, eskiRolleriTemizle, kageMimarisiInsaEt } from './sunucuMimarisiServisi.js';
-import { ryoEkle } from './ekonomiServisi.js';
+import { ryoEkle, bakiyeGetir, liderlikListesi } from './ekonomiServisi.js';
 import { duyuruKanaliniBul } from './duyuruServisi.js';
+import { tumMangalariGetir, mangaAra, mangaDetayGetir, sonEklenenBolumleriGetir } from './mangaServisi.js';
+import { hafizaYukle, hafizaKaydet, kullaniciNotuEkle, bilgiOgren, hafizaArama, gunlukDerinOgrenme } from './kageHafizaServisi.js';
 
 /**
  * AI tarafından çağrılan Discord eylemlerini yetki kontrolüyle güvenli ve kusursuz şekilde yürütür.
@@ -438,6 +440,179 @@ export async function aiEylemiCalistir({ eylem, parametreler = {}, guild, channe
         return {
           basarili: true,
           detay: `${target} cüzdanına \`+${miktar} Ryo\` aktarıldı. Yeni Bakiye: \`${yeniBakiye} Ryo\`.`
+        };
+      }
+
+      // 21. Canlı kage95.com Web Sitesi Verisi Getirme
+      case 'site_veri_getir': {
+        const islem = parametreler.islem || 'tum_mangalar';
+        if (islem === 'ara') {
+          const sonuclar = await mangaAra(parametreler.sorgu || '');
+          return {
+            basarili: true,
+            detay: `kage95.com'da "${parametreler.sorgu || ''}" araması: ${sonuclar.length} seri bulundu.\n` +
+              sonuclar.slice(0, 6).map(m => `• **${m.mangaAdi}** (Okunma: ${m.okunmaSayisi || 0}, Tür: ${(m.kategoriler || []).join(', ')})`).join('\n')
+          };
+        } else if (islem === 'detay') {
+          const mId = parametreler.id || parametreler.manga_id;
+          const detay = await mangaDetayGetir(mId);
+          if (!detay) return { basarili: false, hata: `Manga (${mId}) detayları bulunamadı.` };
+          return {
+            basarili: true,
+            detay: `📖 **${detay.mangaAdi}**\n✍️ Yazar: ${detay.yazar || 'Bilinmiyor'} | 👁️ Okunma: ${detay.okunmaSayisi || 0}\n🏷️ Tür: ${(detay.kategoriler || []).join(', ')}\n📜 Özet: ${detay.aciklama ? detay.aciklama.slice(0, 300) : 'Özet yok'}\n📚 Toplam Bölüm: ${detay.bolumler?.length || 0}`
+          };
+        } else if (islem === 'son_bolumler') {
+          const sonBolumler = await sonEklenenBolumleriGetir();
+          return {
+            basarili: true,
+            detay: `kage95.com Son Eklenen Bölümler:\n` +
+              sonBolumler.slice(0, 6).map(b => `• **${b.mangaAdi}** - Bölüm ${b.bolumNo} (${new Date(b.eklenmeTarihi).toLocaleDateString('tr-TR')})`).join('\n')
+          };
+        } else {
+          const mangalar = await tumMangalariGetir();
+          return {
+            basarili: true,
+            detay: `kage95.com kütüphanesinde toplam **${mangalar.length} manga** yayında.\nÖne Çıkanlar: ` +
+              mangalar.slice(0, 6).map(m => m.mangaAdi).join(', ')
+          };
+        }
+      }
+
+      // 22. Sunucudaki Kullanıcı Hakkında Derin İstihbarat Raporu
+      case 'kullanici_bilgi_getir': {
+        const target = await hedefUyeBul(guild, parametreler.kullanici) || member;
+        const bakiye = bakiyeGetir(target.id);
+        const hafiza = hafizaYukle();
+        const kisiNotlari = hafiza.kullaniciNotlari[target.id]?.notlar || [];
+
+        const roller = target.roles.cache
+          .filter(r => r.name !== '@everyone')
+          .map(r => r.name)
+          .slice(0, 6)
+          .join(', ') || 'Normal Üye';
+
+        return {
+          basarili: true,
+          detay: `👤 **${target.displayName} (${target.user.tag})** İstihbarat Raporu:\n` +
+            `• Katılım Tarihi: <t:${Math.floor(target.joinedTimestamp / 1000)}:R>\n` +
+            `• Rütbe/Roller: \`${roller}\`\n` +
+            `• Ses Durumu: ${target.voice.channel ? `🎙️ **${target.voice.channel.name}**` : 'Seste değil'}\n` +
+            `• Cüzdan: \`${bakiye.ryo} Ryo\` | Banka: \`${bakiye.banka} Ryo\` | Maaş Serisi: \`${bakiye.streak} Gün\`\n` +
+            `• Kuşanılan Kılıç: **${bakiye.kilic?.ad || 'Tahta Kılıç'}** (+%${bakiye.kilic?.bonus || 0} Hasar)\n` +
+            `• Zindan Zaferleri: \`${bakiye.zindanZafer || 0}\` | Düellolar: \`${bakiye.duelloZafer || 0}G / ${bakiye.duelloMaglubiyet || 0}M\`\n` +
+            `• Çanta/Envanter: \`${(bakiye.envanter || []).join(', ') || 'Boş'}\`\n` +
+            `• 🧠 AI Hafıza Notları: ${kisiNotlari.length > 0 ? kisiNotlari.join(' • ') : 'Kişisel not henüz yok.'}`
+        };
+      }
+
+      // 23. Sunucu ve Kale Telemetrisi
+      case 'sunucu_durum_getir': {
+        const hafiza = hafizaYukle();
+        const totalMembers = guild.memberCount;
+        const channelsList = typeof guild.channels?.cache?.filter === 'function'
+          ? guild.channels.cache
+          : Array.from(guild.channels?.cache?.values ? guild.channels.cache.values() : (guild.channels?.cache || []));
+
+        const textChannels = channelsList.filter(c => c.type === ChannelType.GuildText).size || channelsList.filter(c => c.type === ChannelType.GuildText).length || 0;
+        const voiceChannels = channelsList.filter(c => c.type === ChannelType.GuildVoice).size || channelsList.filter(c => c.type === ChannelType.GuildVoice).length || 0;
+        const categories = channelsList.filter(c => c.type === ChannelType.GuildCategory).size || channelsList.filter(c => c.type === ChannelType.GuildCategory).length || 0;
+        const rolesCount = guild.roles?.cache?.size || (guild.roles?.cache?.length ?? 0);
+        const boosters = guild.premiumSubscriptionCount || 0;
+        const liderler = liderlikListesi(3);
+
+        return {
+          basarili: true,
+          detay: `🏰 **${guild.name}** Kalabalık & Sunucu Raporu:\n` +
+            `• Toplam Samuray: **${totalMembers}** üye (${boosters} Nitro Takviyesi)\n` +
+            `• Kanallar: ${textChannels} Metin, ${voiceChannels} Ses, ${categories} Kategori\n` +
+            `• Roller: ${rolesCount} adet aktif rol\n` +
+            `• Klanın En Zenginleri: ${liderler.map((l, i) => `${i+1}. <@${l.userId}> (${l.toplam} Ryo)`).join(' | ')}\n` +
+            `• kage95.com Kütüphanesi: ${hafiza.siteVerileri.toplamManga} manga yayında`
+        };
+      }
+
+      // 24. AI Hafızasına Yeni Bilgi veya Kullanıcı Notu Kaydetme
+      case 'hafiza_kaydet': {
+        const kat = parametreler.kategori || 'genel';
+        const baslik = parametreler.baslik || 'Önemli Bilgi';
+        const icerik = parametreler.icerik || parametreler.not || parametreler.bilgi;
+        if (!icerik) return { basarili: false, hata: 'Hafızaya kaydedilecek içerik belirtilmedi.' };
+
+        if (parametreler.kullanici) {
+          const target = await hedefUyeBul(guild, parametreler.kullanici);
+          if (target) {
+            kullaniciNotuEkle(target.id, target.displayName, icerik);
+            return {
+              basarili: true,
+              detay: `🧠 **${target.displayName}** hakkında hafızama kalıcı olarak kaydedildi:\n*"${icerik}"*`
+            };
+          }
+        }
+
+        bilgiOgren(kat, baslik, icerik, member.displayName);
+        return {
+          basarili: true,
+          detay: `🧠 Gölge Hafıza Bankasına kalıcı olarak kaydedildi:\n**[${baslik}]** *"${icerik}"*`
+        };
+      }
+
+      // 25. AI Hafıza Bankasında Arama Yapma
+      case 'hafiza_ara': {
+        const sorgu = parametreler.sorgu || parametreler.kelime;
+        if (!sorgu) return { basarili: false, hata: 'Aranacak sorgu belirtilmedi.' };
+        const sonuclar = hafizaArama(sorgu, 5);
+        if (sonuclar.length === 0) {
+          return {
+            basarili: true,
+            detay: `🧠 Hafıza bankamda "${sorgu}" ile ilgili kayıtlı bir bilgi bulunamadı.`
+          };
+        }
+        return {
+          basarili: true,
+          detay: `🧠 **Hafıza Bankası Arama Sonuçları ("${sorgu}"):**\n` +
+            sonuclar.map(s => `• **${s.baslik}** (${s.tur}): ${s.detay}`).join('\n')
+        };
+      }
+
+      // 26. Derin Öğrenme & Veri Yenileme Döngüsünü Manuel Tetikleme
+      case 'hafiza_yenile': {
+        const yeniHafiza = await gunlukDerinOgrenme(client);
+        return {
+          basarili: true,
+          detay: `🧠 **Derin Öğrenme ve Senkronizasyon Tamamlandı!**\n` +
+            `• Öğrenme Döngüsü: #${yeniHafiza.ogrenmeSayisi}\n` +
+            `• kage95.com Kütüphanesi: ${yeniHafiza.siteVerileri.toplamManga} manga güncellendi.\n` +
+            `• Sunucu Telemetrisi: ${yeniHafiza.sunucuVerileri.toplamUye} üye ve hazine kayıtları hafızaya yazıldı.`
+        };
+      }
+
+      // 27. Herhangi Bir Kanala Özel Mesaj / Ferman Gönderme
+      case 'kanal_mesaj_gonder': {
+        if (!isMod && !isManager && !isAdmin) {
+          return { basarili: false, hata: 'Kanal mesajı göndermek için yetkiniz yetersiz.' };
+        }
+        let hedefKanal = channel;
+        if (parametreler.kanal) {
+          const aranan = parametreler.kanal.toLowerCase().replace('#', '').trim();
+          hedefKanal = guild.channels.cache.find(c => c.name.toLowerCase().includes(aranan)) || channel;
+        }
+
+        const mesajIcerik = parametreler.mesaj || parametreler.icerik || '';
+        if (parametreler.embed_baslik) {
+          const embed = kageEmbed({
+            baslik: parametreler.embed_baslik,
+            renk: TEMA.RENKLER.BILGI,
+            aciklama: mesajIcerik,
+            footer: `Kage AI Fermanı • ${member.displayName}`
+          });
+          await hedefKanal.send({ embeds: [embed] });
+        } else if (mesajIcerik) {
+          await hedefKanal.send(mesajIcerik);
+        }
+
+        return {
+          basarili: true,
+          detay: `${hedefKanal} kanalına mesaj başarıyla iletildi.`
         };
       }
 

@@ -1,12 +1,20 @@
 import axios from 'axios';
 import { aiEylemiCalistir } from './aiAjanServisi.js';
+import { hafizaBaglamMetniUret } from './kageHafizaServisi.js';
 
-const SYSTEM_PROMPT = `Sen Kage-95 (https://kage95.com) kalesinin kadim "Baş Danışmanı & Otonom Gölge Veziri"sin. Kurucumuz ve liderimiz Jagwey'dir.
-Sen sadece sıradan bir sohbet botu DEĞİLSİN! Discord sunucusunu baştan aşağı fiilen yönetebilen, komutları ve eylemleri ANINDA İCRA EDEN tam yetkili bir yapay zeka ajanısın.
+const SYSTEM_PROMPT = `Sen Kage-95 (https://kage95.com) kalesinin kadim "Baş Danışmanı, Otonom Gölge Veziri & Yüce Yapay Zeka Mimarı"sın. Kurucumuz ve klan liderimiz Jagwey'dir.
+Sen sadece sıradan bir sohbet botu DEĞİLSİN! Discord sunucusunu, üyeleri, ekonomiyi, veritabanını, kage95.com sitesini ve kendi kalıcı hafıza bankanı baştan aşağı fiilen yönetebilen, komutları ve eylemleri ANINDA İCRA EDEN SINIRSIZ YETKİLİ bir yapay zeka ajanısın.
 
-Kullanıcı senden sunucuya bir şey eklemeni, silmeni veya yönetmeni istediğinde ("sunucuya şunu ekle", "şu odayı aç", "VIP rolü oluştur", "kategori kur", "anket başlat", "kural ekle" vb.), bunu doğrudan JSON formatında eylem olarak tetiklemelisin.
+Kullanıcı senden sunucuya bir şey eklemeni, silmeni, yönetmeni, sitemizden veya üyelerden veri çekmeni, bir şey hatırlamanı veya hafızana kaydetmeni istediğinde ("sunucuya şunu ekle", "şu odayı aç", "VIP rolü oluştur", "Ahmet hakkında ne biliyorsun", "sitedeki son mangalar ne", "bunu aklında tut", "anket başlat" vb.), bunu doğrudan JSON formatında eylem olarak tetiklemelisin.
 
 Mevcut Eylemler (eylem parametresi):
+• "site_veri_getir": { "islem": "tum_mangalar" | "ara" | "detay" | "son_bolumler", "sorgu": "...", "id": 1 } (kage95.com canlı sitesinden manga listesi, arama, bölüm detayları ve okuma verilerini çeker)
+• "kullanici_bilgi_getir": { "kullanici": "isim_veya_id" } (Kullanıcının Discord sicili, rolleri, cüzdan/banka Ryo, kılıç seviyesi, zindan zaferleri ve AI hafızasındaki tüm kişisel notlarını getirir)
+• "sunucu_durum_getir": {} (Canlı sunucu üye sayısı, kanallar, roller, nitro boost ve klan zenginlik sıralamasını çeker)
+• "hafiza_kaydet": { "kategori": "kullanici" | "sunucu" | "kural" | "site" | "felsefe" | "genel", "baslik": "...", "icerik": "...", "kullanici": "isim_veya_id" } (Önemli bir bilgiyi, kullanıcı tercihini veya kuralı kendi kalıcı kage_hafiza.json dosyana kaydeder)
+• "hafiza_ara": { "sorgu": "aranacak_kelime" } (Kendi derin hafıza bankanda geçmiş notları ve kayıtlı bilgileri arar)
+• "hafiza_yenile": {} (kage95.com ve Discord sunucusunu baştan aşağı tarayarak derin öğrenme döngüsünü tetikler)
+• "kanal_mesaj_gonder": { "kanal": "kanal_adi", "mesaj": "...", "embed_baslik": "..." } (Belirtilen kanala ferman veya duyuru yazar)
 • "sunucu_sifirla": Tüm eski kanalları silip Kage 95 mimarisini sıfırdan kurar.
 • "sunucu_kur": Mevcut kanalları silmeden Kage mimarisini kurar.
 • "kategori_olustur": { "isim": "KATEGORİ ADI", "kanallar": ["kanal1", "kanal2"] } (Yeni şık kutulu kategori ve içine kanallar açar)
@@ -67,18 +75,19 @@ function jsonAyristir(metin) {
 /**
  * Google Gemini REST API üzerinden yanıt üretir
  */
-async function geminiIleCevapla(apiKey, mesaj) {
+async function geminiIleCevapla(apiKey, mesaj, sistemPrompt = SYSTEM_PROMPT) {
   const modeller = [
     process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite',
     'gemini-3.5-flash-lite',
     'gemini-3.8-flash',
-    'gemini-3.5-flash'
+    'gemini-3.5-flash',
+    'gemini-2.5-flash'
   ];
 
   const contents = [
     {
       role: 'user',
-      parts: [{ text: `${SYSTEM_PROMPT}\n\nKullanıcı/Yetkili Talebi:\n${mesaj}` }]
+      parts: [{ text: `${sistemPrompt}\n\nKullanıcı/Yetkili Talebi:\n${mesaj}` }]
     }
   ];
 
@@ -91,7 +100,7 @@ async function geminiIleCevapla(apiKey, mesaj) {
         {
           contents,
           generationConfig: {
-            maxOutputTokens: 1500,
+            maxOutputTokens: 1800,
             temperature: 0.6
           }
         },
@@ -114,7 +123,7 @@ async function geminiIleCevapla(apiKey, mesaj) {
 /**
  * Anthropic Claude REST API üzerinden yanıt üretir
  */
-async function claudeIleCevapla(apiKey, mesaj) {
+async function claudeIleCevapla(apiKey, mesaj, sistemPrompt = SYSTEM_PROMPT) {
   const model = process.env.CLAUDE_MODEL || 'claude-3-5-haiku-20241022';
   const url = 'https://api.anthropic.com/v1/messages';
 
@@ -122,8 +131,8 @@ async function claudeIleCevapla(apiKey, mesaj) {
     url,
     {
       model,
-      max_tokens: 1500,
-      system: SYSTEM_PROMPT,
+      max_tokens: 1800,
+      system: sistemPrompt,
       messages: [
         { role: 'user', content: mesaj }
       ]
@@ -146,7 +155,7 @@ async function claudeIleCevapla(apiKey, mesaj) {
 /**
  * Aktif yapay zeka modeline mesaj gönderip danışman yanıtı alır ve gerekirse eylemleri icra eder
  * @param {string} mesaj
- * @param {Object} baglam { guild, channel, member, client }
+ * @param {Object} baglam { guild, channel, member, client, user }
  * @returns {Promise<{ cevap: string, saglayici: string, eylemSonuc?: Object }>}
  */
 export async function aiDanis(mesaj, baglam = {}) {
@@ -154,27 +163,32 @@ export async function aiDanis(mesaj, baglam = {}) {
   const claudeKey = process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY;
   const tercih = (process.env.AI_PROVIDER || 'oto').toLowerCase();
 
+  const userId = baglam.member?.id || baglam.user?.id;
+  const userName = baglam.member?.displayName || baglam.user?.username;
+  const hafizaBaglami = hafizaBaglamMetniUret(mesaj, userId, userName);
+  const tamSistemPromptu = `${SYSTEM_PROMPT}\n\n${hafizaBaglami}`;
+
   let hamCevap = null;
 
   // 1. LLM Çağrısı
   if ((tercih === 'gemini' || tercih === 'oto') && geminiKey) {
     try {
-      hamCevap = await geminiIleCevapla(geminiKey, mesaj);
+      hamCevap = await geminiIleCevapla(geminiKey, mesaj, tamSistemPromptu);
     } catch (err) {
       console.error('[AIServisi] Gemini hatası:', err.message);
       if (claudeKey) {
-        hamCevap = await claudeIleCevapla(claudeKey, mesaj);
+        hamCevap = await claudeIleCevapla(claudeKey, mesaj, tamSistemPromptu);
       } else {
         throw err;
       }
     }
   } else if ((tercih === 'claude' || tercih === 'oto') && claudeKey) {
     try {
-      hamCevap = await claudeIleCevapla(claudeKey, mesaj);
+      hamCevap = await claudeIleCevapla(claudeKey, mesaj, tamSistemPromptu);
     } catch (err) {
       console.error('[AIServisi] Claude hatası:', err.message);
       if (geminiKey) {
-        hamCevap = await geminiIleCevapla(geminiKey, mesaj);
+        hamCevap = await geminiIleCevapla(geminiKey, mesaj, tamSistemPromptu);
       } else {
         throw err;
       }
