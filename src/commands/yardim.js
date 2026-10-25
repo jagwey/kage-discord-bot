@@ -11,31 +11,43 @@ export function yardimKartiOlustur() {
   const embed = kageEmbed({
     baslik: 'KAGE DİSKORD REHBERİ • GÖLGE PARŞÖMENİ',
     renk: TEMA.RENKLER.KAN_KIRMIZISI,
-    aciklama: `**Kage**, **[kage95.com](${siteUrl})** manga platformu ve indie oyunu ile Discord sunucunuzu yöneten hepsi bir arada yapay zeka ve samuray moderasyon botudur.\n\nİster eğik çizgi (\`/\`), ister metin olarak (\`!help\` veya \`.help\`) komutları kullanabilirsiniz:`,
+    aciklama: `**Kage**, **[kage95.com](${siteUrl})** manga platformu ve indie oyunu ile Discord sunucunuzu yöneten hepsi bir arada yapay zeka, samuray RPG ve moderasyon botudur.\n\nİster eğik çizgi (\`/\`), ister metin olarak (\`!help\` veya \`.help\`) komutları kullanabilirsiniz:`,
     alanlar: [
       {
-        name: `${TEMA.EMOJILER.TORII} 🏗️ Otomatik Sunucu Mimarisi`,
-        value: '`• /sunucu-kur` : Sunucunuzu rolleri, izinleri, manga ve oyun kategorileriyle sıfırdan otomatik kurar.',
+        name: `⛩️ Otomatik Sunucu Mimarisi & Kayıt`,
+        value: '`• /sunucu-kur` : Sunucuyu roller, kayıt kapısı, manga ve oyun odalarıyla kurar.\n' +
+          '`• /sunucu-sifirla` : Kanalları temizleyip Kage kalesini sıfırdan inşa eder.\n' +
+          '`• /kayit-paneli` : Kanala butonlu otomatik kayıt kapısı kurar.\n' +
+          '`• /kayit [üye] [isim]` : Üyeyi manuel kayıt eder.',
         inline: false
       },
       {
-        name: `${TEMA.EMOJILER.GOLGE} 🧠 Yapay Zeka Gölge Veziri`,
-        value: '`• /ai <talimat>` : Yapay zekaya sunucu yönetimi, krizler, kurallar veya samuray duyuruları hazırlatın.\n*(Ayrıca `#ai-gölge-veziri` kanalında doğrudan sohbet edebilirsiniz)*',
+        name: `⚔️ Samuray Düello, Zindan & Ekonomi (Ryo)`,
+        value: '`• /duello @rakip [bahis]` : Tur tabanlı interaktif samuray düellosu!\n' +
+          '`• /zindan` : Kage indie oyun evreninde zindan temizleyip Ryo yağmalar.\n' +
+          '`• /gunluk` : Günlük Ryo maaşı ve giriş serisi (streak).\n' +
+          '`• /bakiye [@kullanıcı]` : Cüzdan, klan sıralaması ve dövüş sicili.',
         inline: false
       },
       {
-        name: `${TEMA.EMOJILER.KATANA} 🛡️ Moderasyon & Yönetim (MEE6 Katili)`,
-        value: '`• /ban` • `/unban` • `/kick` • `/timeout` • `/untimeout`\n`• /sil <1-100>` (mesaj silme) • `/kilit` • `/yavasmod`\n`• /uyari` (ceza sicili) • `/rol` (rol ver/al) • `/ayarlar`',
+        name: `📖 Manga & Okur Kartı`,
+        value: '`• /manga <isim>` : Canlı siteden manga ara & sitede oku butonu al.\n' +
+          '`• /rastgele-manga` : Siteden rastgele manga ruleti çevirir.\n' +
+          '`• /oneri <tarz>` : Yapay zeka ile kişiselleştirilmiş manga tavsiyesi.\n' +
+          '`• /profil [üye]` : Samuray unvanı, XP barı ve canlı okuma karnesi.',
         inline: false
       },
       {
-        name: `${TEMA.EMOJILER.PARSOMEN} 📖 Manga & Okur Kartı`,
-        value: '`• /manga <isim>` : Canlı siteden manga ara & sitede oku butonu al.\n`• /profil [kullanıcı]` : Samuray unvanı, XP barı ve okuma karnesi.',
+        name: `🔮 Yapay Zeka & Topluluk`,
+        value: '`• /ai <soru>` : Yapay zeka danışmanı ile konuşun.\n' +
+          '`• /guncelleme` : Son bot sürümü ve yama raporunu gösterir.\n' +
+          '`• /oyun` : Kage indie oyun lore ve devlog bilgileri.',
         inline: false
       },
       {
-        name: `${TEMA.EMOJILER.OYUN} 🎮 Topluluk & Oyun`,
-        value: '`• /oyun` : Kage indie oyun lore & devlog\n`• /guncelleme` : Son güncelleme notları ve #kage-dev raporu\n`• /duyuru` • `/anket` • `/sunucu-bilgi` • `/kullanici-bilgi` • `/duyuru-test`',
+        name: `🛡️ Moderasyon (MEE6 Katili)`,
+        value: '`• /ban` • `/unban` • `/kick` • `/timeout` • `/untimeout`\n' +
+          '`• /sil <1-100>` • `/kilit` • `/yavasmod` • `/uyari` • `/rol` • `/duyuru` • `/anket`',
         inline: false
       }
     ]

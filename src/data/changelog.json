@@ -1,18 +1,20 @@
 {
-  "version": "1.2.0",
+  "version": "1.3.0",
   "tarih": "2026-10-25",
-  "baslik": "Web Sitesi Entegrasyonu & Canlı Webhook Sistemi",
+  "baslik": "Büyük Samuray RPG, Ekonomi & Gelişmiş Sunucu Mimarisi Güncellemesi",
   "gelistirici": "Jagwey",
   "yeniOzellikler": [
-    "🌐 **Web Sitesi Webhook Entegrasyonu:** kage95.com'a yeni bir manga veya bölüm yüklendiği saniyede gecikmesiz (0s) Discord duyurusu.",
-    "🔑 **Discord OAuth2 Giriş Desteği:** Sitede tek tıkla 'Discord ile Giriş Yap' butonu ve otomatik hesap oluşturma.",
-    "⚔️ **Çift Yönlü Rol & XP Sync:** Sitede manga okudukça Discord'da rütbe/rol yükseltme (`Genin`, `Chunin`, `Jonin`, `Kage`).",
-    "📊 **Canlı Profil API:** `/profil` komutu artık web sitesinden gerçek okuma istatistiklerini, puanları ve seviyeyi canlı çekiyor.",
-    "📢 **Otomatik #kage-dev Bildirimleri:** Bot güncellendiğinde tüm yeni özellikleri ve yama notlarını anında bu kanala raporlar."
+    "⛩️ **Ultra Detaylı Sunucu Mimarisi (`/sunucu-kur` & `/sunucu-sifirla`):** 12 hiyerarşik samuray rütbesi, otomatik izinler, gizli yönetim odaları ve ses kanalları.",
+    "🚪 **Otomatik Kayıt Kapısı & Butonlu Panel (`/kayit`, `/kayit-paneli`):** Kayıtsız Ronin'lerin kanalları görmesini engelleyen ve tek tıkla `Shinobi` + `Manga Okuru` rolü veren sistem.",
+    "⚔️ **İnteraktif Samuray Düellosu (`/duello`):** Can barları, katana hamlesi, kritik gölge tekniği ve savunma bloğu içeren tur tabanlı dövüş ve Ryo bahsi.",
+    "🏰 **Kage Indie RPG Zindan Keşfi (`/zindan`):** Indie oyun evrenindeki zindanları temizleyip Ryo ve ganimet toplama.",
+    "🪙 **Ekonomi & Günlük Ödül (`/gunluk`, `/bakiye`):** Streak çarpanlı Ryo maaşı ve sunucu liderlik sıralaması.",
+    "🎲 **Manga Ruleti & AI Tavsiye (`/rastgele-manga`, `/oneri`):** Gemini yapay zekasıyla kütüphaneden zevke özel akıllı manga önerisi.",
+    "🛡️ **Otomatik Spoiler Koruması:** `#manga-tartışma` kanalında spoiler içeren mesajların otomatik algılanıp sansürlenmesi."
   ],
   "duzeltmeler": [
-    "Discord arayüzünde her komutun iki kez görünme (çift komut) sorunu tamamen çözüldü.",
-    "Google Gemini 3.5 Flash-Lite ve Claude 3.5 Haiku modelleriyle yapay zeka cevapları hızlandırıldı.",
-    "Cyberpunk manga temalı tam ekran afiş/banner Discord sunucu boyutuna tam oturacak şekilde optimize edildi."
+    "Sunucu sıfırlama ve yeniden kurma komutu (`/sunucu-sifirla`) eklendi.",
+    "Yeni üye karşılamasında otomatik Ronin (Kayıtsız) rolü ataması optimize edildi.",
+    "Tüm komutlar ve buton etkileşimleri gecikmesiz çalışacak şekilde güncellendi."
   ]
 }
