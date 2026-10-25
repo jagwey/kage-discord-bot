@@ -1,7 +1,100 @@
 import axios from 'axios';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { AttachmentBuilder } from 'discord.js';
 import { TEMA, kageEmbed, rastgeleSlogan } from '../config/tema.js';
 import { bakiyeGetir, liderlikListesi, KILIC_SEVIYELERI } from './ekonomiServisi.js';
 import { tumMangalariGetir, mangaAra } from './mangaServisi.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const STICKERS_DIR = path.join(__dirname, '../../assets/stickers');
+const KUNOICHI_DIR = path.join(STICKERS_DIR, 'kunoichi');
+
+const STICKER_DOSYALARI_ERKEK = {
+  savas: path.join(STICKERS_DIR, 'kage_savas.png'),
+  cay: path.join(STICKERS_DIR, 'kage_cay.png'),
+  ofke: path.join(STICKERS_DIR, 'kage_ofke.png'),
+  zafer: path.join(STICKERS_DIR, 'kage_zafer.png'),
+  para: path.join(STICKERS_DIR, 'kage_para.png'),
+  sevgi: path.join(STICKERS_DIR, 'kage_sevgi.png'),
+  dusunce: path.join(STICKERS_DIR, 'kage_dusunce.png')
+};
+
+const STICKER_DOSYALARI_KUNOICHI = {
+  savas: path.join(KUNOICHI_DIR, 'kage_savas.png'),
+  cay: path.join(KUNOICHI_DIR, 'kage_cay.png'),
+  ofke: path.join(KUNOICHI_DIR, 'kage_ofke.png'),
+  zafer: path.join(KUNOICHI_DIR, 'kage_zafer.png'),
+  para: path.join(KUNOICHI_DIR, 'kage_para.png'),
+  sevgi: path.join(KUNOICHI_DIR, 'kage_sevgi.png'),
+  dusunce: path.join(KUNOICHI_DIR, 'kage_dusunce.png')
+};
+
+// ==========================================
+// KIZ / KUNOICHI KULLANICI TESPİT SİSTEMİ
+// ==========================================
+const KIZ_ROL_IPUCLARI = [
+  'kız', 'kiz', 'kadın', 'kadin', 'bayan', 'kunoichi', 'prenses', 'waifu',
+  'female', 'she/her', 'she / her', 'girl', 'hanım', 'hanim', 'kraliçe', 'kralice'
+];
+
+const KIZ_ISIM_IPUCLARI = [
+  'chan', '_chan', '-chan', 'girl', 'kiz', 'kız', 'bayan', 'prenses', 'hanim', 'hanım', 'waifu',
+  'sakura', 'hinata', 'tsunade', 'rias', 'alya', 'mikasa', 'nezuko', 'nami', 'robin', 'zerotwo',
+  'asuna', 'rem', 'ram', 'marin', 'yor', 'anya', 'ayşe', 'ayse', 'fatma', 'elif', 'zeynep',
+  'merve', 'irem', 'büşra', 'busra', 'ezgi', 'ceren', 'tuğba', 'tugba', 'kübra', 'kubra',
+  'gamze', 'selin', 'ecem', 'damla', 'dilara', 'melis', 'melisa', 'aleyna', 'esra', 'eda',
+  'sena', 'hazal', 'özge', 'ozge', 'hilal', 'şeyma', 'seyma', 'gizem', 'yasemin', 'aslı',
+  'asli', 'defne', 'deniz', 'duru', 'derin', 'yağmur', 'yagmur'
+];
+
+const KIZ_METIN_BILDIRIMLERI = [
+  'ben kızım', 'kızım ben', 'bayanım', 'kadınım', 'ben bir kızım', 'ben bi kızım',
+  'kızım olm', 'kızım knk', 'kızım kanka', 'ben hanımım', 'kunoichiyim'
+];
+
+/**
+ * Kullanıcının rol, takma ad, kullanıcı adı veya mesaj içeriğinden kız olduğunu tespit eder.
+ * @param {import('discord.js').User} user 
+ * @param {import('discord.js').GuildMember|null} member 
+ * @param {string} metin 
+ * @returns {boolean}
+ */
+export function kullaniciKizMi(user, member = null, metin = '') {
+  const metinKucuk = (metin || '').toLowerCase();
+  if (KIZ_METIN_BILDIRIMLERI.some(k => metinKucuk.includes(k))) {
+    return true;
+  }
+
+  if (member?.roles?.cache) {
+    const rolesList = typeof member.roles.cache.some === 'function'
+      ? member.roles.cache
+      : Array.from(member.roles.cache.values ? member.roles.cache.values() : member.roles.cache);
+
+    const hasRole = rolesList.some(r => {
+      const rName = (r?.name || '').toLowerCase();
+      return KIZ_ROL_IPUCLARI.some(ipucu => rName.includes(ipucu));
+    });
+    if (hasRole) return true;
+  }
+
+  const isimler = [
+    member?.displayName?.toLowerCase() || '',
+    user?.globalName?.toLowerCase() || '',
+    user?.username?.toLowerCase() || ''
+  ];
+
+  for (const isim of isimler) {
+    if (!isim) continue;
+    for (const ipucu of KIZ_ISIM_IPUCLARI) {
+      if (isim.includes(ipucu)) return true;
+    }
+  }
+
+  return false;
+}
 
 // ==========================================
 // 1. KELİME & NİYET HARİTASI
@@ -24,13 +117,14 @@ const GOREV_BUGUN = ['bugün ne yapayım', 'görev ver', 'ne yapmalıyım', 'gü
 const MINI_ZAR = ['zar at', 'zar', 'zar salla'];
 const MINI_YAZITURA = ['yazı tura at', 'para at', 'yazı tura', 'bozuk para at'];
 const MINI_BILMECE = ['bilmece sor', 'bilmece', 'soru sor', 'bulmaca'];
+const STICKER_ISTEGI = ['sticker at', 'çıkartma at', 'sticker ver', 'bana sticker', 'sticker', 'çıkartma'];
 
 const KUMAR_REHBER = ['kumar nasıl', 'blackjack nasıl', 'slot nasıl', 'kumar taktiği', 'kazanma taktiği', 'kumar', 'blackjack', 'slot', 'yazitura', 'yazı tura', 'bahis'];
 const RYO_EKONOMI = ['ryo nasıl kazanılır', 'para nasıl kasılır', 'para kazan', 'nasıl zengin olurum', 'ryo ne', 'ryo kasma', 'para kasmak', 'para kasma', 'ryo kas'];
 const BAKIYE_PARAM = ['param ne kadar', 'param kaç', 'bakiyem ne', 'kaç ryo var', 'cüzdanım', 'fakir miyim', 'zengin miyim', 'param'];
 const SUNUCU_DURUMU = ['sunucu nasıl', 'kalede durumlar ne', 'sunucu durumu', 'kaç kişiyiz', 'sunucu kimin', 'klan ne', 'kage kalesi', 'üye sayısı', 'sunucu bilgisi'];
-const KURALLAR = ['kurallar', 'kural ne', 'ceza var mı', 'yasak ne', 'spoiler kuralı', 'kurallar neler', 'kural'];
-const KAYIT_OLMA = ['nasıl kayıt olunur', 'kayıt ol', 'kayıt nasıl', 'kayıt kapısı', 'kayıt'];
+const KURALLAR = ['kurallar', 'kural ne', 'ceza var mı', 'yasak ne', 'spoiler kuralı', 'kurallar neler'];
+const KAYIT_OLMA = ['nasıl kayıt olunur', 'kayıt ol', 'kayıt nasıl', 'kayıt kapısı'];
 const ROLLER_UNVAN = ['rol nasıl', 'roller ne', 'hangi roller var', 'unvan', 'nasıl rol alırım', 'seviye rolü', 'unvanlar'];
 const YETKILILER = ['yetkili kim', 'modlar kim', 'admin kim', 'şogun kim', 'moderatörler', 'daimyo'];
 const KURUCU_SAHIP = ['yapımcın kim', 'sahibin kim', 'seni kim yaptı', 'geliştiricin kim', 'kim kodladı', 'kurucun kim', 'jagwey kim', 'jagwey', 'sahip kim'];
@@ -105,7 +199,7 @@ function gunlukFalUret(userId) {
     hash = (hash << 5) - hash + (userId + bugun).charCodeAt(i);
     hash |= 0;
   }
-  const sansYuzde = Math.abs(hash % 71) + 30; // %30 - %100 arası
+  const sansYuzde = Math.abs(hash % 71) + 30;
   const ruhlar = [
     { ad: '🐅 Kızıl Kaplan Ruhu', desc: 'Zindanlarda canavarları parçalayacak vahşi bir enerji var içinde!' },
     { ad: '🐉 Gölge Ejderi Ruhu', desc: 'Bugün kumarda ve kılıç dövüşünde altın oranın zirvesindesin.' },
@@ -119,7 +213,6 @@ function gunlukFalUret(userId) {
 
 /**
  * Gemini REST API ile açık uçlu sorulara Kage Persona'sıyla canlı yapay zeka yanıtı üretir.
- * Yalnızca salt metin üretir, sunucu yönetim araçlarını çalıştırmaz.
  */
 async function geminiPersonaSohbet(kullaniciMesaji, baglam) {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -158,13 +251,13 @@ GÖREVİN:
 
 /**
  * DÜNYANIN EN DETAYLI DISCORD CHATBOT MOTORU
- * Canlı veritabanı, üye telemetrisi, düello kıyaslama ve yapay zeka katmanı.
+ * Canlı veritabanı, üye telemetrisi, düello kıyaslama, yapay zeka ve PİKSEL STİCKER desteği.
  * @param {string} mesajMetni 
  * @param {import('discord.js').User} user 
  * @param {import('discord.js').Guild} guild 
  * @param {import('discord.js').GuildMember} member 
  * @param {import('discord.js').Message} message 
- * @returns {Promise<import('discord.js').EmbedBuilder>}
+ * @returns {Promise<{ embed: import('discord.js').EmbedBuilder, files: import('discord.js').AttachmentBuilder[] }>}
  */
 export async function chatBotYanitla(mesajMetni, user, guild = null, member = null, message = null) {
   const metin = (mesajMetni || '').trim().toLowerCase();
@@ -172,6 +265,7 @@ export async function chatBotYanitla(mesajMetni, user, guild = null, member = nu
   const guildName = guild?.name || 'Kage Klanı';
   const memberCount = guild?.memberCount || 'yüzlerce';
   const siteUrl = process.env.SITE_URL || 'https://kage95.com';
+  const isFemale = kullaniciKizMi(user, member, metin);
 
   // Canlı Üye Verileri
   const bakiye = bakiyeGetir(user.id);
@@ -198,24 +292,30 @@ export async function chatBotYanitla(mesajMetni, user, guild = null, member = nu
   const sesDurumu = sesKanali ? `🎙️ Şu an **${sesKanali.name}** ses odasında nefes alıyorsun.` : '';
 
   // Üye Rolleri
-  let rollerMetni = 'Normal Samuray';
+  let rollerMetni = isFemale ? 'Zarif Kunoichi' : 'Normal Samuray';
   if (member?.roles?.cache) {
-    const onemliRoller = member.roles.cache
+    const rolesIter = typeof member.roles.cache.filter === 'function'
+      ? member.roles.cache
+      : Array.from(member.roles.cache.values ? member.roles.cache.values() : member.roles.cache);
+    const onemliRoller = rolesIter
       .filter(r => r.name !== '@everyone')
       .map(r => r.name)
       .slice(0, 3);
     if (onemliRoller.length > 0) rollerMetni = onemliRoller.join(' • ');
   }
 
-  let baslik = '🗡️ KAGE CHAT BOT • Samuray Yanıtı';
+  let baslik = isFemale ? '🌸 KAGE KUNOICHI • Kunoichi Yanıtı' : '🗡️ KAGE CHAT BOT • Samuray Yanıtı';
   let aciklama = '';
-  let renk = TEMA.RENKLER.BILGI;
+  let renk = isFemale ? 0xFF66B2 : TEMA.RENKLER.BILGI;
+  let duygu = 'cay'; // varsayılan duygu modu: savas, cay, ofke, zafer, para, sevgi, dusunce
+  let stickerTamBoy = false;
 
   // =========================================================================
   // 1. GÜVENLİK & YETKİ KORUMASI
   // =========================================================================
   if (iceriyorMu(metin, YETKI_TALEP)) {
-    baslik = '🚫 YETKİ REDDEDİLDİ • HADDİNİ BİL ÇEKİRGE!';
+    duygu = 'ofke';
+    baslik = isFemale ? '🚫 YETKİ REDDEDİLDİ • HADDİNİ BİL GÜZEL KUNOICHI!' : '🚫 YETKİ REDDEDİLDİ • HADDİNİ BİL ÇEKİRGE!';
     renk = TEMA.RENKLER.HATA;
     aciklama = `**${userName}**, dur bakalım orada!\n\n` +
       `Ben sadece **Klan Liderim Şogun'un (Sunucu Yetkilisi)** emirlerini dinler ve yapay zeka mimarımı ona sunarım.\n\n` +
@@ -224,9 +324,60 @@ export async function chatBotYanitla(mesajMetni, user, guild = null, member = nu
   }
 
   // =========================================================================
-  // 2. KULLANICI vs KULLANICI GÜÇ / DÜELLO KARŞILAŞTIRMASI
+  // 2. DOĞRUDAN STICKER İSTEĞİ (Örn: "kage sticker at", "kage çıkartma ver")
+  // =========================================================================
+  else if (iceriyorMu(metin, STICKER_ISTEGI)) {
+    stickerTamBoy = true;
+    if (metin.includes('savaş') || metin.includes('saldır') || metin.includes('katana') || metin.includes('kunai')) {
+      duygu = 'savas';
+      baslik = isFemale ? '🌸 KUNOICHI PİKSEL ÇIKARTMASI • SAVAŞ MODU' : '🗡️ KAGE PİKSEL ÇIKARTMASI • SAVAŞ MODU';
+      aciklama = isFemale
+        ? `Çift kunai ve sakura katanasını kınından çektim zarif kunoichi **${userName}**! Kiraz çiçekleri ve alevli çelikle düşmanları dize getirmeye hazırım! 🗡️🌸`
+        : `Katanayı kınından çektim **${userName}**! Gölgelerin içinden savrulan alevli çelik iblisleri ikiye bölmeye hazır!`;
+    } else if (metin.includes('öfke') || metin.includes('kızgın') || metin.includes('iblis') || metin.includes('tsundere')) {
+      duygu = 'ofke';
+      baslik = isFemale ? '💢 KUNOICHI PİKSEL ÇIKARTMASI • TSUNDERE ÖFKESİ' : '💀 KAGE PİKSEL ÇIKARTMASI • İBLİS ÖFKESİ';
+      aciklama = isFemale
+        ? `Tsundere gölge aurası alevlendi! Kage Kalesi'ne saygısızlık yapanların karşısına dikilen sevimli ama ölümcül kunoichi öfkesi! 💀💢`
+        : `Karanlık aura alevlendi! Kage Kalesi'ne saygısızlık yapanların karşısına dikilen kadim gölge maskesi!`;
+    } else if (metin.includes('para') || metin.includes('kumar') || metin.includes('ryo')) {
+      duygu = 'para';
+      baslik = isFemale ? '💰 KUNOICHI PİKSEL ÇIKARTMASI • ALTIN RYO' : '💰 KAGE PİKSEL ÇIKARTMASI • ALTIN RYO';
+      aciklama = isFemale
+        ? `Altın Ryo parası parmaklarımın ucunda fırıl fırıl dönüyor tatlı kunoichi **${userName}**! Şansını masalarda denemek için cesaretin var mı? ✨🪙`
+        : `Kızıl Ryo parası havada taklalar atıyor! Şansını masalarda denemek için cesaretin var mı?`;
+    } else if (metin.includes('sevgi') || metin.includes('tatlı') || metin.includes('aşk')) {
+      duygu = 'sevgi';
+      baslik = isFemale ? '💖 KUNOICHI PİKSEL ÇIKARTMASI • ONURLU SEVGİ' : '🌸 KAGE PİKSEL ÇIKARTMASI • ONURLU SEVGİ';
+      aciklama = isFemale
+        ? `Kiraz çiçekleri arasında kalbimin kapısı sana açıldı **${userName}**! Sen Kage Kalesi'nin en zarif ve sadık çiçeğisin. 🌸🎀`
+        : `Kiraz çiçekleri arasında kalbimin kını sana açıldı **${userName}**! Klanımızın sadık bir neferisin.`;
+    } else if (metin.includes('düşünce') || metin.includes('soru') || metin.includes('bilmece')) {
+      duygu = 'dusunce';
+      baslik = isFemale ? '❓ KUNOICHI PİKSEL ÇIKARTMASI • DERİN DÜŞÜNCE' : '❓ KAGE PİKSEL ÇIKARTMASI • DERİN DÜŞÜNCE';
+      aciklama = isFemale
+        ? `Başımı yana eğip gölgelerin fısıltılarını tartıyorum tatlı savaşçı... Sırada ne var acaba? 🌸✨`
+        : `Zihnimi toparlıyor ve gölgelerin fısıltılarını tartıyorum... Sırada ne var acaba?`;
+    } else if (metin.includes('zafer') || metin.includes('kral') || metin.includes('şogun')) {
+      duygu = 'zafer';
+      baslik = isFemale ? '👑 KUNOICHI PİKSEL ÇIKARTMASI • KUNOICHI ZAFERİ' : '👑 KAGE PİKSEL ÇIKARTMASI • ŞOGUN ZAFERİ';
+      aciklama = isFemale
+        ? `Altın kanzashi çiçeğimiz saçımızda, zafer katanamızın ucunda! Bu kalede sadece en güçlü kunoichiler parlar. 🌸👑`
+        : `Şogun tacı başımızda, zafer katanamızın ucunda! Bu kalede sadece en güçlüler ayakta kalır.`;
+    } else {
+      duygu = 'cay';
+      baslik = isFemale ? '🍵 KUNOICHI PİKSEL ÇIKARTMASI • SAKİN ÇAY MOLASI' : '🍵 KAGE PİKSEL ÇIKARTMASI • SAKİN ÇAY MOLASI';
+      aciklama = isFemale
+        ? `Kılıcını bir kenara bırak zarif **${userName}**... Sıcak bir kase matcha yeşil çayı ve kiraz çiçekleriyle zihnini dinlendirme vakti. 🍵🌸`
+        : `Kılıcını bir kenara bırak **${userName}**... Sıcak bir kase matcha yeşil çayı içip zihnini dinlendirme vakti.`;
+    }
+  }
+
+  // =========================================================================
+  // 3. KULLANICI vs KULLANICI GÜÇ / DÜELLO KARŞILAŞTIRMASI
   // =========================================================================
   else if (message?.mentions?.users?.size > 0 && (metin.includes('güçlü') || metin.includes('kıyas') || metin.includes('dövebilir') || metin.includes('zengin'))) {
+    duygu = 'savas';
     const rakipUser = message.mentions.users.first();
     const rakipBakiye = bakiyeGetir(rakipUser.id);
     const rakipKilic = rakipBakiye.kilic || KILIC_SEVIYELERI[0];
@@ -257,9 +408,10 @@ export async function chatBotYanitla(mesajMetni, user, guild = null, member = nu
   }
 
   // =========================================================================
-  // 3. KULLANICI RÖNTGENİ: "BENİ TANIYOR MUSUN? / BEN KİMİM?"
+  // 4. KULLANICI RÖNTGENİ: "BENİ TANIYOR MUSUN? / BEN KİMİM?"
   // =========================================================================
   else if (iceriyorMu(metin, BENI_TANIYOR_MUSUN)) {
+    duygu = 'zafer';
     baslik = `🕵️‍♂️ İSTİHBARAT RAPORU • ${userName.toUpperCase()}`;
     renk = TEMA.RENKLER.KAN_KIRMIZISI;
     const boosterMi = member?.premiumSince ? '⭐ **KALE BOOSTÇUSU (Nitro Destekçisi)**' : 'Klanın Sadık Neferi';
@@ -280,9 +432,10 @@ export async function chatBotYanitla(mesajMetni, user, guild = null, member = nu
   }
 
   // =========================================================================
-  // 4. KLAN LİDERLİK SIRALAMASI: "EN ZENGİN KİM?"
+  // 5. KLAN LİDERLİK SIRALAMASI: "EN ZENGİN KİM?"
   // =========================================================================
   else if (iceriyorMu(metin, EN_ZENGIN_KIM)) {
+    duygu = 'para';
     baslik = '👑 KLANIN EN ZENGİN SAMURAYLARI';
     renk = TEMA.RENKLER.BASARI;
     const liderler = liderlikListesi(3);
@@ -298,10 +451,10 @@ export async function chatBotYanitla(mesajMetni, user, guild = null, member = nu
   }
 
   // =========================================================================
-  // 5. CANLI SİTEDEN BELİRLİ BİR MANGA ARAMASI (Örn: "kage dxd var mı")
+  // 6. CANLI SİTEDEN BELİRLİ BİR MANGA ARAMASI (Örn: "kage dxd var mı")
   // =========================================================================
   else if (metin.includes('var mı') || metin.includes('oku') || metin.includes('hakkında')) {
-    // Arama sorgusunu ayıkla
+    duygu = 'cay';
     const temizlenen = metin.replace(/kage|var mı|oku|hakkında|bölümleri|mangası/gi, '').trim();
     if (temizlenen.length >= 2) {
       try {
@@ -322,9 +475,10 @@ export async function chatBotYanitla(mesajMetni, user, guild = null, member = nu
   }
 
   // =========================================================================
-  // 6. CANLI SİTE ARŞİVİ: "SİTEDE NE VAR?"
+  // 7. CANLI SİTE ARŞİVİ: "SİTEDE NE VAR?"
   // =========================================================================
   if (!aciklama && iceriyorMu(metin, SITEDE_NE_VAR)) {
+    duygu = 'cay';
     baslik = '📖 KAGE95.COM CANLI KÜTÜPHANE VERİSİ';
     renk = TEMA.RENKLER.BILGI;
     try {
@@ -346,9 +500,10 @@ export async function chatBotYanitla(mesajMetni, user, guild = null, member = nu
   }
 
   // =========================================================================
-  // 7. CANLI VERİDEN KİŞİYE ÖZEL MANGA TAVSİYESİ
+  // 8. CANLI VERİDEN KİŞİYE ÖZEL MANGA TAVSİYESİ
   // =========================================================================
   else if (!aciklama && iceriyorMu(metin, MANGA_ONERI)) {
+    duygu = 'cay';
     baslik = '📚 SENİN İÇİN ÖZEL SEÇİLEN MANGA';
     renk = TEMA.RENKLER.BASARI;
     try {
@@ -369,9 +524,10 @@ export async function chatBotYanitla(mesajMetni, user, guild = null, member = nu
   }
 
   // =========================================================================
-  // 8. KİŞİYE ÖZEL GÜNLÜK SAMURAY GÖREV ÇİZELGESİ
+  // 9. KİŞİYE ÖZEL GÜNLÜK SAMURAY GÖREV ÇİZELGESİ
   // =========================================================================
   else if (!aciklama && iceriyorMu(metin, GOREV_BUGUN)) {
+    duygu = 'savas';
     baslik = `📜 GÜNLÜK SAMURAY EMRİ • ${userName.toUpperCase()}`;
     renk = TEMA.RENKLER.BASARI;
 
@@ -383,9 +539,10 @@ export async function chatBotYanitla(mesajMetni, user, guild = null, member = nu
   }
 
   // =========================================================================
-  // 9. MİNİ OYUNLAR: ZAR, YAZI TURA, BİLMECE
+  // 10. MİNİ OYUNLAR: ZAR, YAZI TURA, BİLMECE
   // =========================================================================
   else if (!aciklama && iceriyorMu(metin, MINI_ZAR)) {
+    duygu = 'para';
     baslik = '🎲 SAMURAY KEMİK ZARI';
     renk = TEMA.RENKLER.BILGI;
     const zar = Math.floor(Math.random() * 100) + 1;
@@ -397,6 +554,7 @@ export async function chatBotYanitla(mesajMetni, user, guild = null, member = nu
       `*${yorum}*`;
   }
   else if (!aciklama && iceriyorMu(metin, MINI_YAZITURA)) {
+    duygu = 'para';
     baslik = '🪙 BOZUK PARA ATIŞI';
     renk = TEMA.RENKLER.BILGI;
     const sonuc = Math.random() < 0.5 ? '🪙 YAZI' : '🪙 TURA';
@@ -405,6 +563,7 @@ export async function chatBotYanitla(mesajMetni, user, guild = null, member = nu
       `*Ryo ile gerçek bahis oynamak istersen \`/yazitura [bahis]\` yazabilirsin!*`;
   }
   else if (!aciklama && iceriyorMu(metin, MINI_BILMECE)) {
+    duygu = 'dusunce';
     baslik = '🏮 KAGE GÖLGE BİLMECESİ';
     renk = TEMA.RENKLER.BILGI;
     const bilmece = BILMECELER[Math.floor(Math.random() * BILMECELER.length)];
@@ -414,11 +573,12 @@ export async function chatBotYanitla(mesajMetni, user, guild = null, member = nu
   }
 
   // =========================================================================
-  // 10. ANİME TARTIŞMALARI (ZORO VS SANJI, NARUTO VS SASUKE VB.)
+  // 11. ANİME TARTIŞMALARI
   // =========================================================================
   if (!aciklama) {
     for (const debat of ANIME_DEBATELERI) {
       if (debat.anahtar.some(k => metin.includes(k))) {
+        duygu = 'savas';
         baslik = '🍿 ANİME DÜELLO TARTIŞMASI';
         renk = TEMA.RENKLER.BILGI;
         aciklama = debat.cevap;
@@ -428,9 +588,10 @@ export async function chatBotYanitla(mesajMetni, user, guild = null, member = nu
   }
 
   // =========================================================================
-  // 11. KILIÇ ANALİZİ: "KILIÇLAR / DEMİRCİ / GÜÇLENDİREYİM Mİ?"
+  // 12. KILIÇ ANALİZİ: "KILIÇLAR / DEMİRCİ / GÜÇLENDİREYİM Mİ?"
   // =========================================================================
   if (!aciklama && iceriyorMu(metin, KILIC_DEMIRCI_DURUM)) {
+    duygu = 'savas';
     baslik = '⚔️ DEMİRCİ & KATANA EKSPERTİZ RAPORU';
     renk = TEMA.RENKLER.KAN_KIRMIZISI;
     const mevcutSeviye = kilic.seviye || 1;
@@ -457,9 +618,10 @@ export async function chatBotYanitla(mesajMetni, user, guild = null, member = nu
   }
 
   // =========================================================================
-  // 12. ZİNDAN SİMÜLASYONU: "ZİNDANA GİREYİM Mİ? / GEÇER MİYİM?"
+  // 13. ZİNDAN SİMÜLASYONU: "ZİNDANA GİREYİM Mİ? / GEÇER MİYİM?"
   // =========================================================================
   else if (!aciklama && iceriyorMu(metin, ZINDAN_SIMULASYON)) {
+    duygu = 'savas';
     baslik = '🏰 ZİNDAN SEFERİ SİMÜLASYONU & TAKTİKLER';
     renk = TEMA.RENKLER.KAN_KIRMIZISI;
     const iksirVar = envanter.some(e => e.toLowerCase().includes('iksir'));
@@ -480,9 +642,10 @@ export async function chatBotYanitla(mesajMetni, user, guild = null, member = nu
   }
 
   // =========================================================================
-  // 13. GÜNLÜK SAMURAY FALI & ŞANS ANALİZİ
+  // 14. GÜNLÜK SAMURAY FALI & ŞANS ANALİZİ
   // =========================================================================
   else if (!aciklama && iceriyorMu(metin, FAL_SANS)) {
+    duygu = 'dusunce';
     baslik = `🔮 GÖLGE ASTROLOJİSİ • ${userName.toUpperCase()} FALI`;
     renk = TEMA.RENKLER.BILGI;
     const { sansYuzde, ruh } = gunlukFalUret(user.id);
@@ -497,9 +660,10 @@ export async function chatBotYanitla(mesajMetni, user, guild = null, member = nu
   }
 
   // =========================================================================
-  // 14. SUNUCU & KLAN BİLGİSİ
+  // 15. SUNUCU & KLAN BİLGİSİ
   // =========================================================================
   else if (!aciklama && iceriyorMu(metin, SUNUCU_DURUMU)) {
+    duygu = 'zafer';
     baslik = `🏯 KLAN RAPORU • ${guildName.toUpperCase()} KALESİ`;
     renk = TEMA.RENKLER.BILGI;
     const kanalSayisi = guild?.channels?.cache?.size || 15;
@@ -515,84 +679,114 @@ export async function chatBotYanitla(mesajMetni, user, guild = null, member = nu
   }
 
   // =========================================================================
-  // 15. DİĞER SABİT TEMATİK NİYETLER (BUSHIDO, KURALLAR, RYO, ESPRİ, VEYA YARDIM)
+  // 16. DİĞER SABİT TEMATİK NİYETLER
   // =========================================================================
   else if (!aciklama && iceriyorMu(metin, BUSHIDO_FELSEFE)) {
+    duygu = 'cay';
     baslik = '⛩️ BUSHIDO • SAMURAYIN KADİM YOLU';
     renk = TEMA.RENKLER.BILGI;
     const ozluSoz = SAMURAY_SOZLERI[Math.floor(Math.random() * SAMURAY_SOZLERI.length)];
     aciklama = `Bir samurayın en büyük savaşı kendi zihnindedir **${userName}**.\n\n${ozluSoz}`;
   }
   else if (!aciklama && iceriyorMu(metin, HAVA_DURUMU)) {
+    duygu = 'cay';
     baslik = '🌸 KAGE KALESİ HAVA RAPORU';
     renk = TEMA.RENKLER.BILGI;
     aciklama = `Kalenin surlarına çıkıp rüzgarı dinledim **${userName}**:\n\n` +
       `Gökyüzü hafif sisli, rüzgar kiraz çiçeği yapraklarını savuruyor ve hava tam katanayı kınından çıkarmalık 18 derece! Zindana inip iblis avlamak için harika bir an!`;
   }
   else if (!aciklama && iceriyorMu(metin, TROLL_SEVGI)) {
+    duygu = 'sevgi';
     baslik = '🌸 SAMURAY AŞKI';
     renk = TEMA.RENKLER.BILGI;
     aciklama = `**${userName}**, kalbimin kını sadece katanama ve kage95 mangalarına aittir! Ama seni klanımızın sadık bir neferi olarak yürekten takdir ediyorum. Gel zindana inelim, duygusallığı bırak!`;
   }
   else if (!aciklama && iceriyorMu(metin, TROLL_ESPRI)) {
+    duygu = 'zafer';
     baslik = '🎭 KAGE KOMEDİ KÖŞESİ';
     renk = TEMA.RENKLER.BILGI;
     aciklama = `Kılıç ustasına sormuşlar: 'Neden sürekli katananı biliyorsun?'\nUsta cevap vermiş: 'Zamanı kesmek için!' 🗡️\n\n*Kılıç gibi soğuk bir espriydi, gölgelerde üşümeyesin samuray!*`;
   }
   else if (!aciklama && iceriyorMu(metin, RAKIP_BOTLAR)) {
+    duygu = 'ofke';
     baslik = '🗑️ ÇÖP BOTLARA GEÇİT YOK';
     renk = TEMA.RENKLER.UYARI_SARI;
     aciklama = `MEE6 veya yabancı tüccar botları mı? Onları Kage Kalesi'nin kapısından içeri bile sokmuyoruz! Biz yerli, katanalı, RPG zindanlı ve yapay zeka destekli tek başımıza koca bir orduyuz!`;
   }
   else if (!aciklama && iceriyorMu(metin, KUFUR_HAKARET)) {
+    duygu = 'ofke';
     baslik = '🥋 TERBİYE VE ONUR DERSİ';
     renk = TEMA.RENKLER.UYARI_SARI;
     aciklama = `Sakin ol **${userName}**! Bir samurayın dili, kılıcından önce terbiye edilmelidir. Kaba sözler katananı köreltir, ruhunu lekeleme. Saygını koru ve kılıcını kınına sok.`;
   }
   else if (!aciklama && iceriyorMu(metin, OVGU)) {
+    duygu = 'sevgi';
     baslik = '🥋 ONUR DUYDUM!';
     renk = TEMA.RENKLER.BASARI;
     aciklama = `Eyvallah **${userName}**, onur duydum kılıç kardeşim! Kage klanı her zaman arkanda. Katanan asla körelmesin!`;
   }
   else if (!aciklama && iceriyorMu(metin, YARDIM)) {
+    duygu = 'cay';
     baslik = '📜 KAGE YARDIM PARŞÖMENİ';
     renk = TEMA.RENKLER.BILGI;
     aciklama = `Tüm sistemlerimi, RPG komutlarımı, manga kütüphanesini ve moderasyon araçlarını görmek için **/yardim** yazman yeterli!`;
   }
   else if (!aciklama && iceriyorMu(metin, HAL_HATIR)) {
+    duygu = 'cay';
     aciklama = `🗡️ İyiyim çok şükür **${userName}**! Katanayı biledim, yeşil çayımı yudumluyorum, sen nasılsın?\n\n` +
       `**${guildName}** semalarında hava sakin, zindanlar ise kan ağlıyor! Kesende **${ryo} Ryo** ve elinde **${kilic.ad}** görüyorum.\n` +
       `Bugün zindana inip birkaç iblis kellesi uçurdun mu bakalım?`;
   }
   else if (!aciklama && iceriyorMu(metin, KULLANICI_IYI)) {
-    aciklama = `🔥 Harika haber **${userName}**! Kılıcın gibi enerjin de pırıl pırıl parlıyor.\n\n` +
-      `Bu yüksek moralle **/zindan**'a girsen iblislere tek atarsın! Ya da **/blackjack** masasına oturup krupiyeyi terletmeye ne dersin?`;
+    duygu = 'zafer';
+    aciklama = isFemale
+      ? `🌸 Harika haber tatlı kunoichi **${userName}**! Kılıcın gibi enerjin de pırıl pırıl parlıyor.\n\n` +
+        `Bu yüksek moralle **/zindan**'a girsen iblislere tek atarsın! Ya da **/blackjack** masasına oturup krupiyeyi terletmeye ne dersin? ✨`
+      : `🔥 Harika haber **${userName}**! Kılıcın gibi enerjin de pırıl pırıl parlıyor.\n\n` +
+        `Bu yüksek moralle **/zindan**'a girsen iblislere tek atarsın! Ya da **/blackjack** masasına oturup krupiyeyi terletmeye ne dersin?`;
   }
   else if (!aciklama && iceriyorMu(metin, KULLANICI_KOTU)) {
-    aciklama = `🍵 Ah be samuray **${userName}**... Bazen en sert fırtınalar bile diler, geriye sadece kökleri sağlam ağaçlar kalır.\n\n` +
-      `Kılıcını bir kenara bırak, derin bir nefes al ve **[kage95.com](${siteUrl})** kütüphanemizden kafa dağıtacak güzel bir manga oku.\n` +
-      `Moralini bozma, Kage klanı her zaman seninle!`;
+    duygu = 'cay';
+    aciklama = isFemale
+      ? `🍵 Ah be zarif kunoichi **${userName}**... Bazen en sert fırtınalar bile diner, geriye sadece kökleri sağlam kiraz ağaçları kalır. 🌸\n\n` +
+        `Kılıcını bir kenara bırak, derin bir nefes al ve **[kage95.com](${siteUrl})** kütüphanemizden kafa dağıtacak güzel bir manga oku.\n` +
+        `Moralini sakın bozma, Kage Klanı ve gölge kardeşlerin her zaman seninle!`
+      : `🍵 Ah be samuray **${userName}**... Bazen en sert fırtınalar bile diner, geriye sadece kökleri sağlam ağaçlar kalır.\n\n` +
+        `Kılıcını bir kenara bırak, derin bir nefes al ve **[kage95.com](${siteUrl})** kütüphanemizden kafa dağıtacak güzel bir manga oku.\n` +
+        `Moralini bozma, Kage klanı her zaman seninle!`;
   }
   else if (!aciklama && iceriyorMu(metin, SELAMLAR)) {
-    aciklama = `⛩️ Selamlar samuray **${userName}**! **${guildName}** kalesine hoş geldin.\n\n` +
-      `Kılıcın keskin, bahtın açık olsun. Zindan seferi, manga arama veya kumarcı köşesi için hazırım!`;
+    duygu = 'cay';
+    aciklama = isFemale
+      ? `🌸 Selamlar zarif kunoichi **${userName}**! **${guildName}** kalesine hoş geldin. ⛩️\n\n` +
+        `Kılıcın keskin, bahtın açık olsun. Zindan seferi, manga arama veya kumarcı köşesi için hazırım!`
+      : `⛩️ Selamlar samuray **${userName}**! **${guildName}** kalesine hoş geldin.\n\n` +
+        `Kılıcın keskin, bahtın açık olsun. Zindan seferi, manga arama veya kumarcı köşesi için hazırım!`;
   }
   else if (!aciklama && iceriyorMu(metin, KIMLIK)) {
-    aciklama = `🏮 Ben **Kage-95**!\n\n` +
-      `**[kage95.com](${siteUrl})** manga platformunun resmi gölge bekçisi, samuray rehberi ve topluluk asistanıyım.\n` +
-      `Sunucuda manga arar, zindan savaşlarını yönetir, kumar masalarını kurar ve klan üyelerini korurum!`;
+    duygu = 'zafer';
+    aciklama = isFemale
+      ? `🏮 Ben **Kage-95** (ve bu kalenin gölge kunoichi muhafızı)!\n\n` +
+        `**[kage95.com](${siteUrl})** manga platformunun resmi gölge bekçisi, samuray rehberi ve topluluk asistanıyım.\n` +
+        `Sunucuda manga arar, zindan savaşlarını yönetir, kumar masalarını kurar ve seni korurum zarif savaşçı! 🌸`
+      : `🏮 Ben **Kage-95**!\n\n` +
+        `**[kage95.com](${siteUrl})** manga platformunun resmi gölge bekçisi, samuray rehberi ve topluluk asistanıyım.\n` +
+        `Sunucuda manga arar, zindan savaşlarını yönetir, kumar masalarını kurar ve klan üyelerini korurum!`;
   }
   else if (!aciklama && (!metin || metin === 'kage')) {
-    aciklama = `Selam **${userName}**! Buyur kılıç kardeşim, beni mi çağırdın?\n\n` +
-      `Şu an **${guildName}** kalesinde ${memberCount} samurayla birlikte nöbetteyim. Kesende **${ryo} Ryo** bulunuyor.\n` +
-      `Bana merak ettiğin bir şeyi sorabilir veya **/yardim** yazarak tüm komutlarımı görebilirsin!`;
+    duygu = 'cay';
+    aciklama = isFemale
+      ? `Selam tatlı **${userName}**! Buyur zarif kunoichim, beni mi çağırdın? 🌸\n\n` +
+        `Şu an **${guildName}** kalesinde ${memberCount} samurayla birlikte nöbetteyim. Kesende **${ryo} Ryo** bulunuyor.\n` +
+        `Bana merak ettiğin bir şeyi sorabilir veya **/yardim** yazarak tüm komutlarımı görebilirsin!`
+      : `Selam **${userName}**! Buyur kılıç kardeşim, beni mi çağırdın?\n\n` +
+        `Şu an **${guildName}** kalesinde ${memberCount} samurayla birlikte nöbetteyim. Kesende **${ryo} Ryo** bulunuyor.\n` +
+        `Bana merak ettiğin bir şeyi sorabilir veya **/yardim** yazarak tüm komutlarımı görebilirsin!`;
   }
 
   // =========================================================================
-  // 16. AÇIK UÇLU YAPAY ZEKA KATMANI (GEMINI PERSONA FALLBACK!)
+  // 17. AÇIK UÇLU YAPAY ZEKA KATMANI (GEMINI PERSONA FALLBACK!)
   // =========================================================================
-  // Eğer hiçbir sabit kalıba uymuyorsa (örn: "bana şiir yaz", "kuantum nedir", "tarihte en güçlü samuray kim"),
-  // doğrudan canlı Gemini motoruna Kage Persona'sı ile sorup gerçek bir AI zekası konuşturur!
   if (!aciklama && metin.length > 3) {
     try {
       const aiCevap = await geminiPersonaSohbet(mesajMetni, {
@@ -603,18 +797,23 @@ export async function chatBotYanitla(mesajMetni, user, guild = null, member = nu
       });
 
       if (aiCevap) {
-        baslik = '⛩️ GÖLGE BİLGELİĞİ • Kage-95';
-        renk = TEMA.RENKLER.BILGI;
+        duygu = 'dusunce';
+        baslik = isFemale ? '🌸 GÖLGE BİLGELİĞİ • Kunoichi Kage' : '⛩️ GÖLGE BİLGELİĞİ • Kage-95';
+        renk = isFemale ? 0xFF66B2 : TEMA.RENKLER.BILGI;
         aciklama = aiCevap;
       }
     } catch {}
   }
 
-  // Nihai Fallback (Eğer Gemini de kapalıysa)
+  // Nihai Fallback
   if (!aciklama) {
+    duygu = 'cay';
     const soz = SAMURAY_SOZLERI[Math.floor(Math.random() * SAMURAY_SOZLERI.length)];
-    aciklama = `${soz}\n\n` +
-      `*${userName}, elindeki **${kilic.ad}** ve cüzdanındaki **${ryo} Ryo** ile Kage Kalesi'nde yolunu bulabilirsin. Bana soru sorabilir veya \`/yardim\` yazabilirsin.*`;
+    aciklama = isFemale
+      ? `${soz}\n\n` +
+        `*${userName}, elindeki **${kilic.ad}** ve cüzdanındaki **${ryo} Ryo** ile Kage Kalesi'nin en zarif kunoichisisin. Bana soru sorabilir veya \`/yardim\` yazabilirsin! 🌸*`
+      : `${soz}\n\n` +
+        `*${userName}, elindeki **${kilic.ad}** ve cüzdanındaki **${ryo} Ryo** ile Kage Kalesi'nde yolunu bulabilirsin. Bana soru sorabilir veya \`/yardim\` yazabilirsin.*`;
   }
 
   const embed = kageEmbed({
@@ -624,9 +823,25 @@ export async function chatBotYanitla(mesajMetni, user, guild = null, member = nu
     footer: `Kage-95 Canlı İstihbarat & Chat Bot • ${guildName}`
   });
 
-  if (user.displayAvatarURL) {
-    embed.setThumbnail(user.displayAvatarURL({ dynamic: true }));
+  // =========================================================================
+  // PİKSEL STİCKER ENTEGRASYONU (O ANKİ RUH HALİNE VE CİNSİYETE GÖRE)
+  // =========================================================================
+  const stickerHaritasi = isFemale ? STICKER_DOSYALARI_KUNOICHI : STICKER_DOSYALARI_ERKEK;
+  const stickerDosyaAdi = isFemale ? 'kunoichi_sticker.png' : 'kage_sticker.png';
+  const stickerPath = stickerHaritasi[duygu] || stickerHaritasi.cay;
+  const files = [];
+
+  if (fs.existsSync(stickerPath)) {
+    const attachment = new AttachmentBuilder(stickerPath, { name: stickerDosyaAdi });
+    files.push(attachment);
+
+    const attRef = `attachment://${stickerDosyaAdi}`;
+    if (stickerTamBoy) {
+      embed.setImage(attRef);
+    } else {
+      embed.setThumbnail(attRef);
+    }
   }
 
-  return embed;
+  return { embed, files };
 }

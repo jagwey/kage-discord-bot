@@ -96,11 +96,12 @@ export async function execute(message) {
   // NORMAL KULLANICILAR İÇİN: KAGE CHAT BOT (AI ve Sunucu Yönetimi Yok)
   // =========================================================================
   if (!yetkiliMi) {
-    const chatBotEmbed = await chatBotYanitla(talimat, message.author, message.guild, message.member, message);
+    const { embed, files } = await chatBotYanitla(talimat, message.author, message.guild, message.member, message);
     return message.reply({
-      embeds: [chatBotEmbed],
+      embeds: [embed],
+      files: files || [],
       allowedMentions: { repliedUser: false }
-    }).catch(() => null);
+    }).catch((err) => console.error('[MessageCreate ChatBot Hatası]:', err));
   }
 
   // =========================================================================
