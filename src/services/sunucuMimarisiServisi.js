@@ -129,6 +129,22 @@ export async function kageMimarisiInsaEt(guild, interaction = null) {
     reason: 'Kage 95 Master Mimarisi'
   });
 
+  roller.kunoichi = await guild.roles.create({
+    name: '🌸 Gölge Kunoichisi',
+    color: 0xff66b2,
+    hoist: true,
+    mentionable: true,
+    reason: 'Kage 95 Cinsiyet & Onboarding Mimarisi'
+  });
+
+  roller.samuray = await guild.roles.create({
+    name: '🗡️ Gölge Samurayı',
+    color: 0x5c6bc0,
+    hoist: true,
+    mentionable: true,
+    reason: 'Kage 95 Cinsiyet & Onboarding Mimarisi'
+  });
+
   roller.mangaOkuru = await guild.roles.create({
     name: '📖 Manga Okuru',
     color: 0xff5252,

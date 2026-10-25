@@ -1,6 +1,7 @@
 import { Events } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { ryoEkle } from '../services/ekonomiServisi.js';
+import { kayitModaliOlustur, kayitIsleminiTamamla } from '../services/kayitServisi.js';
 
 export const name = Events.InteractionCreate;
 
@@ -22,61 +23,51 @@ export async function execute(interaction) {
     return;
   }
 
-  // 2. Buton Tıklamaları (Button Interaction)
+  // 2. Buton Tıklamaları (Kayıt Ol & Profil Güncelleme)
   if (interaction.isButton()) {
-    // A. Kayıt Ol Butonu
-    if (interaction.customId === 'kage_kayit_ol_btn') {
-      // Discord 3 saniyelik zaman aşımına düşmesin diye anında deferReply ver
+    if (interaction.customId === 'kage_kayit_ol_btn' || interaction.customId === 'kage_profil_guncelle_btn') {
+      const modal = kayitModaliOlustur({
+        isim: interaction.member?.displayName?.replace(/[🌸🗡️]/g, '').trim()
+      });
+      return interaction.showModal(modal).catch(err => {
+        console.error('[InteractionCreate] Modal açma hatası:', err.message);
+      });
+    }
+  }
+
+  // 3. Modal Form Gönderimleri (Detaylı Kayıt İşlemi)
+  if (interaction.isModalSubmit()) {
+    if (interaction.customId === 'kage_kayit_modal') {
       await interaction.deferReply({ ephemeral: true });
 
-      const guild = interaction.guild;
-      const member = interaction.member;
-
-      const kayitliRol = guild.roles.cache.find(r => r.name.includes('Shinobi') || r.name.includes('Kayıtlı') || r.name.includes('Üye'));
-      const kayitsizRol = guild.roles.cache.find(r => r.name.includes('Ronin') || r.name.includes('Kayıtsız'));
-      const mangaRol = guild.roles.cache.find(r => r.name.includes('Manga Okuru'));
-
-      if (kayitliRol && member.roles.cache.has(kayitliRol.id)) {
-        return interaction.editReply({
-          content: '⛩️ Zaten klan mührüne sahipsin ve kayıtlısın samuray!'
-        });
-      }
+      const isimYas = interaction.fields.getTextInputValue('kayit_isim_yas');
+      const cinsiyet = interaction.fields.getTextInputValue('kayit_cinsiyet');
+      const mangaTuru = interaction.fields.getTextInputValue('kayit_manga_turu') || 'Genel';
+      const yemin = interaction.fields.getTextInputValue('kayit_yemin') || 'Kage Kalesi Onuru';
 
       try {
-        if (kayitsizRol && member.roles.cache.has(kayitsizRol.id)) {
-          await member.roles.remove(kayitsizRol).catch(() => {});
-        }
-        if (kayitliRol) await member.roles.add(kayitliRol).catch(() => {});
-        if (mangaRol) await member.roles.add(mangaRol).catch(() => {});
-
-        ryoEkle(member.id, 50);
-
-        // Kayıt Log
-        const logKanal = guild.channels.cache.find(c => c.isTextBased() && (c.name.includes('kayıt-mühür') || c.name.includes('kayıt-log') || c.name.includes('kayit-log') || c.name.includes('mod-log')));
-        if (logKanal) {
-          logKanal.send(`📝 **[BUTON KAYIT]** ${member.user.tag} (${member.id}) kayıt kapısından mührünü basarak aramıza katıldı.`).catch(() => {});
-        }
-
-        // Hoş geldin kanalında anons et
-        const hosgeldinKanal = guild.channels.cache.find(c => c.isTextBased() && (c.name.includes('yeni-savaşçılar') || c.name.includes('yeni-savascilar') || c.name.includes('hoş-geldin') || c.name.includes('hos-geldin')));
-        if (hosgeldinKanal) {
-          hosgeldinKanal.send({
-            content: `🌸 **Aramıza Hoş Geldin ${member}!** Artık Kage kalesinin şerefli bir üyesisin. Sohbet odalarında kılıcını kınından çıkarabilirsin!`
-          }).catch(() => {});
-        }
+        const { embed, files } = await kayitIsleminiTamamla(interaction, {
+          hedefUye: interaction.member,
+          isimYas,
+          cinsiyet,
+          mangaTuru,
+          yemin
+        });
 
         return interaction.editReply({
-          content: `⛩️ **Mührün onaylandı ${member}!** Artık resmi bir **Shinobi**sin.\n💰 Cüzdanına \`+50 Ryo\` hoş geldin ödülü aktarıldı!\n📖 Kanalların kilidi açıldı, keyifli okumalar dileriz.`
+          embeds: [embed],
+          files
         });
       } catch (err) {
+        console.error('[InteractionCreate] Kayıt tamamlama hatası:', err.message);
         return interaction.editReply({
-          content: `❌ Kayıt işlemi sırasında bir hata oluştu: ${err.message}\nLütfen bot rolünün sunucu ayarlarında diğer rollerin üstünde olduğundan emin olun.`
+          content: `❌ Kayıt tamamlanırken bir hata oluştu: ${err.message}`
         });
       }
     }
   }
 
-  // 3. ChatInputCommand (Eğik çizgi komutu) etkileşimi
+  // 4. ChatInputCommand (Eğik çizgi komutu) etkileşimi
   if (interaction.isChatInputCommand()) {
     const komut = interaction.client.commands.get(interaction.commandName);
 

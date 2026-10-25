@@ -15,10 +15,11 @@ export function yardimKartiOlustur() {
     alanlar: [
       {
         name: `⛩️ Otomatik Sunucu Mimarisi & Kayıt`,
-        value: '`• /sunucu-kur` : Sunucuyu roller, kayıt kapısı, manga ve oyun odalarıyla kurar.\n' +
-          '`• /sunucu-sifirla` : Kanalları temizleyip Kage kalesini sıfırdan inşa eder.\n' +
+        value: '`• /kayit-otomasyonu [panel|yeniden-kayit]` : Butonlu & modal kayıt otomasyonu.\n' +
           '`• /kayit-paneli` : Kanala butonlu otomatik kayıt kapısı kurar.\n' +
-          '`• /kayit [üye] [isim]` : Üyeyi manuel kayıt eder.',
+          '`• /kayit [üye] [cinsiyet] [isim]` : İnteraktif veya doğrudan kayıt.\n' +
+          '`• /sunucu-kur` : Sunucuyu roller, kayıt kapısı, manga ve oyun odalarıyla kurar.\n' +
+          '`• /sunucu-sifirla` : Kanalları temizleyip Kage kalesini sıfırdan inşa eder.',
         inline: false
       },
       {
