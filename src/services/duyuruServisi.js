@@ -213,3 +213,182 @@ export function duyuruServisiniBaslat(client) {
     bolumleriKontrolEtVeDuyur(client);
   }, aralikMs);
 }
+
+/**
+ * Web sitesinden (ASP.NET backend) gelen anlık yeni bölüm bildirimini Discord'a iletir
+ * @param {import('discord.js').Client} client
+ * @param {Object} data
+ */
+export async function anlikBolumDuyur(client, data) {
+  try {
+    let kanalId = process.env.ANNOUNCEMENT_CHANNEL_ID;
+    let kanal = null;
+
+    if (kanalId) {
+      kanal = await client.channels.fetch(kanalId).catch(() => null);
+    }
+
+    // Hedef kanal env'de yoksa sunucudaki ilk uygun kanalı bul
+    if (!kanal || !kanal.isTextBased()) {
+      const guild = client.guilds.cache.get(process.env.GUILD_ID) || client.guilds.cache.first();
+      if (guild) {
+        kanal = guild.channels.cache.find(c => 
+          c.isTextBased() && (c.name.includes('duyuru') || c.name.includes('manga') || c.name.includes('genel'))
+        ) || guild.channels.cache.find(c => c.isTextBased());
+      }
+    }
+
+    if (!kanal) {
+      throw new Error('Duyuru gönderilecek uygun bir Discord metin kanalı bulunamadı.');
+    }
+
+    const bolumObj = {
+      mangaId: data.mangaId,
+      mangaAdi: data.mangaAdi || 'Bilinmeyen Seri',
+      kapakResmi: data.kapakResmi ? tamGorselUrl(data.kapakResmi) : null,
+      bolumId: data.bolumId || Date.now(),
+      bolumNo: data.bolumNo || 1,
+      bolumBaslik: data.bolumAdi || `Bölüm ${data.bolumNo || 1}`,
+      eklenmeTarihi: new Date().toISOString(),
+      okumaUrl: data.okumaUrl || `${process.env.SITE_URL || 'https://kage95.com'}/read.html?mangaId=${data.mangaId}&chapterId=${data.bolumId}`
+    };
+
+    // Bölüm ID'sini görüldü olarak kaydet ki poller tekrar atmasın
+    gorulenBolumler.add(String(bolumObj.bolumId));
+    gorulenleriKaydet();
+
+    const { embed, row } = bolumDuyuruKartiOlustur(bolumObj);
+
+    const rolId = process.env.ANNOUNCEMENT_ROLE_ID;
+    const mesajIcerik = rolId ? `<@&${rolId}>` : null;
+
+    const gonderilen = await kanal.send({
+      content: mesajIcerik,
+      embeds: [embed],
+      components: [row]
+    });
+
+    console.log(`[DuyuruServisi - WEBHOOK] Anlık bölüm yayınlandı: ${bolumObj.mangaAdi} - Bölüm ${bolumObj.bolumNo}`);
+    return { success: true, messageId: gonderilen.id, channelId: kanal.id };
+  } catch (err) {
+    console.error('[DuyuruServisi - WEBHOOK] Bölüm bildirimi gönderilirken hata:', err.message);
+    throw err;
+  }
+}
+
+/**
+ * Web sitesinden gelen genel site duyurusunu Discord'a iletir
+ * @param {import('discord.js').Client} client
+ * @param {Object} data
+ */
+export async function anlikDuyuruDuyur(client, data) {
+  try {
+    let kanalId = process.env.ANNOUNCEMENT_CHANNEL_ID;
+    let kanal = null;
+
+    if (kanalId) {
+      kanal = await client.channels.fetch(kanalId).catch(() => null);
+    }
+
+    if (!kanal || !kanal.isTextBased()) {
+      const guild = client.guilds.cache.get(process.env.GUILD_ID) || client.guilds.cache.first();
+      if (guild) {
+        kanal = guild.channels.cache.find(c => 
+          c.isTextBased() && (c.name.includes('duyuru') || c.name.includes('genel'))
+        ) || guild.channels.cache.find(c => c.isTextBased());
+      }
+    }
+
+    if (!kanal) {
+      throw new Error('Duyuru gönderilecek uygun bir Discord metin kanalı bulunamadı.');
+    }
+
+    const embed = kageEmbed({
+      baslik: `📢 SİTE DUYURUSU: ${data.baslik || 'Önemli Bildirim'}`,
+      renk: data.onemli ? TEMA.RENKLER.UYARI_SARI : TEMA.RENKLER.KAN_KIRMIZISI,
+      aciklama: data.icerik || 'Kage 95 platformunda yeni bir duyuru yayınlandı.',
+      alanlar: [
+        {
+          name: `${TEMA.EMOJILER.PARSOMEN} Kategori / Etiket`,
+          value: `\`${data.etiket || 'Genel'}\``,
+          inline: true
+        },
+        {
+          name: `${TEMA.EMOJILER.FENER} Platform`,
+          value: `[kage95.com](${process.env.SITE_URL || 'https://kage95.com'})`,
+          inline: true
+        }
+      ]
+    });
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setLabel('Kage 95\'e Git')
+        .setURL(process.env.SITE_URL || 'https://kage95.com')
+        .setStyle(ButtonStyle.Link)
+        .setEmoji(TEMA.EMOJILER.TORII)
+    );
+
+    const gonderilen = await kanal.send({
+      embeds: [embed],
+      components: [row]
+    });
+
+    console.log(`[DuyuruServisi - WEBHOOK] Site duyurusu yayınlandı: ${data.baslik}`);
+    return { success: true, messageId: gonderilen.id };
+  } catch (err) {
+    console.error('[DuyuruServisi - WEBHOOK] Duyuru gönderilirken hata:', err.message);
+    throw err;
+  }
+}
+
+/**
+ * Web sitesindeki okuma puanı ve seviyeye göre Discord kullanıcısının rolünü senkronize eder
+ * @param {import('discord.js').Client} client
+ * @param {Object} data
+ */
+export async function anlikRolGuncelle(client, data) {
+  try {
+    const { discordId, okunanBolumSayisi = 0, puan = 0, unvan } = data;
+    if (!discordId) throw new Error('discordId parametresi zorunludur.');
+
+    const guild = client.guilds.cache.get(process.env.GUILD_ID) || client.guilds.cache.first();
+    if (!guild) throw new Error('Discord sunucusu bulunamadı.');
+
+    const member = await guild.members.fetch(discordId).catch(() => null);
+    if (!member) {
+      return { success: false, message: 'Kullanıcı bu Discord sunucusunda bulunamadı.' };
+    }
+
+    // Seviye Rütbe Eşleşmeleri
+    let hedefRolAdi = 'Shinobi';
+    if (okunanBolumSayisi >= 300 || puan >= 3000) hedefRolAdi = 'Kage';
+    else if (okunanBolumSayisi >= 150 || puan >= 1500) hedefRolAdi = 'Jonin';
+    else if (okunanBolumSayisi >= 50 || puan >= 500) hedefRolAdi = 'Chunin';
+    else if (okunanBolumSayisi >= 15 || puan >= 150) hedefRolAdi = 'Genin';
+
+    // Sunucuda bu isimde rol var mı kontrol et, yoksa oluşturmayı dene
+    let rol = guild.roles.cache.find(r => r.name.toLowerCase() === hedefRolAdi.toLowerCase());
+    if (!rol) {
+      try {
+        rol = await guild.roles.create({
+          name: hedefRolAdi,
+          color: hedefRolAdi === 'Kage' ? '#e53935' : hedefRolAdi === 'Jonin' ? '#d32f2f' : '#b0bec5',
+          reason: 'Kage Otomatik Manga Okuma Rütbesi'
+        });
+      } catch (err) {
+        console.warn(`[RolSync] ${hedefRolAdi} rolü otomatik oluşturulamadı:`, err.message);
+      }
+    }
+
+    if (rol && !member.roles.cache.has(rol.id)) {
+      await member.roles.add(rol);
+      console.log(`[RolSync] ${member.user.tag} kullanıcısına '${hedefRolAdi}' rolü verildi.`);
+    }
+
+    return { success: true, member: member.user.tag, hedefRol: hedefRolAdi };
+  } catch (err) {
+    console.error('[RolSync] Rol senkronizasyon hatası:', err.message);
+    throw err;
+  }
+}

@@ -71,14 +71,94 @@ if (fs.existsSync(eventsPath)) {
   }
 }
 
-// 3. Bulut Sunucuları İçin Hafif HTTP Canlılık Sunucusu (Render / Koyeb / Uptime)
+// 3. Bulut Sunucuları ve Webhook Entegrasyonu İçin HTTP API Sunucusu
 import http from 'http';
+import { anlikBolumDuyur, anlikDuyuruDuyur, anlikRolGuncelle } from './services/duyuruServisi.js';
+
 const PORT = process.env.PORT || 3000;
-http.createServer((req, res) => {
-  res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
-  res.end('⛩️ Kage Discord Botu 7/24 Aktif ve Görevde!');
+const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || 'kage95_secret_key';
+
+http.createServer(async (req, res) => {
+  // CORS Başlıkları
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-kage-secret, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204);
+    res.end();
+    return;
+  }
+
+  const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+
+  // 1. Canlılık Kontrolü (Uptime / Health)
+  if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/health')) {
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({
+      status: 'online',
+      bot: 'Kage',
+      ping: client.ws.ping,
+      guilds: client.guilds.cache.size,
+      time: new Date().toISOString()
+    }));
+    return;
+  }
+
+  // 2. Webhook Rotaları (POST)
+  if (req.method === 'POST' && url.pathname.startsWith('/api/webhook/')) {
+    const gelenSecret = req.headers['x-kage-secret'] || url.searchParams.get('secret');
+    if (gelenSecret !== WEBHOOK_SECRET) {
+      res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ error: 'Yetkisiz erişim. Geçersiz webhook secret.' }));
+      return;
+    }
+
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', async () => {
+      try {
+        const data = body ? JSON.parse(body) : {};
+
+        // A. Yeni Bölüm Webhook'u
+        if (url.pathname === '/api/webhook/bolum') {
+          const sonuc = await anlikBolumDuyur(client, data);
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ success: true, message: 'Bölüm duyurusu başarıyla Discord kanalına iletildi.', ...sonuc }));
+          return;
+        }
+
+        // B. Site Duyurusu Webhook'u
+        if (url.pathname === '/api/webhook/duyuru') {
+          const sonuc = await anlikDuyuruDuyur(client, data);
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ success: true, message: 'Duyuru başarıyla Discord kanalına iletildi.', ...sonuc }));
+          return;
+        }
+
+        // C. Kullanıcı Rol / XP Senkronizasyonu
+        if (url.pathname === '/api/webhook/rol-sync') {
+          const sonuc = await anlikRolGuncelle(client, data);
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ success: true, ...sonuc }));
+          return;
+        }
+
+        res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ error: 'Bilinmeyen webhook rotası.' }));
+      } catch (err) {
+        console.error('[HTTP API Hatası]', err.message);
+        res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ error: 'Webhook işlenirken hata oluştu.', detay: err.message }));
+      }
+    });
+    return;
+  }
+
+  res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+  res.end('404 Bulunamadı');
 }).listen(PORT, () => {
-  console.log(`[HTTP] Canlılık sunucusu ${PORT} portunda dinlemede.`);
+  console.log(`[HTTP API] Entegrasyon ve canlılık sunucusu ${PORT} portunda dinlemede.`);
 });
 
 // Beklenmeyen Hataları Yakalama (Çökme Koruması)
