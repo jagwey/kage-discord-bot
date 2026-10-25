@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 240" width="680" height="240">
+  <defs>
+    <!-- Arka plan ve ışık gradyanları -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0a0808"/>
+      <stop offset="50%" stop-color="#140c0d"/>
+      <stop offset="100%" stop-color="#070606"/>
+    </linearGradient>
+    <radialGradient id="redGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#e53935" stop-opacity="0.45"/>
+      <stop offset="60%" stop-color="#8e0e15" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="bladeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="40%" stop-color="#e53935"/>
+      <stop offset="100%" stop-color="#8e0e15"/>
+    </linearGradient>
+    <linearGradient id="textGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="65%" stop-color="#f5f5f5"/>
+      <stop offset="100%" stop-color="#e53935"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Arka Plan -->
+  <rect width="680" height="240" fill="url(#bgGrad)"/>
+
+  <!-- Kırmızı Atmosfer Işığı -->
+  <circle cx="340" cy="120" r="220" fill="url(#redGlow)"/>
+
+  <!-- Arka Plan Samuray Izgarası / Gölge Çizgileri -->
+  <g opacity="0.08" stroke="#ffffff" stroke-width="1">
+    <line x1="0" y1="40" x2="680" y2="40"/>
+    <line x1="0" y1="80" x2="680" y2="80"/>
+    <line x1="0" y1="120" x2="680" y2="120"/>
+    <line x1="0" y1="160" x2="680" y2="160"/>
+    <line x1="0" y1="200" x2="680" y2="200"/>
+    <line x1="100" y1="0" x2="100" y2="240"/>
+    <line x1="200" y1="0" x2="200" y2="240"/>
+    <line x1="300" y1="0" x2="300" y2="240"/>
+    <line x1="400" y1="0" x2="400" y2="240"/>
+    <line x1="500" y1="0" x2="500" y2="240"/>
+    <line x1="600" y1="0" x2="600" y2="240"/>
+  </g>
+
+  <!-- Sol Taraf: Torii Kapısı Silüeti -->
+  <g transform="translate(65, 45) scale(0.75)" opacity="0.25" fill="#e53935">
+    <!-- Üst kiriş -->
+    <path d="M 0 15 Q 80 5 160 15 L 155 25 Q 80 18 5 25 Z"/>
+    <!-- İkinci kiriş -->
+    <rect x="20" y="38" width="120" height="8" rx="2"/>
+    <!-- Sütunlar -->
+    <rect x="35" y="25" width="12" height="110"/>
+    <rect x="113" y="25" width="12" height="110"/>
+    <!-- Orta tabela -->
+    <rect x="74" y="22" width="12" height="20" fill="#8e0e15"/>
+  </g>
+
+  <!-- Sağ Taraf: Büyük Japonca Kanji "影" (KAGE / Gölge) -->
+  <text x="560" y="175" font-family="'Noto Serif JP', 'Hiragino Mincho ProN', 'Yu Mincho', serif" font-size="140" font-weight="900" fill="#e53935" opacity="0.12" text-anchor="middle">
+    影
+  </text>
+
+  <!-- Kılıç Kesik Efekti Çizgisi -->
+  <path d="M 140 168 L 540 168" stroke="url(#bladeGrad)" stroke-width="2" opacity="0.8" filter="url(#glow)"/>
+  <circle cx="340" cy="168" r="3" fill="#ffffff" filter="url(#glow)"/>
+
+  <!-- Ana Başlık: KAGE -->
+  <!-- Gölge Işıma Katmanı -->
+  <text x="340" y="142" font-family="'Montserrat', 'Arial Black', sans-serif" font-size="82" font-weight="900" letter-spacing="14" fill="#e53935" opacity="0.5" text-anchor="middle" filter="url(#glow)">
+    KAGE
+  </text>
+  <!-- Ana Yazı -->
+  <text x="340" y="142" font-family="'Montserrat', 'Arial Black', sans-serif" font-size="82" font-weight="900" letter-spacing="14" fill="url(#textGrad)" text-anchor="middle">
+    KAGE
+  </text>
+
+  <!-- Üst Küçük Rozet Metni -->
+  <g transform="translate(340, 52)">
+    <rect x="-110" y="-12" width="220" height="20" rx="10" fill="#0e0c0c" stroke="#8e0e15" stroke-width="1"/>
+    <text x="0" y="2" font-family="'Noto Sans', sans-serif" font-size="9" font-weight="700" letter-spacing="3" fill="#e53935" text-anchor="middle">
+      ⛩️ MANGA &amp; GAME ECOSYSTEM ⛩️
+    </text>
+  </g>
+
+  <!-- Alt Slogan Metni -->
+  <text x="340" y="196" font-family="'Noto Sans', 'Segoe UI', sans-serif" font-size="12" font-weight="600" letter-spacing="4" fill="#a0a0a0" text-anchor="middle">
+    SESSIZCE OKU, DERINLERE IN
+  </text>
+
+  <!-- Köşe Aksanları (Samuray Köşebentleri) -->
+  <g stroke="#e53935" stroke-width="2" fill="none" opacity="0.6">
+    <path d="M 12 28 L 12 12 L 28 12"/>
+    <path d="M 668 28 L 668 12 L 652 12"/>
+    <path d="M 12 212 L 12 228 L 28 228"/>
+    <path d="M 668 212 L 668 228 L 652 228"/>
+  </g>
+</svg>
