@@ -38,7 +38,7 @@ export async function execute(client) {
   // Komutları Discord API'ye otomatik eşitle (Deploy)
   try {
     const komutlar = client.commands.map(cmd => cmd.data.toJSON());
-    const guildId = process.env.GUILD_ID;
+    const guildId = process.env.GUILD_ID || '1563941845367787682';
 
     if (guildId) {
       await client.application.commands.set(komutlar, guildId);

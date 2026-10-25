@@ -10,8 +10,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const token = process.env.DISCORD_TOKEN;
-const clientId = process.env.CLIENT_ID;
-const guildId = process.env.GUILD_ID;
+const clientId = process.env.CLIENT_ID || '1563951364466540584';
+const guildId = process.env.GUILD_ID || '1563941845367787682';
 
 if (!token || !clientId) {
   console.error('❌ Hata: DISCORD_TOKEN ve CLIENT_ID .env dosyasında tanımlı olmalıdır!');
