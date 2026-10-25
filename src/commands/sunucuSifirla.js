@@ -15,6 +15,8 @@ export const data = new SlashCommandBuilder()
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
 
 export async function execute(interaction) {
+  // Anında defer et
+  await interaction.deferReply();
   const guild = interaction.guild;
 
   const uyariEmbed = kageEmbed({
@@ -42,10 +44,9 @@ export async function execute(interaction) {
       .setEmoji('❌')
   );
 
-  const yanit = await interaction.reply({
+  const yanit = await interaction.editReply({
     embeds: [uyariEmbed],
-    components: [row],
-    fetchReply: true
+    components: [row]
   });
 
   const collector = yanit.createMessageComponentCollector({
@@ -69,13 +70,14 @@ export async function execute(interaction) {
 
     if (i.customId === 'sifirla_onayla') {
       collector.stop();
-      await i.update({
+      await i.deferUpdate();
+      await interaction.editReply({
         content: '💣 **Sıfırlama başlatıldı...** Eski kanallar düzenleniyor ve Kage kalesi yeniden inşa ediliyor...',
         embeds: [],
         components: []
       });
 
-      // Kanalları temizle (mevcut komutun çalıştığı kanal hariç veya silinebilir olanlar)
+      // Kanalları temizle
       const silinebilirKanallar = guild.channels.cache.filter(c => 
         c.id !== interaction.channelId && 
         (c.name.includes('kayıt') || c.name.includes('sohbet') || c.name.includes('kage') || c.name.includes('mod') || c.name.includes('manga') || c.name.includes('kurallar') || c.name.includes('ses'))
@@ -87,7 +89,6 @@ export async function execute(interaction) {
         } catch {}
       }
 
-      // Şimdi standart detaylı kurulumu çalıştır
       return sunucuKurExecute(interaction);
     }
   });

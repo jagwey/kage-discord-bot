@@ -13,9 +13,19 @@ import { sunucuAyarGuncelle } from '../services/veritabaniServisi.js';
 export const data = new SlashCommandBuilder()
   .setName('sunucu-kur')
   .setDescription('Sunucuyu detaylı samuray hiyerarşisi, kayıt kapısı, manga ve oyun odalarıyla kurar.')
-  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+  .addStringOption(opt =>
+    opt.setName('sablon')
+      .setDescription('Kurulacak mimari düzeni')
+      .setRequired(false)
+      .addChoices(
+        { name: '⛩️ Tam Kage Düzeni (Tüm Roller, Kayıt Kapısı & Odalar)', value: 'tam' }
+      )
+  );
 
 export async function execute(interaction) {
+  // Anında defer et ki Discord 3 saniyelik zaman aşımına düşmesin ("Uygulama yanıt vermedi" hatasını önler)
+  await interaction.deferReply();
   const guild = interaction.guild;
 
   const onayEmbed = kageEmbed({
@@ -48,10 +58,9 @@ export async function execute(interaction) {
       .setEmoji('❌')
   );
 
-  const yanit = await interaction.reply({
+  const yanit = await interaction.editReply({
     embeds: [onayEmbed],
-    components: [row],
-    fetchReply: true
+    components: [row]
   });
 
   const collector = yanit.createMessageComponentCollector({
@@ -75,7 +84,8 @@ export async function execute(interaction) {
 
     if (i.customId === 'kurulum_onayla') {
       collector.stop();
-      await i.update({
+      await i.deferUpdate();
+      await interaction.editReply({
         content: `⛩️ **Kage Kalesi İnşa Ediliyor...** Roller, izinler ve kayıt kapısı ayarlanıyor, lütfen 10-15 saniye bekleyin...`,
         embeds: [],
         components: []
@@ -203,7 +213,7 @@ export async function execute(interaction) {
           parent: katGiris.id,
           permissionOverwrites: [
             { id: everyone.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ReadMessageHistory], deny: [PermissionFlagsBits.SendMessages] },
-            { id: roller.shinobi.id, deny: [PermissionFlagsBits.ViewChannel] } // Kayıt olanlar artık kapıyı görmez!
+            { id: roller.shinobi.id, deny: [PermissionFlagsBits.ViewChannel] }
           ]
         });
 
@@ -334,7 +344,7 @@ export async function execute(interaction) {
         // 8. Ayarları Veritabanına Bağla
         sunucuAyarGuncelle(guild.id, {
           modLogKanalId: modLogKanal.id,
-          otoRolId: roller.ronin.id, // Yeni katılanlara otomatik Ronin (Kayıtsız) verilir
+          otoRolId: roller.ronin.id,
           hosgeldinKanalId: hosgeldiniz.id,
           aiYonetimKanalId: aiKanal.id
         });
