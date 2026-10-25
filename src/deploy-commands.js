@@ -39,19 +39,16 @@ const rest = new REST({ version: '10' }).setToken(token);
     console.log(`⛩️ ${commands.length} adet eğik çizgi (/) komutu Discord API'ye yükleniyor...`);
 
     if (guildId) {
-      // Çift komut görünümünü engellemek için önce genel (global) komutları temizle
-      try {
-        await rest.put(Routes.applicationCommands(clientId), { body: [] });
-        console.log('🧹 Eski genel komutlar temizlendi (mükerrer/çift komut önlendi).');
-      } catch (e) {
-        // İhmal edilebilir
-      }
+      // Önce genel (global) komutları temizle (Çift görünmeyi engellemek için)
+      await rest.put(Routes.applicationCommands(clientId), { body: [] });
+      console.log('🧹 Eski genel komutlar temizlendi (çift liste engellendi).');
 
+      // Sadece sunucuya yükle
       const data = await rest.put(
         Routes.applicationGuildCommands(clientId, guildId),
         { body: commands }
       );
-      console.log(`✅ Başarılı! ${data.length} komut yerel sunucuya (${guildId}) anında yüklendi.`);
+      console.log(`✅ Başarılı! ${data.length} komut yerel sunucuya (${guildId}) tekil olarak yüklendi.`);
     } else {
       const data = await rest.put(
         Routes.applicationCommands(clientId),

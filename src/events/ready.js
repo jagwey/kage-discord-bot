@@ -16,18 +16,18 @@ export async function execute(client) {
   ██╔═██╗ ██╔══██║██║   ██║██╔══╝  
   ██║  ██╗██║  ██║╚██████╔╝███████╗
   ╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝ ╚══════╝
-       ⛩️  K  A  G  E  -  9  5  ⛩️
+       ⛩️  K  A  G  E  •  B O T  ⛩️
   `;
 
   console.log(banner);
-  console.log(`[Kage-95] Gölge ninjası uyandı! Giriş yapıldı: ${client.user.tag}`);
-  console.log(`[Kage-95] Toplam Sunucu: ${client.guilds.cache.size} | Toplam Kullanıcı: ${client.users.cache.size}`);
+  console.log(`[Kage] Gölge ninjası uyandı! Giriş yapıldı: ${client.user.tag}`);
+  console.log(`[Kage] Toplam Sunucu: ${client.guilds.cache.size} | Toplam Kullanıcı: ${client.users.cache.size}`);
 
   // Bot durumunu ve aktivitesini ayarla
   client.user.setPresence({
     activities: [
       {
-        name: '⛩️ Kage-95 | /yardim',
+        name: '⛩️ Kage | /yardim',
         type: ActivityType.Custom,
         state: '🩸 Gölgelerin efendisi devrede... /yardim'
       }
@@ -35,31 +35,23 @@ export async function execute(client) {
     status: 'online'
   });
 
-  // Komutları Discord API'ye otomatik eşitle (Deploy)
+  // Komutları Discord API'ye otomatik eşitle (Çift komut sorununu önlemek için önce globali temizle)
   try {
     const komutlar = client.commands.map(cmd => cmd.data.toJSON());
     const guildId = process.env.GUILD_ID || '1563941845367787682';
 
     if (guildId) {
+      // Global komutları temizle (Böylece sunucuda her komut iki kez görünmez!)
+      await client.application.commands.set([]);
+      // Sadece bu sunucuya yükle (Anında ve tekil görünür)
       await client.application.commands.set(komutlar, guildId);
-      console.log(`[Kage-95] ${komutlar.length} komut sunucuna (${guildId}) ANINDA eşitlendi! ⚡`);
-
-      // Çift komut oluşmasını engellemek için global komut listesini boşalt
-      try {
-        const globalKomutlar = await client.application.commands.fetch();
-        if (globalKomutlar.size > 0) {
-          await client.application.commands.set([]);
-          console.log('[Kage-95] Eski genel komutlar temizlendi (çift komut önlendi).');
-        }
-      } catch (temizleHata) {
-        // İsteğe bağlı
-      }
+      console.log(`[Kage] ${komutlar.length} komut ${guildId} sunucusuna TEKİL olarak eşitlendi (Çift komutlar temizlendi)! ⚡`);
     } else {
       await client.application.commands.set(komutlar);
-      console.log(`[Kage-95] ${komutlar.length} komut genel (global) olarak eşitlendi.`);
+      console.log(`[Kage] ${komutlar.length} komut genel olarak eşitlendi.`);
     }
   } catch (err) {
-    console.error('[Kage-95] Komutlar eşitlenirken hata oluştu:', err);
+    console.error('[Kage] Komutlar eşitlenirken hata oluştu:', err);
   }
 
   // Bölüm takip ve duyuru servisini başlat
