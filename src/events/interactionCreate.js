@@ -50,13 +50,13 @@ export async function execute(interaction) {
         ryoEkle(member.id, 50);
 
         // Kayıt Log
-        const logKanal = guild.channels.cache.find(c => c.isTextBased() && (c.name.includes('kayıt-log') || c.name.includes('kayit-log') || c.name.includes('mod-log')));
+        const logKanal = guild.channels.cache.find(c => c.isTextBased() && (c.name.includes('kayıt-mühür') || c.name.includes('kayıt-log') || c.name.includes('kayit-log') || c.name.includes('mod-log')));
         if (logKanal) {
           logKanal.send(`📝 **[BUTON KAYIT]** ${member.user.tag} (${member.id}) kayıt kapısından mührünü basarak aramıza katıldı.`).catch(() => {});
         }
 
         // Hoş geldin kanalında anons et
-        const hosgeldinKanal = guild.channels.cache.find(c => c.isTextBased() && (c.name.includes('hoş-geldin') || c.name.includes('hos-geldin')));
+        const hosgeldinKanal = guild.channels.cache.find(c => c.isTextBased() && (c.name.includes('yeni-savaşçılar') || c.name.includes('yeni-savascilar') || c.name.includes('hoş-geldin') || c.name.includes('hos-geldin')));
         if (hosgeldinKanal) {
           hosgeldinKanal.send({
             content: `🌸 **Aramıza Hoş Geldin ${member}!** Artık Kage kalesinin şerefli bir üyesisin. Sohbet odalarında kılıcını kınından çıkarabilirsin!`

@@ -28,9 +28,9 @@ export async function execute(member) {
     console.error(`[GuildMemberAdd] Rol atanamadı (${member.user.tag}):`, err.message);
   }
 
-  // 2. Karşılama Mesajı (#hoş-geldin veya ayarlı kanal)
+  // 2. Karşılama Mesajı (#yeni-savaşçılar, #hoş-geldin veya ayarlı kanal)
   const welcomeChannel = guild.channels.cache.find(c => 
-    c.isTextBased() && (c.name.includes('hoş-geldin') || c.name.includes('hos-geldin'))
+    c.isTextBased() && (c.name.includes('yeni-savaşçılar') || c.name.includes('yeni-savascilar') || c.name.includes('hoş-geldin') || c.name.includes('hos-geldin'))
   ) || (ayarlar.hosgeldinKanalId ? await guild.channels.fetch(ayarlar.hosgeldinKanalId).catch(() => null) : null);
 
   if (!welcomeChannel || !welcomeChannel.isTextBased()) return;

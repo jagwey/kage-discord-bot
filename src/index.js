@@ -73,7 +73,7 @@ if (fs.existsSync(eventsPath)) {
 
 // 3. Bulut Sunucuları ve Webhook Entegrasyonu İçin HTTP API Sunucusu
 import http from 'http';
-import { anlikBolumDuyur, anlikDuyuruDuyur, anlikRolGuncelle } from './services/duyuruServisi.js';
+import { anlikMangaDuyur, anlikBolumDuyur, anlikDuyuruDuyur, anlikRolGuncelle } from './services/duyuruServisi.js';
 
 const PORT = process.env.PORT || 3000;
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || 'kage95_secret_key';
@@ -119,6 +119,14 @@ http.createServer(async (req, res) => {
     req.on('end', async () => {
       try {
         const data = body ? JSON.parse(body) : {};
+
+        // A0. Yeni Manga Webhook'u
+        if (url.pathname === '/api/webhook/manga') {
+          const sonuc = await anlikMangaDuyur(client, data);
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ success: true, message: 'Yeni manga duyurusu başarıyla Discord kanalına iletildi.', ...sonuc }));
+          return;
+        }
 
         // A. Yeni Bölüm Webhook'u
         if (url.pathname === '/api/webhook/bolum') {

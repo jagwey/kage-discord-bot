@@ -4,91 +4,113 @@ import { fileURLToPath } from 'url';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { TEMA, kageEmbed, rastgeleSlogan } from '../config/tema.js';
 import { tumMangalariGetir, mangaDetayGetir, tamGorselUrl, sonEklenenBolumleriGetir } from './mangaServisi.js';
+import { sunucuAyarGetir } from './veritabaniServisi.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const DATA_DIR = path.join(__dirname, '../../data');
-const SEEN_CHAPTERS_FILE = path.join(DATA_DIR, 'seen_chapters.json');
+const SEEN_DATA_FILE = path.join(DATA_DIR, 'seen_data.json');
 
-// Bellek içi görülmüş bölümler seti
+// Bellek içi görülmüş manga ve bölümler
 let gorulenBolumler = new Set();
+let gorulenMangalar = new Set();
 let pollerInterval = null;
 let ilkCalisma = true;
 
-/**
- * Görülmüş bölümleri yerel diskten yükler
- */
 function gorulenleriYukle() {
   try {
     if (!fs.existsSync(DATA_DIR)) {
       fs.mkdirSync(DATA_DIR, { recursive: true });
     }
-    if (fs.existsSync(SEEN_CHAPTERS_FILE)) {
-      const data = JSON.parse(fs.readFileSync(SEEN_CHAPTERS_FILE, 'utf-8'));
-      if (Array.isArray(data)) {
-        gorulenBolumler = new Set(data);
-        console.log(`[DuyuruServisi] Önbellekten ${gorulenBolumler.size} görülmüş bölüm yüklendi.`);
-      }
+    if (fs.existsSync(SEEN_DATA_FILE)) {
+      const data = JSON.parse(fs.readFileSync(SEEN_DATA_FILE, 'utf-8'));
+      if (Array.isArray(data.bolumler)) gorulenBolumler = new Set(data.bolumler);
+      if (Array.isArray(data.mangalar)) gorulenMangalar = new Set(data.mangalar);
+      console.log(`[DuyuruServisi] Hafızadan ${gorulenMangalar.size} manga, ${gorulenBolumler.size} bölüm yüklendi.`);
     }
   } catch (err) {
-    console.error('[DuyuruServisi] Görülmüş bölümler yüklenirken hata:', err.message);
+    console.error('[DuyuruServisi] Görülmüş veriler yüklenirken hata:', err.message);
   }
 }
 
-/**
- * Görülmüş bölümleri yerel diske kaydeder
- */
 function gorulenleriKaydet() {
   try {
     if (!fs.existsSync(DATA_DIR)) {
       fs.mkdirSync(DATA_DIR, { recursive: true });
     }
-    fs.writeFileSync(SEEN_CHAPTERS_FILE, JSON.stringify([...gorulenBolumler]), 'utf-8');
+    fs.writeFileSync(SEEN_DATA_FILE, JSON.stringify({
+      bolumler: [...gorulenBolumler],
+      mangalar: [...gorulenMangalar]
+    }, null, 2), 'utf-8');
   } catch (err) {
-    console.error('[DuyuruServisi] Görülmüş bölümler kaydedilemedi:', err.message);
+    console.error('[DuyuruServisi] Veriler kaydedilemedi:', err.message);
   }
 }
 
 /**
- * Tekil bir bölüm duyurusu için şık Discord embed ve okuma butonu üretir
- * @param {Object} bolum
- * @returns {{ embed: import('discord.js').EmbedBuilder, row: ActionRowBuilder }}
+ * Duyuru kanalını dinamik olarak bulur (Asla boş kalmaz!)
  */
-export function bolumDuyuruKartiOlustur(bolum) {
+export function duyuruKanaliniBul(client) {
+  const guildId = process.env.GUILD_ID;
+  const guild = (guildId ? client.guilds.cache.get(guildId) : null) || client.guilds.cache.first();
+  if (!guild) return null;
+
+  // 1. Ayarlardan kanal ID'si
+  const ayarlar = sunucuAyarGetir(guild.id);
+  if (ayarlar?.mangaDuyuruKanalId) {
+    const k = guild.channels.cache.get(ayarlar.mangaDuyuruKanalId);
+    if (k && k.isTextBased()) return k;
+  }
+
+  // 2. Çevre değişkeninden
+  if (process.env.ANNOUNCEMENT_CHANNEL_ID) {
+    const k = guild.channels.cache.get(process.env.ANNOUNCEMENT_CHANNEL_ID);
+    if (k && k.isTextBased()) return k;
+  }
+
+  // 3. Sunucudaki isimlerden otomatik keşfet
+  return guild.channels.cache.find(c => 
+    c.isTextBased() && (
+      c.name.includes('manga-yayın') ||
+      c.name.includes('manga-duyuru') ||
+      c.name.includes('duyuru') ||
+      c.name.includes('manga')
+    )
+  ) || guild.channels.cache.find(c => c.isTextBased()) || null;
+}
+
+/**
+ * Yeni manga için duyuru kartı üretir
+ */
+export function mangaDuyuruKartiOlustur(manga) {
+  const siteUrl = process.env.SITE_URL || 'https://kage95.com';
+  const mangaUrl = manga.mangaUrl || `${siteUrl}/manga.html?id=${manga.id || manga.mangaId}`;
+  const kapak = manga.kapakResmi ? tamGorselUrl(manga.kapakResmi) : `${siteUrl}/favicon.svg`;
+
   const embed = kageEmbed({
-    baslik: `YENİ BÖLÜM YAYINLANDI • ${bolum.mangaAdi}`,
+    baslik: `🔥 YENİ MANGA YAYINLANDI • ${manga.mangaAdi}`,
     renk: TEMA.RENKLER.KAN_KIRMIZISI,
-    aciklama: `Kage 95 kütüphanesine yeni bir parşömen eklendi. Kılıcını hazırla ve gölgelerin arasına dal!\n\n${TEMA.EMOJILER.KATANA} **Bölüm:** ${bolum.bolumBaslik || `Bölüm ${bolum.bolumNo}`}\n${TEMA.EMOJILER.ZAMAN} **Yayın Tarihi:** <t:${Math.floor(new Date(bolum.eklenmeTarihi || Date.now()).getTime() / 1000)}:R>`,
-    thumbnail: bolum.kapakResmi,
-    url: bolum.okumaUrl,
+    aciklama: `Kage 95 kütüphanesine yepyeni bir efsane katıldı! Kılıcını kınından çıkar ve bu kadim seriyi ilk okuyanlardan ol.\n\n` +
+      `📖 **Özet:**\n${manga.aciklama || 'Gölge dünyasında unutulmaz bir macera seni bekliyor.'}\n\n` +
+      `*${rastgeleSlogan()}*`,
+    thumbnail: kapak,
+    url: mangaUrl,
     alanlar: [
-      {
-        name: `${TEMA.EMOJILER.PARSOMEN} Manga Bilgisi`,
-        value: `**${bolum.mangaAdi}** serisinin son gelişmeleri Kage 95'te yayında.`,
-        inline: false
-      },
-      {
-        name: `${TEMA.EMOJILER.FENER} Platform`,
-        value: `[kage95.com](${process.env.SITE_URL || 'https://kage95.com'})`,
-        inline: true
-      },
-      {
-        name: `${TEMA.EMOJILER.GOLGE} Slogan`,
-        value: `*${rastgeleSlogan()}*`,
-        inline: true
-      }
-    ]
+      { name: '🗡️ Seri Adı', value: `**${manga.mangaAdi}**`, inline: true },
+      { name: '🌐 Platform', value: `[kage95.com](${siteUrl})`, inline: true }
+    ],
+    footer: `Kage 95 Manga Platformu • Yeni Seri Yayını`
   });
 
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
-      .setLabel('Hemen Oku')
-      .setURL(bolum.okumaUrl)
+      .setLabel('Mangayı Oku')
+      .setURL(mangaUrl)
       .setStyle(ButtonStyle.Link)
       .setEmoji(TEMA.EMOJILER.PARSOMEN),
     new ButtonBuilder()
-      .setLabel('Kage 95 Kütüphanesi')
-      .setURL(process.env.SITE_URL || 'https://kage95.com')
+      .setLabel('Tüm Kütüphane')
+      .setURL(siteUrl)
       .setStyle(ButtonStyle.Link)
       .setEmoji(TEMA.EMOJILER.TORII)
   );
@@ -97,227 +119,132 @@ export function bolumDuyuruKartiOlustur(bolum) {
 }
 
 /**
- * Otomatik bölüm tarama ve duyurma mekanizmasını çalıştırır
- * @param {import('discord.js').Client} client
+ * Yeni bölüm duyuru kartı üretir
  */
-export async function bolumleriKontrolEtVeDuyur(client) {
-  const kanalId = process.env.ANNOUNCEMENT_CHANNEL_ID;
-  if (!kanalId) {
-    return;
-  }
+export function bolumDuyuruKartiOlustur(bolum) {
+  const siteUrl = process.env.SITE_URL || 'https://kage95.com';
+  const okumaUrl = bolum.okumaUrl || `${siteUrl}/read.html?mangaId=${bolum.mangaId}&chapterId=${bolum.bolumId}`;
 
-  try {
-    const kanal = await client.channels.fetch(kanalId).catch(() => null);
-    if (!kanal || !kanal.isTextBased()) {
-      return;
-    }
-
-    const sonBolumler = await sonEklenenBolumleriGetir();
-
-    // Bot ilk kez açıldığında kanalı flood yapmamak için mevcut bölümleri kaydet
-    if (ilkCalisma && gorulenBolumler.size === 0) {
-      for (const b of sonBolumler) {
-        gorulenBolumler.add(String(b.bolumId));
-      }
-      gorulenleriKaydet();
-      ilkCalisma = false;
-      console.log(`[DuyuruServisi] İlk başlatma: ${sonBolumler.length} mevcut bölüm indekslendi.`);
-      return;
-    }
-    ilkCalisma = false;
-
-    // Yeni olanları tespit et
-    for (const bolum of sonBolumler) {
-      const bKey = String(bolum.bolumId);
-      if (!gorulenBolumler.has(bKey)) {
-        gorulenBolumler.add(bKey);
-        gorulenleriKaydet();
-
-        const { embed, row } = bolumDuyuruKartiOlustur(bolum);
-
-        const rolId = process.env.ANNOUNCEMENT_ROLE_ID;
-        const mesajIcerik = rolId ? `<@&${rolId}>` : null;
-
-        await kanal.send({
-          content: mesajIcerik,
-          embeds: [embed],
-          components: [row]
-        });
-
-        console.log(`[DuyuruServisi] Yeni bölüm duyuruldu: ${bolum.mangaAdi} - Bölüm ${bolum.bolumNo}`);
-      }
-    }
-  } catch (err) {
-    console.error('[DuyuruServisi] Bölüm kontrol döngüsünde hata:', err.message);
-  }
-}
-
-/**
- * Test amaçlı anında bir duyuru kartı gönderir
- * @param {import('discord.js').Client} client
- * @param {string} kanalId
- */
-export async function duyuruTestEt(client, kanalId) {
-  const kanal = await client.channels.fetch(kanalId);
-  if (!kanal || !kanal.isTextBased()) {
-    throw new Error('Hedef metin kanalı bulunamadı veya erişilemez.');
-  }
-
-  // Canlı API'den ilk mangayı örnek al
-  const mangalar = await tumMangalariGetir();
-  const ornekManga = mangalar[0] || {
-    id: 10,
-    mangaAdi: 'Berserk',
-    kapakResmiURL: '/uploads/berserk.jpg'
-  };
-
-  const ornekBolum = {
-    mangaId: ornekManga.id,
-    mangaAdi: ornekManga.mangaAdi,
-    kapakResmi: tamGorselUrl(ornekManga.kapakResmiURL),
-    bolumId: `test-${Date.now()}`,
-    bolumNo: 375,
-    bolumBaslik: 'Bölüm 375: Gölgelerin Uyanışı (TEST DUYURUSU)',
-    eklenmeTarihi: new Date().toISOString(),
-    okumaUrl: `${process.env.SITE_URL || 'https://kage95.com'}/manga/${ornekManga.id}`
-  };
-
-  const { embed, row } = bolumDuyuruKartiOlustur(ornekBolum);
-  await kanal.send({
-    content: `${TEMA.EMOJILER.TORII} **[TEST BİLDİRİMİ]** Aşağıda yeni bölüm duyuru kartı simüle edilmiştir:`,
-    embeds: [embed],
-    components: [row]
+  const embed = kageEmbed({
+    baslik: `⚡ YENİ BÖLÜM YAYINLANDI • ${bolum.mangaAdi}`,
+    renk: TEMA.RENKLER.KAN_KIRMIZISI,
+    aciklama: `Kage 95 kütüphanesine taze bir parşömen eklendi!\n\n` +
+      `${TEMA.EMOJILER.KATANA} **Bölüm:** ${bolum.bolumBaslik || `Bölüm ${bolum.bolumNo}`}\n` +
+      `${TEMA.EMOJILER.ZAMAN} **Yayın Saati:** <t:${Math.floor(Date.now() / 1000)}:R>\n\n` +
+      `*${rastgeleSlogan()}*`,
+    thumbnail: bolum.kapakResmi ? tamGorselUrl(bolum.kapakResmi) : null,
+    url: okumaUrl,
+    alanlar: [
+      { name: '📖 Seri', value: `**${bolum.mangaAdi}**`, inline: true },
+      { name: '🌐 Platform', value: `[kage95.com](${siteUrl})`, inline: true }
+    ],
+    footer: `Kage 95 Otomatik Bölüm Takipçisi`
   });
+
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setLabel('Hemen Oku')
+      .setURL(okumaUrl)
+      .setStyle(ButtonStyle.Link)
+      .setEmoji(TEMA.EMOJILER.PARSOMEN),
+    new ButtonBuilder()
+      .setLabel('Kage 95 Kütüphanesi')
+      .setURL(siteUrl)
+      .setStyle(ButtonStyle.Link)
+      .setEmoji(TEMA.EMOJILER.TORII)
+  );
+
+  return { embed, row };
 }
 
 /**
- * Arka plan zamanlayıcısını başlatır
- * @param {import('discord.js').Client} client
+ * Anlık yeni manga duyurusu (Webhook ile çağrılır)
  */
-export function duyuruServisiniBaslat(client) {
-  gorulenleriYukle();
-
-  const aralikDakika = parseInt(process.env.CHECK_INTERVAL_MINUTES || '5', 10);
-  const aralikMs = Math.max(aralikDakika, 1) * 60 * 1000;
-
-  console.log(`[DuyuruServisi] Arka plan bölüm poller aktif edildi (${aralikDakika} dakikada bir kontrol edilecek).`);
-
-  // İlk kontrolü 10 saniye sonra yap
-  setTimeout(() => {
-    bolumleriKontrolEtVeDuyur(client);
-  }, 10000);
-
-  // Periyodik döngü
-  if (pollerInterval) clearInterval(pollerInterval);
-  pollerInterval = setInterval(() => {
-    bolumleriKontrolEtVeDuyur(client);
-  }, aralikMs);
-}
-
-/**
- * Web sitesinden (ASP.NET backend) gelen anlık yeni bölüm bildirimini Discord'a iletir
- * @param {import('discord.js').Client} client
- * @param {Object} data
- */
-export async function anlikBolumDuyur(client, data) {
+export async function anlikMangaDuyur(client, mangaData) {
   try {
-    let kanalId = process.env.ANNOUNCEMENT_CHANNEL_ID;
-    let kanal = null;
+    const kanal = duyuruKanaliniBul(client);
+    if (!kanal) throw new Error('Duyuru kanalı bulunamadı.');
 
-    if (kanalId) {
-      kanal = await client.channels.fetch(kanalId).catch(() => null);
-    }
-
-    // Hedef kanal env'de yoksa sunucudaki ilk uygun kanalı bul
-    if (!kanal || !kanal.isTextBased()) {
-      const guild = client.guilds.cache.get(process.env.GUILD_ID) || client.guilds.cache.first();
-      if (guild) {
-        kanal = guild.channels.cache.find(c => 
-          c.isTextBased() && (c.name.includes('duyuru') || c.name.includes('manga') || c.name.includes('genel'))
-        ) || guild.channels.cache.find(c => c.isTextBased());
-      }
-    }
-
-    if (!kanal) {
-      throw new Error('Duyuru gönderilecek uygun bir Discord metin kanalı bulunamadı.');
-    }
-
-    const bolumObj = {
-      mangaId: data.mangaId,
-      mangaAdi: data.mangaAdi || 'Bilinmeyen Seri',
-      kapakResmi: data.kapakResmi ? tamGorselUrl(data.kapakResmi) : null,
-      bolumId: data.bolumId || Date.now(),
-      bolumNo: data.bolumNo || 1,
-      bolumBaslik: data.bolumAdi || `Bölüm ${data.bolumNo || 1}`,
-      eklenmeTarihi: new Date().toISOString(),
-      okumaUrl: data.okumaUrl || `${process.env.SITE_URL || 'https://kage95.com'}/read.html?mangaId=${data.mangaId}&chapterId=${data.bolumId}`
-    };
-
-    // Bölüm ID'sini görüldü olarak kaydet ki poller tekrar atmasın
-    gorulenBolumler.add(String(bolumObj.bolumId));
+    const mangaIdStr = String(mangaData.id || mangaData.mangaId);
+    gorulenMangalar.add(mangaIdStr);
     gorulenleriKaydet();
 
-    const { embed, row } = bolumDuyuruKartiOlustur(bolumObj);
+    const { embed, row } = mangaDuyuruKartiOlustur(mangaData);
 
-    const rolId = process.env.ANNOUNCEMENT_ROLE_ID;
-    const mesajIcerik = rolId ? `<@&${rolId}>` : null;
+    const guild = kanal.guild;
+    const okurRolu = guild.roles.cache.find(r => r.name.includes('Manga Okuru'));
+    const content = okurRolu ? `<@&${okurRolu.id}>` : undefined;
 
-    const gonderilen = await kanal.send({
-      content: mesajIcerik,
+    await kanal.send({
+      ...(content ? { content } : {}),
       embeds: [embed],
       components: [row]
     });
 
-    console.log(`[DuyuruServisi - WEBHOOK] Anlık bölüm yayınlandı: ${bolumObj.mangaAdi} - Bölüm ${bolumObj.bolumNo}`);
-    return { success: true, messageId: gonderilen.id, channelId: kanal.id };
+    console.log(`[DuyuruServisi] Anlık manga duyuruldu: ${mangaData.mangaAdi}`);
+    return { success: true };
   } catch (err) {
-    console.error('[DuyuruServisi - WEBHOOK] Bölüm bildirimi gönderilirken hata:', err.message);
+    console.error('[DuyuruServisi] Manga duyuru hatası:', err.message);
     throw err;
   }
 }
 
 /**
- * Web sitesinden gelen genel site duyurusunu Discord'a iletir
- * @param {import('discord.js').Client} client
- * @param {Object} data
+ * Anlık yeni bölüm duyurusu (Webhook ile çağrılır)
+ */
+export async function anlikBolumDuyur(client, data) {
+  try {
+    const kanal = duyuruKanaliniBul(client);
+    if (!kanal) throw new Error('Duyuru kanalı bulunamadı.');
+
+    const bolumObj = {
+      mangaId: data.mangaId,
+      mangaAdi: data.mangaAdi || 'Bilinmeyen Seri',
+      kapakResmi: data.kapakResmi,
+      bolumId: data.bolumId || Date.now(),
+      bolumNo: data.bolumNo || 1,
+      bolumBaslik: data.bolumAdi || `Bölüm ${data.bolumNo || 1}`,
+      okumaUrl: data.okumaUrl
+    };
+
+    gorulenBolumler.add(String(bolumObj.bolumId));
+    gorulenleriKaydet();
+
+    const { embed, row } = bolumDuyuruKartiOlustur(bolumObj);
+
+    const guild = kanal.guild;
+    const okurRolu = guild.roles.cache.find(r => r.name.includes('Manga Okuru'));
+    const content = okurRolu ? `<@&${okurRolu.id}>` : undefined;
+
+    await kanal.send({
+      ...(content ? { content } : {}),
+      embeds: [embed],
+      components: [row]
+    });
+
+    console.log(`[DuyuruServisi] Anlık bölüm duyuruldu: ${bolumObj.mangaAdi} - ${bolumObj.bolumBaslik}`);
+    return { success: true };
+  } catch (err) {
+    console.error('[DuyuruServisi] Bölüm duyuru hatası:', err.message);
+    throw err;
+  }
+}
+
+/**
+ * Genel site duyurusu (Webhook ile çağrılır)
  */
 export async function anlikDuyuruDuyur(client, data) {
   try {
-    let kanalId = process.env.ANNOUNCEMENT_CHANNEL_ID;
-    let kanal = null;
-
-    if (kanalId) {
-      kanal = await client.channels.fetch(kanalId).catch(() => null);
-    }
-
-    if (!kanal || !kanal.isTextBased()) {
-      const guild = client.guilds.cache.get(process.env.GUILD_ID) || client.guilds.cache.first();
-      if (guild) {
-        kanal = guild.channels.cache.find(c => 
-          c.isTextBased() && (c.name.includes('duyuru') || c.name.includes('genel'))
-        ) || guild.channels.cache.find(c => c.isTextBased());
-      }
-    }
-
-    if (!kanal) {
-      throw new Error('Duyuru gönderilecek uygun bir Discord metin kanalı bulunamadı.');
-    }
+    const kanal = duyuruKanaliniBul(client);
+    if (!kanal) throw new Error('Duyuru kanalı bulunamadı.');
 
     const embed = kageEmbed({
       baslik: `📢 SİTE DUYURUSU: ${data.baslik || 'Önemli Bildirim'}`,
       renk: data.onemli ? TEMA.RENKLER.UYARI_SARI : TEMA.RENKLER.KAN_KIRMIZISI,
       aciklama: data.icerik || 'Kage 95 platformunda yeni bir duyuru yayınlandı.',
       alanlar: [
-        {
-          name: `${TEMA.EMOJILER.PARSOMEN} Kategori / Etiket`,
-          value: `\`${data.etiket || 'Genel'}\``,
-          inline: true
-        },
-        {
-          name: `${TEMA.EMOJILER.FENER} Platform`,
-          value: `[kage95.com](${process.env.SITE_URL || 'https://kage95.com'})`,
-          inline: true
-        }
+        { name: '📜 Kategori', value: `\`${data.etiket || 'Genel'}\``, inline: true },
+        { name: '🌐 Platform', value: `[kage95.com](${process.env.SITE_URL || 'https://kage95.com'})`, inline: true }
       ]
     });
 
@@ -329,66 +256,133 @@ export async function anlikDuyuruDuyur(client, data) {
         .setEmoji(TEMA.EMOJILER.TORII)
     );
 
-    const gonderilen = await kanal.send({
-      embeds: [embed],
-      components: [row]
-    });
-
-    console.log(`[DuyuruServisi - WEBHOOK] Site duyurusu yayınlandı: ${data.baslik}`);
-    return { success: true, messageId: gonderilen.id };
+    await kanal.send({ embeds: [embed], components: [row] });
+    return { success: true };
   } catch (err) {
-    console.error('[DuyuruServisi - WEBHOOK] Duyuru gönderilirken hata:', err.message);
+    console.error('[DuyuruServisi] Site duyuru hatası:', err.message);
     throw err;
   }
 }
 
 /**
- * Web sitesindeki okuma puanı ve seviyeye göre Discord kullanıcısının rolünü senkronize eder
- * @param {import('discord.js').Client} client
- * @param {Object} data
+ * Rol senkronizasyonu
  */
 export async function anlikRolGuncelle(client, data) {
   try {
-    const { discordId, okunanBolumSayisi = 0, puan = 0, unvan } = data;
-    if (!discordId) throw new Error('discordId parametresi zorunludur.');
+    const { discordId, okunanBolumSayisi = 0, puan = 0 } = data;
+    if (!discordId) return;
 
     const guild = client.guilds.cache.get(process.env.GUILD_ID) || client.guilds.cache.first();
-    if (!guild) throw new Error('Discord sunucusu bulunamadı.');
+    if (!guild) return;
 
     const member = await guild.members.fetch(discordId).catch(() => null);
-    if (!member) {
-      return { success: false, message: 'Kullanıcı bu Discord sunucusunda bulunamadı.' };
-    }
+    if (!member) return;
 
-    // Seviye Rütbe Eşleşmeleri
     let hedefRolAdi = 'Shinobi';
-    if (okunanBolumSayisi >= 300 || puan >= 3000) hedefRolAdi = 'Kage';
-    else if (okunanBolumSayisi >= 150 || puan >= 1500) hedefRolAdi = 'Jonin';
-    else if (okunanBolumSayisi >= 50 || puan >= 500) hedefRolAdi = 'Chunin';
-    else if (okunanBolumSayisi >= 15 || puan >= 150) hedefRolAdi = 'Genin';
+    if (okunanBolumSayisi >= 300 || puan >= 3000) hedefRolAdi = 'Kage Efsanesi';
+    else if (okunanBolumSayisi >= 150 || puan >= 1500) hedefRolAdi = 'Jonin Komutanı';
+    else if (okunanBolumSayisi >= 50 || puan >= 500) hedefRolAdi = 'Chunin Kıdemlisi';
+    else if (okunanBolumSayisi >= 15 || puan >= 150) hedefRolAdi = 'Genin Savaşçısı';
 
-    // Sunucuda bu isimde rol var mı kontrol et, yoksa oluşturmayı dene
-    let rol = guild.roles.cache.find(r => r.name.toLowerCase() === hedefRolAdi.toLowerCase());
-    if (!rol) {
-      try {
-        rol = await guild.roles.create({
-          name: hedefRolAdi,
-          color: hedefRolAdi === 'Kage' ? '#e53935' : hedefRolAdi === 'Jonin' ? '#d32f2f' : '#b0bec5',
-          reason: 'Kage Otomatik Manga Okuma Rütbesi'
-        });
-      } catch (err) {
-        console.warn(`[RolSync] ${hedefRolAdi} rolü otomatik oluşturulamadı:`, err.message);
+    const rol = guild.roles.cache.find(r => r.name.toLowerCase().includes(hedefRolAdi.toLowerCase()));
+    if (rol && !member.roles.cache.has(rol.id)) {
+      await member.roles.add(rol);
+      console.log(`[RolSync] ${member.user.tag} -> ${hedefRolAdi}`);
+    }
+  } catch (err) {
+    console.error('[RolSync] Hata:', err.message);
+  }
+}
+
+/**
+ * Arka plan otomatik periyodik tarama (Hem manga hem bölüm kontrolü)
+ */
+export async function periyodikKontrolEtVeDuyur(client) {
+  try {
+    const kanal = duyuruKanaliniBul(client);
+    if (!kanal) return;
+
+    // 1. Mangaları Kontrol Et
+    const mangalar = await tumMangalariGetir();
+    if (Array.isArray(mangalar)) {
+      if (ilkCalisma && gorulenMangalar.size === 0) {
+        for (const m of mangalar) gorulenMangalar.add(String(m.id));
+      } else {
+        for (const m of mangalar) {
+          const mId = String(m.id);
+          if (!gorulenMangalar.has(mId)) {
+            gorulenMangalar.add(mId);
+            gorulenleriKaydet();
+            await anlikMangaDuyur(client, m).catch(() => {});
+          }
+        }
       }
     }
 
-    if (rol && !member.roles.cache.has(rol.id)) {
-      await member.roles.add(rol);
-      console.log(`[RolSync] ${member.user.tag} kullanıcısına '${hedefRolAdi}' rolü verildi.`);
+    // 2. Bölümleri Kontrol Et
+    const sonBolumler = await sonEklenenBolumleriGetir();
+    if (Array.isArray(sonBolumler)) {
+      if (ilkCalisma && gorulenBolumler.size === 0) {
+        for (const b of sonBolumler) gorulenBolumler.add(String(b.bolumId));
+      } else {
+        for (const b of sonBolumler) {
+          const bId = String(b.bolumId);
+          if (!gorulenBolumler.has(bId)) {
+            gorulenBolumler.add(bId);
+            gorulenleriKaydet();
+            await anlikBolumDuyur(client, b).catch(() => {});
+          }
+        }
+      }
     }
 
-    return { success: true, member: member.user.tag, hedefRol: hedefRolAdi };
+    if (ilkCalisma) {
+      gorulenleriKaydet();
+      ilkCalisma = false;
+      console.log(`[DuyuruServisi] İlk tarama tamamlandı: ${gorulenMangalar.size} manga, ${gorulenBolumler.size} bölüm indekslendi.`);
+    }
   } catch (err) {
-    console.error('[RolSync] Rol senkronizasyon hatası:', err.message);
-    throw err;
+    console.error('[DuyuruServisi] Periyodik tarama hatası:', err.message);
   }
+}
+
+/**
+ * Arka plan zamanlayıcısını başlatır
+ */
+export function duyuruServisiniBaslat(client) {
+  gorulenleriYukle();
+
+  console.log('[DuyuruServisi] Akıllı manga ve bölüm poller aktif edildi.');
+
+  // İlk kontrol 15 saniye sonra
+  setTimeout(() => {
+    periyodikKontrolEtVeDuyur(client);
+  }, 15000);
+
+  // Her 3 dakikada bir kontrol et
+  if (pollerInterval) clearInterval(pollerInterval);
+  pollerInterval = setInterval(() => {
+    periyodikKontrolEtVeDuyur(client);
+  }, 3 * 60 * 1000);
+}
+
+/**
+ * Test amaçlı simülasyon
+ */
+export async function duyuruTestEt(client, kanalId) {
+  const kanal = await client.channels.fetch(kanalId);
+  if (!kanal || !kanal.isTextBased()) throw new Error('Kanal bulunamadı.');
+
+  const { embed, row } = mangaDuyuruKartiOlustur({
+    id: 1,
+    mangaAdi: 'Kage 95 (TEST SERİSİ)',
+    kapakResmi: null,
+    aciklama: 'Bu bir test manga duyurusudur. Sistem tıkır tıkır çalışıyor!'
+  });
+
+  await kanal.send({
+    content: '⛩️ **[TEST DUYURUSU]** Sistem yeni manga bildirim simülasyonu:',
+    embeds: [embed],
+    components: [row]
+  });
 }

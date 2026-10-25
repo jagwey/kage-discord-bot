@@ -48,12 +48,23 @@ export async function execute(message) {
     return message.reply({ embeds: [embed], components: [row] }).catch(() => null);
   }
 
+  // 3. Sohbet Ryo Kazanımı (Spam engeliyle şans eseri 1-3 Ryo)
+  if (Math.random() < 0.25) {
+    try {
+      const { ryoEkle } = await import('../services/ekonomiServisi.js');
+      ryoEkle(message.author.id, 1);
+    } catch {}
+  }
+
   const botUser = message.client.user;
   const ayarlar = sunucuAyarGetir(message.guild.id);
   const aiKanalId = ayarlar.aiYonetimKanalId || process.env.AI_ADMIN_CHANNEL_ID;
 
-  // 3. AI Kanalı veya Bot Etiketlemesi
-  const buKanalAiKanali = (aiKanalId && message.channel.id === aiKanalId) || message.channel.name?.includes('ai-gölge-veziri');
+  // 4. AI Kanalı (#gölge-veziri-ai) veya Bot Etiketlemesi
+  const buKanalAiKanali = (aiKanalId && message.channel.id === aiKanalId) || 
+    message.channel.name?.includes('gölge-veziri') || 
+    message.channel.name?.includes('golge-veziri') ||
+    message.channel.name?.includes('ai-gölge-veziri');
   const botEtiketlendi = message.mentions.has(botUser) && !message.mentions.everyone;
 
   if (!buKanalAiKanali && !botEtiketlendi) return;
