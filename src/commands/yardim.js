@@ -35,7 +35,7 @@ export function yardimKartiOlustur() {
       },
       {
         name: `${TEMA.EMOJILER.OYUN} 🎮 Topluluk & Oyun`,
-        value: '`• /oyun` : Kage indie oyun lore & devlog\n`• /duyuru` • `/anket` • `/sunucu-bilgi` • `/kullanici-bilgi` • `/duyuru-test`',
+        value: '`• /oyun` : Kage indie oyun lore & devlog\n`• /guncelleme` : Son güncelleme notları ve #kage-dev raporu\n`• /duyuru` • `/anket` • `/sunucu-bilgi` • `/kullanici-bilgi` • `/duyuru-test`',
         inline: false
       }
     ]

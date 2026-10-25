@@ -9,8 +9,9 @@ package-lock.json
 *.env
 
 # Sunucuya Özel Yerel Veritabanı ve Önbellek Dosyaları
-data/
-data/*.json
+/data/
+/data/*.json
+!src/data/changelog.json
 
 # Loglar
 npm-debug.log*

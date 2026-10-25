@@ -1,0 +1,18 @@
+{
+  "version": "1.2.0",
+  "tarih": "2026-10-25",
+  "baslik": "Web Sitesi Entegrasyonu & Canlı Webhook Sistemi",
+  "gelistirici": "Jagwey",
+  "yeniOzellikler": [
+    "🌐 **Web Sitesi Webhook Entegrasyonu:** kage95.com'a yeni bir manga veya bölüm yüklendiği saniyede gecikmesiz (0s) Discord duyurusu.",
+    "🔑 **Discord OAuth2 Giriş Desteği:** Sitede tek tıkla 'Discord ile Giriş Yap' butonu ve otomatik hesap oluşturma.",
+    "⚔️ **Çift Yönlü Rol & XP Sync:** Sitede manga okudukça Discord'da rütbe/rol yükseltme (`Genin`, `Chunin`, `Jonin`, `Kage`).",
+    "📊 **Canlı Profil API:** `/profil` komutu artık web sitesinden gerçek okuma istatistiklerini, puanları ve seviyeyi canlı çekiyor.",
+    "📢 **Otomatik #kage-dev Bildirimleri:** Bot güncellendiğinde tüm yeni özellikleri ve yama notlarını anında bu kanala raporlar."
+  ],
+  "duzeltmeler": [
+    "Discord arayüzünde her komutun iki kez görünme (çift komut) sorunu tamamen çözüldü.",
+    "Google Gemini 3.5 Flash-Lite ve Claude 3.5 Haiku modelleriyle yapay zeka cevapları hızlandırıldı.",
+    "Cyberpunk manga temalı tam ekran afiş/banner Discord sunucu boyutuna tam oturacak şekilde optimize edildi."
+  ]
+}

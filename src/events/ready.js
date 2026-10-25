@@ -1,5 +1,6 @@
 import { ActivityType, Events } from 'discord.js';
 import { duyuruServisiniBaslat } from '../services/duyuruServisi.js';
+import { kageDevKontrolEtVeDuyur } from '../services/kageDevServisi.js';
 
 export const name = Events.ClientReady;
 export const once = true;
@@ -56,4 +57,9 @@ export async function execute(client) {
 
   // Bölüm takip ve duyuru servisini başlat
   duyuruServisiniBaslat(client);
+
+  // #kage-dev kanalı ve otomatik sürüm güncelleme duyurusu kontrolü
+  setTimeout(() => {
+    kageDevKontrolEtVeDuyur(client);
+  }, 3000);
 }
