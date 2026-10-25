@@ -1,6 +1,7 @@
 import { Events, PermissionFlagsBits } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { aiDanis } from '../services/aiServisi.js';
+import { chatBotYanitla } from '../services/chatBotServisi.js';
 import { sunucuAyarGetir } from '../services/veritabaniServisi.js';
 import { yardimKartiOlustur } from '../commands/yardim.js';
 
@@ -13,7 +14,7 @@ const SPOILER_IPUCLARI = [
 ];
 
 /**
- * Mesaj oluşturulduğunda tetiklenir (Metin komutları, AI sohbeti & Akıllı Spoiler Koruması)
+ * Mesaj oluşturulduğunda tetiklenir (Metin komutları, AI sohbeti & Kage Chat Bot)
  * @param {import('discord.js').Message} message
  */
 export async function execute(message) {
@@ -60,18 +61,53 @@ export async function execute(message) {
   const ayarlar = sunucuAyarGetir(message.guild.id);
   const aiKanalId = ayarlar.aiYonetimKanalId || process.env.AI_ADMIN_CHANNEL_ID;
 
-  // 4. AI Kanalı (#gölge-veziri-ai) veya Bot Etiketlemesi
+  // 4. Tetikleyici Kontrolleri:
+  // a) "kage" ile başlama: "kage şunu yap", "kage, rol ver", "kage: nasılsın", "kage"
+  const kageMatch = message.content.match(/^kage([,\s:!]+(.*)|$)/i);
+  const kageIleBasliyor = !!kageMatch;
+
+  // b) AI Kanalı (#gölge-veziri-ai)
   const buKanalAiKanali = (aiKanalId && message.channel.id === aiKanalId) || 
     message.channel.name?.includes('gölge-veziri') || 
     message.channel.name?.includes('golge-veziri') ||
     message.channel.name?.includes('ai-gölge-veziri');
+
+  // c) Bot Etiketlendi
   const botEtiketlendi = message.mentions.has(botUser) && !message.mentions.everyone;
 
-  if (!buKanalAiKanali && !botEtiketlendi) return;
+  if (!kageIleBasliyor && !buKanalAiKanali && !botEtiketlendi) return;
 
-  let talimat = message.content.replace(new RegExp(`<@!?${botUser.id}>`, 'g'), '').trim();
+  // Talimatı ayıkla
+  let talimat = '';
+  if (kageIleBasliyor) {
+    talimat = (kageMatch[2] || '').trim();
+  } else {
+    talimat = message.content.replace(new RegExp(`<@!?${botUser.id}>`, 'g'), '').trim();
+  }
+
+  // Yetkili / Şogun Kontrolü (Sunucu Sahibi, Yönetici, Bot Geliştiricisi)
+  const isGuildOwner = message.guild.ownerId === message.author.id;
+  const isAdmin = message.member?.permissions?.has(PermissionFlagsBits.Administrator);
+  const isAppOwner = message.client.application?.owner?.id === message.author.id;
+  const isEnvOwner = process.env.OWNER_ID && message.author.id === process.env.OWNER_ID;
+  const yetkiliMi = isGuildOwner || isAdmin || isAppOwner || isEnvOwner;
+
+  // =========================================================================
+  // NORMAL KULLANICILAR İÇİN: KAGE CHAT BOT (AI ve Sunucu Yönetimi Yok)
+  // =========================================================================
+  if (!yetkiliMi) {
+    const chatBotEmbed = chatBotYanitla(talimat, message.author);
+    return message.reply({
+      embeds: [chatBotEmbed],
+      allowedMentions: { repliedUser: false }
+    }).catch(() => null);
+  }
+
+  // =========================================================================
+  // YETKİLİ / ŞOGUN İÇİN: TAM GÖLGE VEZİRİ AI & SUNUCU MİMARİSİ MOTORU
+  // =========================================================================
   if (!talimat) {
-    talimat = 'Selam gölge veziri, nasılsın?';
+    talimat = 'Emrindeyim Şogunum! Kage AI ve Gölge Veziri hazır. Sunucuda ne yapmamı istersiniz?';
   }
 
   // Yazıyor... durumunu gönder
@@ -87,10 +123,10 @@ export async function execute(message) {
     const formatliCevap = cevap.length > 4000 ? cevap.slice(0, 3990) + '...\n*(Metin sınırı aşıldı)*' : cevap;
 
     const embed = kageEmbed({
-      baslik: `⛩️ GÖLGE VEZİRİ • Kage-95`,
+      baslik: `⛩️ GÖLGE VEZİRİ AI • Kage-95`,
       renk: TEMA.RENKLER.KAN_KIRMIZISI,
       aciklama: formatliCevap,
-      footer: `Kage-95 AI Asistanı • ${message.author.tag}`
+      footer: `Kage-95 AI Mimar • Şogun: ${message.author.tag}`
     });
 
     await message.reply({
