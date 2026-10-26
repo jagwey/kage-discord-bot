@@ -13,7 +13,13 @@ export function anahtarVarMi() {
 }
 
 function modelListesi() {
-  const liste = [process.env.GEMINI_MODEL, 'gemini-flash-latest', 'gemini-2.5-flash'].filter(Boolean);
+  const liste = [
+    process.env.GEMINI_MODEL,
+    'gemini-3.5-flash-lite',
+    'gemini-3.5-flash',
+    'gemini-flash-latest',
+    'gemini-2.5-flash'
+  ].filter(Boolean);
   return [...new Set(liste)];
 }
 
