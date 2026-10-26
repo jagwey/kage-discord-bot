@@ -9,6 +9,7 @@ import {
   hafizaBaglamMetniUret,
   kullaniciNotuEkle,
   kullaniciHafizasiGetir,
+  kullaniciModelGetir,
   profilGuncelle,
   profilGetir,
   hafizaArama,
@@ -16,7 +17,7 @@ import {
 } from './kageHafizaServisi.js';
 import { kullaniciKayitBilgileriniGetir } from './kayitServisi.js';
 import { geminiUret, anahtarVarMi } from './ai/geminiClient.js';
-import { akilliAiUret } from './aiRouterServisi.js';
+import { akilliAiUret, belirliModelUret } from './aiRouterServisi.js';
 import { gecmiseEkle, gecmisiIcerigeCevir } from './ai/konusmaGecmisi.js';
 import { duyguTespit } from './duyguServisi.js';
 import { sunucuOzetiMetni } from './sunucuBilgiServisi.js';
@@ -330,11 +331,11 @@ export function otonomOgrenmeKontrol(userId, userName, metin) {
 }
 
 /**
- * Gemini API ile açık uçlu sorulara Kage Persona'sıyla canlı yapay zeka yanıtı üretir.
- * Çok turlu konuşma belleği (konusmaGecmisi), otonom öğrenme etiketleri ve duygu çıkartma desteği içerir.
+ * Kullanıcının seçtiği modelle veya Gemini/Akıllı Router ile açık uçlu sorulara Kage Persona'sıyla canlı yapay zeka yanıtı üretir.
+ * Tüm modeller merkezi ortak hafızayı kullanır ve kullanıcıyı hatırlar.
  */
 async function geminiPersonaSohbet(kullaniciMesaji, baglam) {
-  if (!anahtarVarMi()) return null;
+  const kullaniciTercihi = kullaniciModelGetir(baglam.userId);
 
   const hafizaBaglami = hafizaBaglamMetniUret(kullaniciMesaji, baglam.userId, baglam.userName);
   const egitimBlogu = egitimBaglami(baglam.guildId, baglam.userId, kullaniciMesaji);
@@ -377,78 +378,107 @@ GÖREV VE KURALLAR:
 [DUYGU: <savas|cay|ofke|zafer|para|sevgi|dusunce|uyku|yemek|sok|aglama|selam|oyun|utanma>]
 7. Yanıtın 1-3 paragraf arasında akıcı, doğal ve tatmin edici olsun.`;
 
-  // Konuşma geçmişini yükle
-  let contents = [];
-  if (baglam.channelId) {
-    contents = gecmisiIcerigeCevir(baglam.channelId);
-  }
-  // Mevcut mesajı ekle
-  contents.push({ role: 'user', parts: [{ text: `[${baglam.userName}]: ${kullaniciMesaji}` }] });
-
-  try {
-    const { parts } = await geminiUret({
-      systemInstruction,
-      contents,
-      userId: baglam.userId,
-      temperature: 0.78,
-      maxOutputTokens: 800
-    });
-
-    const hamMetin = parts?.[0]?.text;
-    if (!hamMetin) return null;
-
-    let temizMetin = hamMetin;
-    let secilenDuygu = null;
-    let ogrenilen = null;
-
-    // Duygu etiketini yakala
-    const duyguMatch = hamMetin.match(/\[DUYGU:\s*(savas|cay|ofke|zafer|para|sevgi|dusunce|uyku|yemek|sok|aglama|selam|oyun|utanma)\]/i);
-    if (duyguMatch) {
-      secilenDuygu = duyguMatch[1].toLowerCase();
-    }
-
-    // Öğrenildi etiketini yakala
-    const ogrenildiMatch = hamMetin.match(/\[ÖĞRENİLDİ:\s*([^\]]+)\]/i);
-    if (ogrenildiMatch) {
-      ogrenilen = ogrenildiMatch[1].trim();
-      kullaniciNotuEkle(baglam.userId, baglam.userName, ogrenilen);
-      profilGuncelle(baglam.userId, { kisaOzet: ogrenilen });
-    }
-
-    // Etiketleri temizle
-    temizMetin = temizMetin
-      .replace(/\[DUYGU:\s*[^\]]+\]/gi, '')
-      .replace(/\[ÖĞRENİLDİ:\s*[^\]]+\]/gi, '')
-      .trim();
-
-    return {
-      metin: ciktiyiDenetle(temizMetin),
-      duygu: secilenDuygu,
-      ogrenilen,
-      saglayici: 'Gemini 3.5 Flash'
-    };
-  } catch (err) {
-    console.warn('[ChatBot Gemini] Gemini yanıtı başarısız, yedek yapay zekaya (Groq/Pollinations) geçiliyor:', err.message);
+  // 1. Kullanıcı özel bir model seçtiyse (Groq, OpenRouter DeepSeek, Pollinations vb.) doğrudan onu çağır!
+  if (kullaniciTercihi && kullaniciTercihi !== 'auto' && kullaniciTercihi !== 'gemini') {
     try {
-      const yedek = await akilliAiUret({
+      const ozelSonuc = await belirliModelUret({
         prompt: `[${baglam.userName}]: ${kullaniciMesaji}`,
         system: systemInstruction,
-        gorevTipi: 'hizli_sohbet',
-        userId: baglam.userId
+        modelKodu: kullaniciTercihi,
+        userId: baglam.userId,
+        userName: baglam.userName
       });
-      if (yedek?.metin) {
+
+      if (ozelSonuc?.metin) {
+        let secilenDuygu = 'dusunce';
+        const algilanan = duyguTespit(kullaniciMesaji);
+        if (algilanan.yogunluk >= 2 && algilanan.sticker) secilenDuygu = algilanan.sticker;
+
         return {
-          metin: yedek.metin,
-          duygu: 'cay',
+          metin: ozelSonuc.metin,
+          duygu: secilenDuygu,
           ogrenilen: null,
-          saglayici: yedek.saglayici || 'Akıllı AI Router'
+          saglayici: ozelSonuc.model
         };
       }
-    } catch (yedekErr) {
-      console.warn('[ChatBot Yedek] Yedek yapay zeka da başarısız:', yedekErr.message);
+    } catch (err) {
+      console.warn(`[ChatBot] Tercih edilen model (${kullaniciTercihi}) hata verdi, Gemini/Router'a dönülüyor:`, err.message);
     }
-    return null;
   }
+
+  // 2. Gemini veya Otomatik Yönlendirme
+  if (anahtarVarMi()) {
+    let contents = [];
+    if (baglam.channelId) {
+      contents = gecmisiIcerigeCevir(baglam.channelId);
+    }
+    contents.push({ role: 'user', parts: [{ text: `[${baglam.userName}]: ${kullaniciMesaji}` }] });
+
+    try {
+      const { parts } = await geminiUret({
+        systemInstruction,
+        contents,
+        userId: baglam.userId,
+        temperature: 0.78,
+        maxOutputTokens: 800
+      });
+
+      const hamMetin = parts?.[0]?.text;
+      if (hamMetin) {
+        let temizMetin = hamMetin;
+        let secilenDuygu = null;
+        let ogrenilen = null;
+
+        const duyguMatch = hamMetin.match(/\[DUYGU:\s*(savas|cay|ofke|zafer|para|sevgi|dusunce|uyku|yemek|sok|aglama|selam|oyun|utanma)\]/i);
+        if (duyguMatch) secilenDuygu = duyguMatch[1].toLowerCase();
+
+        const ogrenildiMatch = hamMetin.match(/\[ÖĞRENİLDİ:\s*([^\]]+)\]/i);
+        if (ogrenildiMatch) {
+          ogrenilen = ogrenildiMatch[1].trim();
+          kullaniciNotuEkle(baglam.userId, baglam.userName, ogrenilen);
+          profilGuncelle(baglam.userId, { kisaOzet: ogrenilen });
+        }
+
+        temizMetin = temizMetin
+          .replace(/\[DUYGU:\s*[^\]]+\]/gi, '')
+          .replace(/\[ÖĞRENİLDİ:\s*[^\]]+\]/gi, '')
+          .trim();
+
+        return {
+          metin: ciktiyiDenetle(temizMetin),
+          duygu: secilenDuygu,
+          ogrenilen,
+          saglayici: 'Gemini 3.5 Flash'
+        };
+      }
+    } catch (err) {
+      console.warn('[ChatBot Gemini] Gemini yanıtı başarısız, yedek yapay zekaya (Groq/Pollinations) geçiliyor:', err.message);
+    }
+  }
+
+  // 3. Nihai Yedek: Akıllı AI Router (Groq Cloud / OpenRouter / Pollinations)
+  try {
+    const yedek = await akilliAiUret({
+      prompt: `[${baglam.userName}]: ${kullaniciMesaji}`,
+      system: systemInstruction,
+      gorevTipi: 'hizli_sohbet',
+      userId: baglam.userId,
+      userName: baglam.userName
+    });
+
+    if (yedek?.metin) {
+      return {
+        metin: yedek.metin,
+        duygu: 'cay',
+        ogrenilen: null,
+        saglayici: yedek.saglayici || 'Akıllı AI Router'
+      };
+    }
+  } catch (yedekErr) {
+    console.warn('[ChatBot Yedek] Yedek yapay zeka da başarısız:', yedekErr.message);
+  }
+
+  return null;
 }
 
 /**

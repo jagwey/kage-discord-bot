@@ -63,6 +63,12 @@ Hedefler: docs/PROJE_HEDEFLERI.md. Kullanıcı istemeden commit atılmaz.
   - Canlı Admin AI İzleme Sistemi eklendi: Herhangi bir üye Kage ile konuştuğunda admin kanalına anlık izleme bildirimi gönderilir; yetkililere yanıt altında hangi motorun (`Gemini`, `Groq`, `OpenRouter`, `Pollinations`, `Kural Tabanlı ChatBot`) çalıştığı gösterilir.
   - /model komutu eklendi: /model liste (tüm aktif motorları ve durumlarını gösterir) ve /model sor (istenen spesifik modelle anlık doğrudan konuşma).
   - deploy-commands ile 66 komut Discord'a başarıyla yüklendi.
+- [x] 40. Merkezi Ortak Hafıza (Unified Shared Memory), Doğal Dille Model Geçişi ve Komutsuz Eylem Yönetimi:
+  - **Merkezi Ortak Hafıza:** Hangi yapay zeka modeli (Gemini, Groq, OpenRouter DeepSeek/Llama, Pollinations veya ChatBot) seçilirse seçilsin, hepsi tek bir merkezi hafıza havuzunu (`data/kage_hafiza.json` + `data/egitim.json`) kullanır. Kullanıcı hakkındaki tüm gerçekler, tercihler ve notlar tüm modellere ortak enjekte edilir.
+  - **Otonom Gerçek Öğrenme:** Hangi model konuşursa konuşsun, çıktısındaki `[ÖĞRENİLDİ: ...]` etiketleri otomatik yakalanarak kalıcı hafızaya işlenir. Bir modelle paylaşılan bilgi anında diğer tüm modeller tarafından hatırlanır.
+  - **Doğal Dille Model Seçimi:** Kullanıcı sohbette `kage groq'a geç`, `kage deepseek kullan`, `kage gemini'ye geç`, `kage otomatik moda geç` yazdığında veya `kage [groq]: ...` şeklinde başladığında tercihi kalıcı olarak kaydedilir ve model o anda değişir.
+  - **Komutsuz Doğal Eylem Yönlendirmesi (Action Intent Routing):** Komut yazma zorunluluğu ortadan kaldırıldı. Kullanıcı "kage şu üyeyi sustur", "kage mesajları temizle", "kage kurallara şunu ekle", "kage bana ryo ver", "kage rol ver" dediğinde doğrudan Otonom Vezir (`kageyeSor`) devreye girer. Kullanıcının ve botun yetkisi varsa eylem direkt gerçekleştirilir/onay mekanizması sunulur; yetkisi yoksa Kage samuray tarzıyla yetkinin yetersiz olduğunu belirtir.
+  - **/model sec [secim]:** Kullanıcıların varsayılan AI motorunu slash komutuyla da kalıcı olarak seçebilmesi sağlandı.
 
 ## Sürüyor
 

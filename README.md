@@ -52,9 +52,21 @@ Sunucunuz tamamen boş veya dağınık olsa dahi, tek bir komutla tüm sunucuyu 
   - **Groq Cloud (GPT-OSS-120B / Qwen 27B)**: Saniyede 500+ token jet hızında ultra akıcı sohbet (~0.4s yanıt süresi).
   - **OpenRouter (DeepSeek / Llama 3.3 / Gemma)**: DeepSeek-R1 ve açık kaynak modeller (Düşünce blokları `<think>` otomatik temizlenir).
   - **Pollinations AI**: %100 ücretsiz, API anahtarsız metin ve görsel üretim motoru (`/ciz`).
-- **Anlık Model Seçimi & Listesi (`/model`)**:
+- **Merkezi Ortak Hafıza (Unified Shared Memory & Continuous Learning)**:
+  - Hangi yapay zeka modeli seçilirse seçilsin (Gemini, Groq GPT-OSS-120B, OpenRouter DeepSeek, Pollinations veya ChatBot), tüm modeller tek bir merkezi hafıza havuzunu (`data/kage_hafiza.json` + `data/egitim.json`) paylaşır.
+  - Modeller ayrı ayrı eğitilmez; kullanıcı hakkındaki tüm gerçekler, ilgi alanları, favori mangaları ve sohbet notları tek bir merkezde saklanır. Bir modelle konuştuğunuzda öğrendiği şeyi diğer tüm modeller anında bilir!
+  - **Otonom Öğrenme:** Modeller konuşurken kullanıcının anlattığı yeni bilgileri (`[ÖĞRENİLDİ: ...]`) arka planda otomatik olarak yakalar ve hafızaya işler.
+- **Doğal Dille Model Seçimi & Değişimi**:
+  - Komut yazmadan sohbette doğrudan: `kage groq'a geç`, `kage deepseek kullan`, `kage gemini'ye geç`, `kage otomatik moda geç` yazarak anında varsayılan modelinizi değiştirebilirsiniz.
+  - Veya anlık olarak: `kage [groq]: nasılsın?` ya da `kage [deepseek]: bu konuda ne düşünüyorsun?` şeklinde doğrudan o modelle konuşabilirsiniz.
+  - `/model sec [secim]`: Slash komutuyla varsayılan model tercihinizi kaydedebilirsiniz.
+- **Komutsuz Doğal Eylem Yönetimi (Action Intent Routing)**:
+  - Artık her şey için komut ezberlemenize gerek yok!
+  - Kage'ye doğrudan: *"kage şu üyeyi 10 dakika sustur"*, *"kage son 20 mesajı temizle"*, *"kage kurallara şunu ekle"*, *"kage bana 500 ryo ver"*, *"kage bu üyeye samuray rolü ver"* diyebilirsiniz.
+  - Yapay zeka eylemi anlar, kullanıcının ve botun yetkilerini denetler; yetkisi varsa doğrudan eylemi icra eder veya onay butonu sunar, yetkisi yoksa bunu samuray nezaketiyle açıklar.
+- **Anlık Model Listesi & Danışma (`/model`)**:
   - `/model liste`: Tüm aktif yapay zeka modellerini, sağlayıcılarını ve canlı durumlarını listeler.
-  - `/model sor mesaj: <soru> secim: <model>`: İstediğiniz modeli (Gemini, Groq GPT-OSS-120B, Groq Qwen, OpenRouter DeepSeek, Pollinations) bizzat seçerek anlık doğrudan danışabilirsiniz.
+  - `/model sor mesaj: <soru> secim: <model>`: İstediğiniz modeli bizzat seçerek anlık doğrudan danışabilirsiniz.
 - **Yapay Zeka Erişim Kısıtlaması & Anti-Spam Koruması (`aiErisimServisi.js`)**:
   - `/ayarlar ai-rol [rol]`: Yapay zekayı kötüye kullanımlara karşı korumak için sadece belirlediğiniz role açabilirsiniz.
   - `/ayarlar ai-mod [sadece_rol | sadece_yonetici | herkese_acik]`: Sunucu bazlı güvenlik seviyesi.
@@ -63,7 +75,6 @@ Sunucunuz tamamen boş veya dağınık olsa dahi, tek bir komutla tüm sunucuyu 
   - Bir üye Kage ile konuştuğunda admin kanalına (`aiYonetimKanalId`) anlık izleme bildirimi düşer: Hangi üye, hangi kanalda, hangi soruyu sordu ve hangi yapay zeka motoru (`Gemini`, `Groq`, `OpenRouter`, `Kural Tabanlı ChatBot`) cevap verdi canlı takip edilir.
   - Yöneticiler konuştuğunda mesajın veya embed'in altına ince bir motor etiketi iliştirilir.
 - **Sıfır Kesinti Fallback Kalkanı**: Gemini kota sınırına takılırsa bot anında sessizce Groq, OpenRouter veya Pollinations'a geçer; sohbet tek bir saniye dahi aksamaz.
-- **Kendi Kendine Öğrenen Kalıcı Hafıza (`/egit` & `/hafiza`)**: Sunucuya ait kuralları, klan bilgilerini ve özel bilgileri öğrenir, konuşmalarında bu hafızayı kullanarak bağlamsal yanıtlar üretir.
 
 ---
 

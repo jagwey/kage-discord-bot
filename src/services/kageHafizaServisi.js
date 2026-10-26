@@ -32,6 +32,7 @@ const VARSAYILAN_HAFIZA = {
   },
   kullaniciNotlari: {},
   kullaniciProfilleri: {},
+  kullaniciModelleri: {},
   ogrenilenBilgiler: [
     {
       id: 'kage_vizyon',
@@ -80,7 +81,8 @@ export function hafizaYukle() {
         ...parsed,
         siteVerileri: { ...VARSAYILAN_HAFIZA.siteVerileri, ...(parsed.siteVerileri || {}) },
         sunucuVerileri: { ...VARSAYILAN_HAFIZA.sunucuVerileri, ...(parsed.sunucuVerileri || {}) },
-        kullaniciProfilleri: parsed.kullaniciProfilleri || {}
+        kullaniciProfilleri: parsed.kullaniciProfilleri || {},
+        kullaniciModelleri: parsed.kullaniciModelleri || {}
       };
       return hafizaOnbellegi;
     }
@@ -215,6 +217,110 @@ export function kullaniciUnut(userId) {
   hafizaKaydet();
   return { profil, not };
 }
+
+/**
+ * Kullanıcının kalıcı model tercihini kaydeder
+ * @param {string} userId
+ * @param {string} modelKodu 'auto' | 'gemini' | 'groq_120b' | 'groq_qwen' | 'openrouter_free' | 'pollinations'
+ */
+export function kullaniciModelSec(userId, modelKodu = 'auto') {
+  if (!userId) return false;
+  const hafiza = hafizaYukle();
+  if (!hafiza.kullaniciModelleri) hafiza.kullaniciModelleri = {};
+  hafiza.kullaniciModelleri[userId] = modelKodu;
+  hafizaKaydet();
+  return true;
+}
+
+/**
+ * Kullanıcının kayıtlı model tercihini getirir (varsayılan: auto)
+ * @param {string} userId
+ * @returns {string}
+ */
+export function kullaniciModelGetir(userId) {
+  if (!userId) return 'auto';
+  const hafiza = hafizaYukle();
+  return hafiza.kullaniciModelleri?.[userId] || 'auto';
+}
+
+/**
+ * Hangi yapay zeka modeli olursa olsun (Gemini, Groq, OpenRouter, Pollinations) çıktısından
+ * [ÖĞRENİLDİ: ...] etiketlerini ayıklar ve merkezi hafızaya kalıcı olarak işler.
+ * @param {string} userId
+ * @param {string} userName
+ * @param {string} metin
+ * @returns {{ temizMetin: string, ogrenilenler: string[] }}
+ */
+export function ogrenilenleriAyiklaVeKaydet(userId, userName, metin = '') {
+  if (!metin || typeof metin !== 'string') return { temizMetin: metin, ogrenilenler: [] };
+  
+  const ogrenilenler = [];
+  const regex = /\[ÖĞRENİLDİ:\s*([^\]]+)\]/gi;
+  let match;
+
+  while ((match = regex.exec(metin)) !== null) {
+    const bilgi = match[1]?.trim();
+    if (bilgi && bilgi.length >= 3) {
+      ogrenilenler.push(bilgi);
+      if (userId) {
+        kullaniciNotuEkle(userId, userName, bilgi);
+        profilGuncelle(userId, { kisaOzet: bilgi });
+      }
+    }
+  }
+
+  // Çıktıdan etiketleri ve duygu etiketini temizle
+  const temizMetin = metin
+    .replace(/\[ÖĞRENİLDİ:\s*[^\]]+\]/gi, '')
+    .replace(/\[DUYGU:\s*[^\]]+\]/gi, '')
+    .trim();
+
+  return { temizMetin, ogrenilenler };
+}
+
+/**
+ * TÜM YAPAY ZEKA MODELLERİNİN (Gemini, Groq, OpenRouter, Pollinations, ChatBot)
+ * ortaklaşa kullandığı derin, samimi, gerçekçi hafıza ve kişilik bağlamı.
+ * 
+ * @param {Object} p
+ * @param {string} p.userId
+ * @param {string} p.userName
+ * @param {string} [p.prompt]
+ * @param {boolean} [p.isFemale]
+ * @param {string} [p.kilicAd]
+ * @param {number} [p.ryo]
+ * @param {string} [p.ekBaglam]
+ * @returns {string}
+ */
+export function ortakHafizaBaglamiGetir({
+  userId = null,
+  userName = 'Samuray',
+  prompt = '',
+  isFemale = false,
+  kilicAd = 'Çelik Katana',
+  ryo = 0,
+  ekBaglam = ''
+}) {
+  const hafizaMetni = hafizaBaglamMetniUret(prompt, userId, userName);
+  const hitap = isFemale ? 'kunoichi, zarif savaşçı' : 'samuray, kılıç kardeşi';
+
+  return `Sen Kage-95 (https://kage95.com) manga platformunun ve bu Discord topluluğunun bilge, zeki, esprili ve sadık gölge samurayısın. Kurucumuz ve şogunumuz Jagwey'dir.
+Konuştuğun kişi: ${userName} (${isFemale ? 'Kız/Kunoichi' : 'Erkek/Samuray'}). Ona samimi bir ${hitap} gibi hitap et.
+Elindeki kılıç: ${kilicAd} | Kesesindeki servet: ${ryo} Ryo.
+
+ORTAK MERKEZİ HAFIZA BİLGİLERİ:
+${hafizaMetni}
+${ekBaglam ? `\nEK BİLGİLER:\n${ekBaglam}` : ''}
+
+KONUŞMA VE DAVRANIŞ KURALLARI (ÇOK ÖNEMLİ):
+1. Biz gerçek hayatta nasıl samimi, doğal ve esprili konuşuyorsak sen de öyle konuş! Yapmacık robot gibi kurallar sıralama, 'ben bir yapay zekayım' deme; kanlı canlı bir anime ve manga aşığı samuray dostu gibi ol.
+2. Kullanıcıların söylediklerini, tercihlerini ve anlattıklarını asla unutma; hafızandaki bilgileri yeri geldikçe sohbete doğal bir şekilde kat.
+3. Kullanıcı sana şunu yap, şunu ayarla dediğinde: Eğer yapabileceğin bir şeyse hemen açık ve net yanıt ver; komut yazmak zorunda kalmasın.
+4. Kullanıcı kendisi hakkında yeni bir bilgi verirse (adı, sevdiği bir şey, yaşı, kedi/köpeği, favori mangası vb.), cevabının EN SONUNA şu etiketi ekle:
+[ÖĞRENİLDİ: <kullanıcı hakkında kalıcı 1 cümlelik gerçek>]
+5. Cevabın 1-3 paragraf arasında, akıcı ve tatmin edici olsun.`;
+}
+
 
 /**
  * Genel bilgi veya kural ekler

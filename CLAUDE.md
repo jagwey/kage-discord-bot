@@ -46,10 +46,15 @@ Tüm AI yönlendirmesi `src/services/aiRouterServisi.js` ve erişim denetimi `sr
 - `/gorev`: Günlük 3 görev (mesaj, balık, zindan, boss), tamamlama bonusu (`gorevServisi.js`).
 - `/ai-durum` (yönetici): AI sağlayıcı anahtar durumu ve başarı/hata sayaçları.
 
+## 🧠 Merkezi Ortak Hafıza (Unified Shared Memory) & Komutsuz Yönetim
+- **Merkezi Bellek:** `src/services/kageHafizaServisi.js` ve `data/kage_hafiza.json` tek gerçektir. Hangi model (Gemini, Groq, OpenRouter DeepSeek, Pollinations) kullanılırsa kullanılsın tüm bilgiler, kullanıcı notları, profiller ve kural eğitimleri ortaktır.
+- **Otonom Öğrenme:** Modellerin ürettiği metinlerdeki `[ÖĞRENİLDİ: ...]` etiketleri otomatik taranarak anında merkezi hafızaya işlenir.
+- **Doğal Dille Model Geçişi:** `kage groq'a geç`, `kage deepseek kullan`, `kage gemini'ye geç`, `kage otomatik moda geç` veya `kage [groq]: ...` anında yakalanır ve kalıcı olarak kaydedilir (`kullaniciModelSec`).
+- **Komutsuz Eylem Yönetimi (Action Intent Routing):** Kullanıcı "şu üyeyi sustur", "mesajları temizle", "kurallara şunu ekle", "bana 500 ryo ver" dediğinde katı komutlara gerek kalmadan doğrudan Otonom Vezir (`kageyeSor`) devreye girer; yetki kontrollerini yapar ve eylemi icra eder.
+
 ## 🛠️ Kodlama Standartları & Kurallar
 - ESM kullanılmalı: `import/export`.
 - Yeni slash komutlarında: `export const data = new SlashCommandBuilder()...` ve `export async function execute(interaction) { ... }`.
 - Para işlemlerinde her zaman `ryoEkle(userId, miktar, neden)` ve `ryoDus(userId, miktar, neden)` kullanılmalı; negatif bakiye oluşmamalıdır.
 - Ephemeral mesajlar için `flags: MessageFlags.Ephemeral` kullanılmalıdır.
-- Herhangi bir AI sağlayıcısı çökerse diğeri devreye girer (Zero-Downtime Fallback).
 - Herhangi bir AI sağlayıcısı çökerse diğeri devreye girer (Zero-Downtime Fallback).

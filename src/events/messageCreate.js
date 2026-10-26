@@ -10,6 +10,8 @@ import { gorevIlerlet } from '../services/gorevServisi.js';
 import { duyguEmojisi } from '../services/duyguServisi.js';
 import { stickerDuygusuSec, stickerMesajSecenegi } from '../services/stickerServisi.js';
 import { aiErisimKontrol, aiSpamKontrol } from '../services/aiErisimServisi.js';
+import { kullaniciModelSec, kullaniciModelGetir } from '../services/kageHafizaServisi.js';
+import { modelKoduCozumle, DESTEKLENEN_MODELLER } from '../services/aiRouterServisi.js';
 
 export const name = Events.MessageCreate;
 
@@ -268,12 +270,40 @@ export async function execute(message) {
 
   const yetkiliMi = erisim.yetkili;
 
+  // 3. Doğal Dille Model Geçişi Tespiti (Örn: "kage groq'a geç", "kage deepseek kullan", "kage otomatik moda geç")
+  const modelGecisMatch = metin.match(/\b(groq|gemini|deepseek|openrouter|llama|qwen|pollinations|otomatik|oto|auto)\b.*(?:geç|kullan|ayarla|seç|yap|etkinleştir)/iu)
+    || metin.match(/(?:modele|modeli)\s+(groq|gemini|deepseek|openrouter|llama|qwen|pollinations|otomatik|oto|auto)(?:\s+(?:yap|geç|ayarla|seç))?/iu);
+
+  if (modelGecisMatch) {
+    const hedefKelime = modelGecisMatch[1];
+    const modelKodu = modelKoduCozumle(hedefKelime);
+    kullaniciModelSec(message.author.id, modelKodu);
+    const modelBilgi = DESTEKLENEN_MODELLER.find(m => m.id === modelKodu) || { ad: modelKodu, emoji: '⚡' };
+    
+    return message.reply({
+      content: `${modelBilgi.emoji} **Zihnimi ${modelBilgi.ad} motoruna bağladım samurayım!**\n` +
+        `Ortak hafızamız, hatıralarımız ve kaledeki tüm kayıtların baki kaldı. Artık seninle bu zeka motoru üzerinden konuşacağız. Komut ezberlemene gerek yok, bana ne istersen rahatça söyleyebilirsin!`,
+      allowedMentions: { repliedUser: false }
+    }).catch(() => null);
+  }
+
+  // 4. Anlık Model Belirteci (Örn: "kage [groq]: nasılsın", "kage [deepseek]: bu konuda ne düşünüyorsun")
+  const anlikModelMatch = metin.match(/^\[([a-zA-Z0-9_\-]+)\]\s*:\s*(.*)/i);
+  if (anlikModelMatch) {
+    const anlikModel = modelKoduCozumle(anlikModelMatch[1]);
+    metin = anlikModelMatch[2].trim();
+    kullaniciModelSec(message.author.id, anlikModel);
+  }
+
   await message.channel.sendTyping().catch(() => null);
 
-  // AI Vezir'e mi yoksa Etkileşimli ChatBot'a mı yönlendirilecek?
-  // Kural: "ai / Ai / AI / Aİ" ile başlayanlar veya AI yönetim kanalındakiler -> AI Vezir (kageyeSor)
-  // "kage ..." ile başlayanlar, bot etiketlemeleri veya yanıtlama -> ChatBot (chatBotYanitla)
-  const aiyeYonlendir = !!aiMatch || (aiKanali && !kageMatch);
+  // 5. Doğal Eylem ve Komut Niyeti Tespiti (Komut kullanmayı zorunlu olmaktan çıkarır!)
+  // Kullanıcı "şu adamı sustur", "mesajları sil", "bana 100 ryo ver", "kurallara şunu ekle" vb. dediğinde
+  const EYLEM_NIYETI = /\b(sustur|mutele|banla|engelle|at\b|kickle|temizle|sil\b|rol ver|rol al|rol aç|kanal aç|kanal sil|kanal kapat|kural ekle|duyuru yap|bakiye|bakiyem|ryo ver|ryo gönder|yavaş mod|kilit|şunu yap|bunu yap)\b/iu;
+  const eylemIstegi = EYLEM_NIYETI.test(metin);
+
+  // Eylem istekleri, doğrudan "ai ..." çağrıları veya AI yönetim kanalındakiler -> Otonom Vezir (kageyeSor)
+  const aiyeYonlendir = !!aiMatch || (aiKanali && !kageMatch) || eylemIstegi;
 
   if (aiyeYonlendir) {
     // 1. OTONOM YAPAY ZEKA VEZİRİ (Fonksiyon çağırma, sunucu yönetimi, analitik)

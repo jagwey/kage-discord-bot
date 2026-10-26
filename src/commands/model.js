@@ -2,13 +2,31 @@ import { SlashCommandBuilder, MessageFlags } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { belirliModelUret, DESTEKLENEN_MODELLER, saglayiciDurumu } from '../services/aiRouterServisi.js';
 import { aiErisimKontrol, aiSpamKontrol } from '../services/aiErisimServisi.js';
+import { kullaniciModelSec, kullaniciModelGetir } from '../services/kageHafizaServisi.js';
 
 export const data = new SlashCommandBuilder()
   .setName('model')
-  .setDescription('Yapay zeka modellerini listeler ve istediğiniz modelle anlık konuşmanızı sağlar.')
+  .setDescription('Yapay zeka modellerini listeler ve istediğiniz modelle anlık veya kalıcı konuşmanızı sağlar.')
   .addSubcommand(sub =>
     sub.setName('liste')
       .setDescription('Kage Bot bünyesindeki tüm aktif yapay zeka modellerini ve durumlarını listeler.')
+  )
+  .addSubcommand(sub =>
+    sub.setName('sec')
+      .setDescription('Sohbet ederken kullanmak istediğin varsayılan yapay zeka modelini belirler.')
+      .addStringOption(opt =>
+        opt.setName('secim')
+          .setDescription('Varsayılan model tercihin (Ortak hafıza korunur)')
+          .setRequired(true)
+          .addChoices(
+            { name: '🤖 Otomatik (Kage Akıllı Yönlendirme)', value: 'auto' },
+            { name: '💎 Google Gemini 3.5 Flash', value: 'gemini' },
+            { name: '⚡ Groq GPT-OSS-120B (Ultra Hızlı)', value: 'groq_120b' },
+            { name: '⚡ Groq Qwen 27B (Akıcı Sohbet)', value: 'groq_qwen' },
+            { name: '🌀 OpenRouter (DeepSeek / Llama)', value: 'openrouter_free' },
+            { name: '🌸 Pollinations AI (%100 Ücretsiz)', value: 'pollinations' }
+          )
+      )
   )
   .addSubcommand(sub =>
     sub.setName('sor')
@@ -60,6 +78,23 @@ export async function execute(interaction) {
         `💡 *İstediğin bir modeli seçip doğrudan konuşmak için:*\n\`/model sor mesaj: <sorun> secim: <model>\``,
       alanlar,
       altMetin: `Kage AI Modelleri • İsteyen: ${interaction.user.tag}`
+    });
+
+    return interaction.reply({ embeds: [embed] });
+  }
+
+  if (sub === 'sec') {
+    const secilen = interaction.options.getString('secim');
+    kullaniciModelSec(interaction.user.id, secilen);
+    const modelBilgi = DESTEKLENEN_MODELLER.find(m => m.id === secilen) || { ad: secilen, emoji: '⚡' };
+
+    const embed = kageEmbed({
+      baslik: `${modelBilgi.emoji} MODEL TERCİHİ GÜNCELLENDİ`,
+      renk: TEMA.RENKLER.BASARI,
+      aciklama: `Varsayılan yapay zeka motorun başarıyla **${modelBilgi.ad}** olarak ayarlandı samurayım!\n\n` +
+        `🧠 **Ortak Hafıza Garantisi:** Hangi modeli seçersen seç, Kage senin hakkındaki tüm bilgileri, konuşmalarınızı ve anılarınızı tek bir merkezi beyinde (\`data/kage_hafiza.json\`) hatırlar.\n\n` +
+        `💬 *Artık sohbette Kage ile konuştuğunda bu model seninle ilgilenecek. İstersen sohbette doğrudan \`kage gemini'ye geç\` ya da \`kage groq'a geç\` yazarak da değiştirebilirsin!*`,
+      altMetin: `Tercih: ${modelBilgi.ad} • Kullanıcı: ${interaction.user.username}`
     });
 
     return interaction.reply({ embeds: [embed] });
