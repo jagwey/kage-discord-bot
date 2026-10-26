@@ -1,5 +1,5 @@
 import { Events, PermissionFlagsBits } from 'discord.js';
-import { chatBotYanitla } from '../services/chatBotServisi.js';
+import { chatBotYanitla, kullaniciKizMi } from '../services/chatBotServisi.js';
 import { sunucuAyarGetir } from '../services/veritabaniServisi.js';
 import { yardimKartiOlustur } from '../commands/yardim.js';
 import { kageyeSor } from '../services/ai/kageBeyin.js';
@@ -7,6 +7,7 @@ import { gecmiseEkle } from '../services/ai/konusmaGecmisi.js';
 import { otomodKontrol } from '../services/otomodServisi.js';
 import { mesajXpEkle } from '../services/seviyeServisi.js';
 import { duyguEmojisi } from '../services/duyguServisi.js';
+import { stickerDuygusuSec, stickerMesajSecenegi } from '../services/stickerServisi.js';
 
 export const name = Events.MessageCreate;
 
@@ -74,6 +75,19 @@ async function cevabiGonder(message, sonuc, yanitla = true) {
       components: [o.row],
       allowedMentions: { parse: [], repliedUser: false }
     }).catch(() => null);
+  }
+}
+
+// Cevaptan sonra duyguya/öğretilen kurala uygun sticker gönderir (gerçek sunucu stickerı, yoksa dosya).
+async function stickerGonder(message, metin, rastgele = 0.25) {
+  try {
+    const duygu = stickerDuygusuSec(message.guild.id, message.author.id, metin, { rastgele });
+    const tur = kullaniciKizMi(message.author, message.member, metin) ? 'kunoichi' : 'erkek';
+    const secenek = stickerMesajSecenegi(message.guild.id, tur, duygu);
+    if (!secenek) return;
+    await message.channel.send({ ...secenek, allowedMentions: { parse: [], repliedUser: false } }).catch(() => null);
+  } catch (err) {
+    console.warn('[Sticker]', err.message);
   }
 }
 
@@ -188,6 +202,7 @@ export async function execute(message) {
         return;
       }
       await cevabiGonder(message, sonuc, false);
+      await stickerGonder(message, message.content.trim(), 0.1);
     } catch (err) {
       console.error('[MessageCreate AraGirme] Hata:', err.message);
     }
@@ -214,11 +229,13 @@ export async function execute(message) {
     if (sonuc.hata === 'anahtar_yok' || (sonuc.hata && !sonuc.cevap)) {
       // Eski sohbet motoruna düş
       const { embed, files } = await chatBotYanitla(metin, message.author, message.guild, message.member, message);
-      return message.reply({ embeds: [embed], files: files || [], allowedMentions: { repliedUser: false } })
+      await message.reply({ embeds: [embed], files: files || [], allowedMentions: { repliedUser: false } })
         .catch((err) => console.error('[MessageCreate ChatBot Hatası]:', err));
+      return stickerGonder(message, metin, 0);
     }
 
     await cevabiGonder(message, sonuc);
+    await stickerGonder(message, metin, 0.3);
   } catch (err) {
     console.error('[MessageCreate AI] Hata:', err.message);
     await message.reply({
