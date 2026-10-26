@@ -324,6 +324,16 @@ export function marketSatinAl(userId, urunId) {
   const urun = MARKET_URUNLERI.find(u => u.id === urunId);
   if (!urun) return { basarili: false, mesaj: 'Böyle bir pazar eşyası bulunamadı.' };
 
+  const sahip = (h.envanter || []).includes(urun.ad);
+  if (sahip && urun.tip === 'unvan') {
+    h.aktifUnvan = urun.deger;
+    veriyiKaydet();
+    return { basarili: true, urun, kalanRyo: h.ryo || 0, tekrar: true };
+  }
+  if (sahip) {
+    return { basarili: false, mesaj: 'Bu eşyaya zaten sahipsiniz.' };
+  }
+
   if ((h.ryo || 0) < urun.fiyat) {
     return { basarili: false, mesaj: `Yetersiz Ryo! Bu eşya için **${urun.fiyat} Ryo** gerekir. Sende olan: **${h.ryo || 0} Ryo**.` };
   }

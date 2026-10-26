@@ -210,8 +210,9 @@ export async function execute(interaction) {
         gizli: false
       })],
       components: butonlar(false, true)
-    });
+    }).catch(() => {});
 
+    // Animasyon düzenlemeleri başarısız olsa bile ödeme mutlaka hesaplanır
     while (elSkoruHesapla(krupiyeEli) < 17) {
       await bekle(1100);
       krupiyeEli.push(deste.pop());
@@ -222,7 +223,7 @@ export async function execute(interaction) {
           durum: 'Krupiye kart çekti…',
           gizli: false
         })]
-      });
+      }).catch(() => {});
     }
     await bekle(800);
 
@@ -254,6 +255,6 @@ export async function execute(interaction) {
         altMetin: 'Kage 21 Casino • Tekrar oynamak için /blackjack'
       })],
       components: []
-    });
+    }).catch(() => {});
   });
 }

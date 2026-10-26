@@ -25,22 +25,14 @@ export async function execute(interaction) {
     altMetin: `Satın almak için aşağıdaki butonları kullanın • kage95.com`
   });
 
+  const stiller = { unvan: ButtonStyle.Secondary, muska: ButtonStyle.Primary };
   const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId('market_unvan_golge')
-      .setLabel('Gölge Suikastçısı (800 Ryo)')
-      .setStyle(ButtonStyle.Secondary)
-      .setEmoji('🥷'),
-    new ButtonBuilder()
-      .setCustomId('market_unvan_onur')
-      .setLabel('Onurlu Daimyo (2000 Ryo)')
-      .setStyle(ButtonStyle.Success)
-      .setEmoji('⛩️'),
-    new ButtonBuilder()
-      .setCustomId('market_muska_sans')
-      .setLabel('Şans Muskası (600 Ryo)')
-      .setStyle(ButtonStyle.Primary)
-      .setEmoji('🏮')
+    MARKET_URUNLERI.slice(0, 5).map((urun, i) =>
+      new ButtonBuilder()
+        .setCustomId(`market_${urun.id}`)
+        .setLabel(`${i + 1}. ${urun.deger} (${urun.fiyat} Ryo)`.slice(0, 80))
+        .setStyle(stiller[urun.tip] || ButtonStyle.Secondary)
+    )
   );
 
   const yanit = await interaction.reply({ embeds: [embed], components: [row] });
@@ -63,8 +55,14 @@ export async function execute(interaction) {
     }
 
     await i.reply({
-      content: `🎉 **Tebrikler!** **${sonuc.urun.ad}** satın alındı!\n💰 Kalan Bakiyeniz: \`${sonuc.kalanRyo} Ryo\`.`,
+      content: sonuc.tekrar
+        ? `🔁 **${sonuc.urun.ad}** zaten sizdeydi, ücretsiz kuşandınız.`
+        : `🎉 **Tebrikler!** **${sonuc.urun.ad}** satın alındı!\n💰 Kalan Bakiyeniz: \`${sonuc.kalanRyo} Ryo\`.`,
       flags: MessageFlags.Ephemeral
-    });
+    }).catch(() => {});
+  });
+
+  collector.on('end', () => {
+    interaction.editReply({ components: [] }).catch(() => {});
   });
 }
