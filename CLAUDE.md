@@ -29,13 +29,14 @@ Tüm AI yönlendirmesi `src/services/aiRouterServisi.js` ve erişim denetimi `sr
 - **Canlı Admin AI İzleme:** Başka biri konuşurken bile admin kanalına (`aiYonetimKanalId`) hangi kullanıcının hangi soruya hangi motorla yanıt aldığı canlı düşer. Yetkililere mesaj altında motor etiketi (`-# [Motor: ...]`) gösterilir.
 
 ## 📁 Dizin Yapısı
-- `src/commands/`: 68 adet Slash komutu (`export const data`, `export async function execute`).
-- `src/services/`: 32 adet modüler servis (`aiRouterServisi`, `aiErisimServisi`, `chatBotServisi`, `ekonomiServisi`, `klanServisi`, `yoldasServisi`, `sunucuMimarisiServisi`, `zindanServisi`, `bossServisi` vb.).
+- `src/commands/`: 69 adet Slash komutu (`export const data`, `export async function execute`).
+- `src/services/`: 33 adet modüler servis (`aiRouterServisi`, `aiErisimServisi`, `golgeGozServisi`, `chatBotServisi`, `ekonomiServisi`, `klanServisi`, `yoldasServisi`, `sunucuMimarisiServisi`, `zindanServisi`, `bossServisi` vb.).
 - `src/events/`: Discord olay dinleyicileri (`interactionCreate`, `messageCreate`, `ready`, `guildMemberAdd`).
-- `data/`: JSON veri depoları (`klanlar.json`, `yoldaslar.json`, `zindan.json`, `ekonomi.json`, `kullanicilar.json`, `dojo.json` vb.).
+- `data/`: JSON veri depoları (`klanlar.json`, `yoldaslar.json`, `zindan.json`, `ekonomi.json`, `kullanicilar.json`, `golge_goz_istatistik.json`, `dojo.json` vb.).
 - `assets/`: Stickerlar (`assets/stickers/`), profil avatarları (`assets/avatars/`), SVG bannerlar (`assets/banner.svg`).
 
 ## ⚔️ Önemli Komutlar & Sistemler
+- `/golge-goz`: Kage-95 Gölge Gözü (Shadow Eye Sentinel) - Sunucu chatini 0ms sezgisel filtreler ve mikro-tamponlu AI analizi ile gözetleme (`durum`, `rapor`, `tara`).
 - `/hafizam`: Kullanıcının Kage hafızasındaki parşömen profili ve tek tıkla sıfırlama butonu.
 - `/ozet`: Kanaldaki son konuşulanları tarayıp esprili samuray bülteni olarak özetleme.
 - `/model`: Tüm aktif AI modellerini listeleme (`/model liste`), kalıcı seçme (`/model sec`) ve anlık konuşma (`/model sor`).
