@@ -6,8 +6,10 @@ import { kageyeSor } from '../services/ai/kageBeyin.js';
 import { gecmiseEkle } from '../services/ai/konusmaGecmisi.js';
 import { otomodKontrol } from '../services/otomodServisi.js';
 import { mesajXpEkle } from '../services/seviyeServisi.js';
+import { gorevIlerlet } from '../services/gorevServisi.js';
 import { duyguEmojisi } from '../services/duyguServisi.js';
 import { stickerDuygusuSec, stickerMesajSecenegi } from '../services/stickerServisi.js';
+import { aiErisimKontrol, aiSpamKontrol } from '../services/aiErisimServisi.js';
 
 export const name = Events.MessageCreate;
 
@@ -116,6 +118,7 @@ export async function execute(message) {
   // Sohbet XP'si: bekleme süresi ve kısa mesaj kontrolü serviste yapılır.
   try {
     const xp = mesajXpEkle(message.guild.id, message.author.id, message.content);
+    if (xp) gorevIlerlet(message.author.id, 'mesaj');
     if (xp?.seviyeAtladi) {
       await message.channel.send({
         content: `⬆️ ${message.author} **Seviye ${xp.seviye}** oldu! Ödül: ${xp.odul} Ryo.`,
@@ -222,11 +225,25 @@ export async function execute(message) {
 
   if (!metin) metin = '(Seni çağırdı ama bir şey yazmadı)';
 
-  const yetkiliMi =
-    message.guild.ownerId === message.author.id ||
-    message.member?.permissions?.has(PermissionFlagsBits.Administrator) ||
-    message.client.application?.owner?.id === message.author.id ||
-    (process.env.OWNER_ID && message.author.id === process.env.OWNER_ID);
+  // 1. Yetki ve Rol Kontrolü (Yapay zekanın kötüye kullanımını ve yetkisiz erişimi engeller)
+  const erisim = aiErisimKontrol(message.member, message.guild, message.client);
+  if (!erisim.izin) {
+    return message.reply({
+      content: erisim.sebep,
+      allowedMentions: { repliedUser: false }
+    }).catch(() => null);
+  }
+
+  // 2. Kötüye Kullanım / Spam Kontrolü (Kullanıcı başına 8 saniye bekleme süresi)
+  const spam = aiSpamKontrol(message.author.id, 8, erisim.yetkili);
+  if (!spam.izin) {
+    return message.reply({
+      content: spam.sebep,
+      allowedMentions: { repliedUser: false }
+    }).catch(() => null);
+  }
+
+  const yetkiliMi = erisim.yetkili;
 
   await message.channel.sendTyping().catch(() => null);
 

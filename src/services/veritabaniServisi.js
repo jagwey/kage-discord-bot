@@ -40,7 +40,9 @@ export function sunucuAyarGetir(guildId) {
       modLogKanalId: process.env.MOD_LOG_CHANNEL_ID || null,
       otoRolId: process.env.AUTO_ROLE_ID || null,
       hosgeldinKanalId: process.env.WELCOME_CHANNEL_ID || null,
-      aiYonetimKanalId: process.env.AI_ADMIN_CHANNEL_ID || null
+      aiYonetimKanalId: process.env.AI_ADMIN_CHANNEL_ID || null,
+      aiRolId: process.env.AI_ROLE_ID || null,
+      aiMod: process.env.AI_RESTRICT_MODE || 'sadece_rol'
     };
   }
   return ayarlarOnbellegi[guildId];

@@ -38,6 +38,7 @@ export function yardimKartiOlustur() {
           '`• /cekilis [baslat|bitir|liste]` : Butonlu çekiliş (yönetici).\n' +
           '`• /seviye [bak|siralama]` : Sohbet seviyesi; seviye atlayınca Ryo ödülü.\n' +
           '`• /ekonomi-log [üye] [adet]` : Son Ryo hareketleri (yönetici).\n' +
+          '`• /gorev` : Günlük 3 görev; bitirince Ryo ödülü ve tamamlama bonusu.\n' +
           '`• /dojo` : Kendi dojonu kur; sen yokken saat başı Ryo üretir, topla ve yükselt.\n' +
           '`• /balik` : Gölette olta at, nadir balık yakala, koleksiyon yap ve sat.\n' +
           '`• /boss` : Sunucu ortak dünya bossuna saatte bir saldır; ganimet hasar payına göre bölünür.\n' +

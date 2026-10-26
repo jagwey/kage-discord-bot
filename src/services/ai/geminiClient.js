@@ -59,10 +59,12 @@ export async function geminiUret({ systemInstruction, contents, functionDeclarat
   if (!anahtarVarMi()) throw new Error('GEMINI_API_KEY tanımlı değil.');
 
   const govde = {
-    systemInstruction: { parts: [{ text: systemInstruction }] },
     contents,
     generationConfig: { temperature, maxOutputTokens }
   };
+  if (systemInstruction) {
+    govde.systemInstruction = { parts: [{ text: String(systemInstruction) }] };
+  }
   if (functionDeclarations.length) {
     govde.tools = [{ functionDeclarations }];
     govde.toolConfig = { functionCallingConfig: { mode: 'AUTO' } };

@@ -1,3 +1,4 @@
+import { gorevIlerlet } from './gorevServisi.js';
 import { jsonDepo } from './jsonDepo.js';
 import { ryoEkle, bakiyeGetir } from './ekonomiServisi.js';
 
@@ -94,5 +95,6 @@ export function saldir(guildId, userId, simdi = Date.now(), rng = Math.random) {
   }
   depo.yaz(db);
   for (const o of sonuc.odul) ryoEkle(o.uid, o.miktar, `Boss ganimeti (seviye ${sonuc.seviye})`);
+  gorevIlerlet(userId, 'boss');
   return sonuc;
 }

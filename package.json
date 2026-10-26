@@ -4,6 +4,9 @@
   "description": "Kage manga platformu ve indie oyunu için hepsi bir arada Discord botu ve yapay zeka sunucu mimarı",
   "main": "src/index.js",
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",

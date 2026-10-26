@@ -10,6 +10,19 @@ import { egitimBaglami, ciktiyiDenetle } from './egitimServisi.js';
  * 4. Pollinations AI (%100 ÜCRETSİZ, SIFIR KEY - Metin ve Görsel Üretimi)
  */
 
+const istatistik = {};
+
+function say(saglayici, basarili, hata = '') {
+  const s = istatistik[saglayici] || (istatistik[saglayici] = { basari: 0, hata: 0, sonHata: '' });
+  if (basarili) s.basari += 1;
+  else { s.hata += 1; s.sonHata = hata; }
+}
+
+/** Bot açıldığından beri sağlayıcı başına başarı/hata sayıları (/ai-durum). */
+export function aiIstatistik() {
+  return istatistik;
+}
+
 export function saglayiciDurumu() {
   return {
     gemini: geminiVarMi(),
@@ -49,8 +62,7 @@ async function groqMetinUret(prompt, systemInstruction = '') {
     process.env.GROQ_MODEL,
     'openai/gpt-oss-120b',
     'qwen/qwen3.8-27b',
-    'llama-3.3-70b-versatile',
-    'llama-3.1-8b-instant'
+    'openai/gpt-oss-20b'
   ].filter(Boolean);
 
   let sonHata = null;
@@ -67,7 +79,9 @@ async function groqMetinUret(prompt, systemInstruction = '') {
           model,
           messages,
           temperature: 0.7,
-          max_tokens: 1024
+          // gpt-oss düşünme token'larını da bu sınırdan harcar; düşükse content boş döner.
+          max_tokens: 4096,
+          ...(model.startsWith('openai/gpt-oss') ? { reasoning_effort: 'low' } : {})
         })
       });
 
@@ -89,7 +103,7 @@ async function groqMetinUret(prompt, systemInstruction = '') {
 }
 
 /**
- * OpenRouter metin üretimi (Varsa DeepSeek / Llama free modelleri)
+ * OpenRouter metin üretimi (DeepSeek -> Llama -> Gemini -> OpenRouter Free sıralı fallback)
  */
 async function openRouterMetinUret(prompt, systemInstruction = '', ozelModel = null) {
   const apiKey = process.env.OPENROUTER_API_KEY;
@@ -99,9 +113,11 @@ async function openRouterMetinUret(prompt, systemInstruction = '', ozelModel = n
     ozelModel,
     process.env.OPENROUTER_MODEL,
     'openrouter/free',
+    'google/gemma-4-31b-it:free',
     'nvidia/nemotron-3.5-lightning:free',
-    'dots-studio/dots-3-note-preview:free',
-    'google/gemma-4-31b-it:free'
+    'deepseek/deepseek-chat:free',
+    'deepseek/deepseek-r1:free',
+    'meta-llama/llama-3.3-70b-instruct:free'
   ].filter(Boolean);
 
   const messages = [];
@@ -124,8 +140,7 @@ async function openRouterMetinUret(prompt, systemInstruction = '', ozelModel = n
           model,
           messages,
           temperature: 0.7,
-          max_tokens: 1500,
-          reasoning: { max_tokens: 250 }
+          max_tokens: 1500
         })
       });
 
@@ -136,7 +151,10 @@ async function openRouterMetinUret(prompt, systemInstruction = '', ozelModel = n
 
       const data = await res.json();
       const choice = data.choices?.[0];
-      const yanit = (choice?.message?.content || choice?.message?.reasoning || '').trim();
+      let yanit = (choice?.message?.content || choice?.message?.reasoning || '').trim();
+
+      // DeepSeek R1 ve benzeri düşünce bloklarını (<think>...</think>) temizle
+      yanit = yanit.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
 
       if (yanit) {
         return yanit;
@@ -190,18 +208,19 @@ export async function akilliAiUret({ prompt, system = '', gorevTipi = 'varsayila
           maxOutputTokens: 1000
         });
         const ham = parts?.filter(p => p.text && !p.thought).map(p => p.text).join('').trim();
-        if (ham) return { metin: ciktiyiDenetle(ham), saglayici: 'Gemini 2.5 Flash' };
+        if (ham) { say('gemini', true); return { metin: ciktiyiDenetle(ham), saglayici: 'Gemini' }; }
       } else if (saglayici === 'groq') {
         const metin = await groqMetinUret(prompt, system);
-        if (metin) return { metin: ciktiyiDenetle(metin), saglayici: 'Groq (Llama 3.3)' };
+        if (metin) { say('groq', true); return { metin: ciktiyiDenetle(metin), saglayici: 'Groq' }; }
       } else if (saglayici === 'openrouter') {
         const metin = await openRouterMetinUret(prompt, system);
-        if (metin) return { metin: ciktiyiDenetle(metin), saglayici: 'OpenRouter' };
+        if (metin) { say('openrouter', true); return { metin: ciktiyiDenetle(metin), saglayici: 'OpenRouter' }; }
       } else if (saglayici === 'pollinations') {
         const metin = await pollinationsMetinUret(prompt, system);
-        if (metin) return { metin: ciktiyiDenetle(metin), saglayici: 'Pollinations AI (Ücretsiz)' };
+        if (metin) { say('pollinations', true); return { metin: ciktiyiDenetle(metin), saglayici: 'Pollinations AI (Ücretsiz)' }; }
       }
     } catch (err) {
+      say(saglayici, false, err.message);
       hatalar.push(`[${saglayici}]: ${err.message}`);
       // Sessizce sıradaki yedek yapay zekaya geç!
       continue;

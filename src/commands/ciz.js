@@ -1,5 +1,6 @@
-import { SlashCommandBuilder, AttachmentBuilder, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, AttachmentBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
 import { gorselUrlUret } from '../services/aiRouterServisi.js';
+import { aiErisimKontrol, aiSpamKontrol } from '../services/aiErisimServisi.js';
 import { TEMA } from '../config/tema.js';
 
 const STILLER = {
@@ -53,6 +54,18 @@ export const data = new SlashCommandBuilder()
   );
 
 export async function execute(interaction) {
+  // 1. Yetki ve Rol Denetimi
+  const erisim = aiErisimKontrol(interaction.member, interaction.guild, interaction.client);
+  if (!erisim.izin) {
+    return interaction.reply({ content: erisim.sebep, flags: MessageFlags.Ephemeral });
+  }
+
+  // 2. Kötüye Kullanım & Spam Önleme (Görsel için 15 saniye bekleme süresi)
+  const spam = aiSpamKontrol(interaction.user.id, 15, erisim.yetkili);
+  if (!spam.izin) {
+    return interaction.reply({ content: spam.sebep, flags: MessageFlags.Ephemeral });
+  }
+
   const tarif = interaction.options.getString('tarif');
   const stilAnahtari = interaction.options.getString('stil') || 'anime';
   const oranAnahtari = interaction.options.getString('oran') || 'kare';

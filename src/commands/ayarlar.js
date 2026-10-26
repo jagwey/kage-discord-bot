@@ -29,6 +29,25 @@ export const data = new SlashCommandBuilder()
     sub.setName('ai-kanal')
       .setDescription('Yapay zeka gölge danışmanının serbestçe yanıtlayacağı admin kanalını belirler.')
       .addChannelOption(opt => opt.setName('kanal').setDescription('Admin AI kanalı').setRequired(true))
+  )
+  .addSubcommand(sub =>
+    sub.setName('ai-rol')
+      .setDescription('Yapay zeka özelliklerini (sohbet/çizim/danışma) kullanabilecek özel rolü belirler.')
+      .addRoleOption(opt => opt.setName('rol').setDescription('AI erişim rolü (seçilmezse kısıtlama rolü kaldırılır)').setRequired(false))
+  )
+  .addSubcommand(sub =>
+    sub.setName('ai-mod')
+      .setDescription('Yapay zeka erişim ve güvenlik modunu ayarlar.')
+      .addStringOption(opt =>
+        opt.setName('mod')
+          .setDescription('Erişim seviyesi')
+          .setRequired(true)
+          .addChoices(
+            { name: '🎭 Sadece Belirlenen Rol (Önerilen)', value: 'sadece_rol' },
+            { name: '🛡️ Sadece Yöneticiler', value: 'sadece_yonetici' },
+            { name: '🌐 Herkese Açık', value: 'herkese_acik' }
+          )
+      )
   );
 
 export async function execute(interaction) {
@@ -41,6 +60,11 @@ export async function execute(interaction) {
 
   if (sub === 'goruntule') {
     const ayarlar = sunucuAyarGetir(guildId);
+    const modAciklamasi = {
+      sadece_rol: '🎭 Sadece Belirlenen Rol',
+      sadece_yonetici: '🛡️ Sadece Yöneticiler',
+      herkese_acik: '🌐 Herkese Açık'
+    }[ayarlar.aiMod || 'sadece_rol'] || '🎭 Sadece Belirlenen Rol';
 
     const embed = kageEmbed({
       baslik: 'KAGE 95 KALE YAPILANDIRMASI',
@@ -50,6 +74,8 @@ export async function execute(interaction) {
         `⛩️ **Oto-Rol:** ${ayarlar.otoRolId ? `<@&${ayarlar.otoRolId}>` : '`Ayarlanmamış`'}\n` +
         `🏮 **Hoş Geldin Kanalı:** ${ayarlar.hosgeldinKanalId ? `<#${ayarlar.hosgeldinKanalId}>` : '`Ayarlanmamış`'}\n` +
         `🧠 **Admin AI Kanalı:** ${ayarlar.aiYonetimKanalId ? `<#${ayarlar.aiYonetimKanalId}>` : '`Ayarlanmamış`'}\n` +
+        `🎭 **AI Erişim Rolü:** ${ayarlar.aiRolId ? `<@&${ayarlar.aiRolId}>` : '`Belirlenmemiş`'}\n` +
+        `🔒 **AI Güvenlik Modu:** \`${modAciklamasi}\`\n` +
         `📢 **Yeni Bölüm Kanalı:** ${process.env.ANNOUNCEMENT_CHANNEL_ID ? `<#${process.env.ANNOUNCEMENT_CHANNEL_ID}>` : '`Ayarlanmamış`'}`
     });
 
@@ -78,5 +104,26 @@ export async function execute(interaction) {
     const kanal = interaction.options.getChannel('kanal');
     sunucuAyarGuncelle(guildId, { aiYonetimKanalId: kanal.id });
     return interaction.reply({ content: `✅ Yönetici AI sohbet kanalı ${kanal} olarak ayarlandı. Bu kanalda bota yazılan her şeye AI yanıt verecektir.`, flags: MessageFlags.Ephemeral });
+  }
+
+  if (sub === 'ai-rol') {
+    const rol = interaction.options.getRole('rol');
+    if (!rol) {
+      sunucuAyarGuncelle(guildId, { aiRolId: null });
+      return interaction.reply({ content: `✅ Yapay zeka erişim rolü sıfırlandı. Artık rol şartı aranmayacak.`, flags: MessageFlags.Ephemeral });
+    }
+    sunucuAyarGuncelle(guildId, { aiRolId: rol.id });
+    return interaction.reply({ content: `✅ Yapay zeka özelliklerini kullanabilecek özel rol **${rol.name}** olarak ayarlandı. Bu role sahip olmayanlar AI motorunu çalıştıramaz.`, flags: MessageFlags.Ephemeral });
+  }
+
+  if (sub === 'ai-mod') {
+    const mod = interaction.options.getString('mod');
+    sunucuAyarGuncelle(guildId, { aiMod: mod });
+    const aciklama = {
+      sadece_rol: '🎭 Sadece Belirlenen Rol (ve Yöneticiler)',
+      sadece_yonetici: '🛡️ Sadece Sunucu Yöneticileri',
+      herkese_acik: '🌐 Herkese Açık (Spam Korumalı)'
+    }[mod] || mod;
+    return interaction.reply({ content: `✅ Yapay zeka erişim modu **${aciklama}** olarak güncellendi.`, flags: MessageFlags.Ephemeral });
   }
 }

@@ -11,7 +11,7 @@ Bu dosya Claude Code, Antigravity ve diğer AI asistanlarının projeyi tek bak�
 - **Çalışma Zamanı:** Node.js (ESM modülleri: `"type": "module"`).
 - **Discord Kütüphanesi:** `discord.js` v14 (Slash komutları, Embeds, Butonlar, Modallar).
 - **Veri Depolama:** JSON tabanlı yerel depolar (`data/*.json`), `src/utils/jsonDepo.js` üzerinden otomatik dosya kilitlemeli ve güvenli okuma/yazma.
-- **Canlılık & Sunucu:** `express` tabanlı canlılık sunucusu (`PORT`, `/health`, `/api/yardim/sor`). Render üzerinde 7/24 çalışır.
+- **Canlılık & Sunucu:** Node `http` tabanlı canlılık sunucusu (`PORT`, `/health`, `/api/yardim/sor`). Render üzerinde 7/24 çalışır.
 
 ## 🤖 Çoklu Yapay Zeka Ağı (Multi-AI Mesh Architecture)
 Tüm AI yönlendirmesi `src/services/aiRouterServisi.js` üzerinden yönetilir:
@@ -22,7 +22,7 @@ Tüm AI yönlendirmesi `src/services/aiRouterServisi.js` üzerinden yönetilir:
 4. **Pollinations AI:** Sınırsız ücretsiz görsel üretimi (`/ciz`) ve API kotası bittiğinde sıfır kesintili metin üretimi.
 
 ## 📁 Dizin Yapısı
-- `src/commands/`: 63 adet Slash komutu (`export const data`, `export async function execute`).
+- `src/commands/`: 65 adet Slash komutu (`export const data`, `export async function execute`).
 - `src/services/`: 31 adet modüler servis (`aiRouterServisi`, `chatBotServisi`, `ekonomiServisi`, `klanServisi`, `yoldasServisi`, `sunucuMimarisiServisi`, `zindanServisi`, `bossServisi` vb.).
 - `src/events/`: Discord olay dinleyicileri (`interactionCreate`, `messageCreate`, `ready`, `guildMemberAdd`).
 - `data/`: JSON veri depoları (`klanlar.json`, `yoldaslar.json`, `zindan.json`, `ekonomi.json`, `kullanicilar.json`, `dojo.json` vb.).
@@ -35,6 +35,8 @@ Tüm AI yönlendirmesi `src/services/aiRouterServisi.js` üzerinden yönetilir:
 - `/kehanet`: Günlük samuray falı, şans yüzdesi ve sürpriz Ryo hediyesi.
 - `/sunucu-kur`: kage95.com canlı platformuna, AI atölyelerine ve klan dojosuna tam entegre profesyonel sunucu kurulumu.
 - `/zindan`, `/boss`, `/kule`, `/dojo`, `/balik`: Kapsamlı RPG & ekonomi oyun döngüsü.
+- `/gorev`: Günlük 3 görev (mesaj, balık, zindan, boss), tamamlama bonusu (`gorevServisi.js`).
+- `/ai-durum` (yönetici): AI sağlayıcı anahtar durumu ve başarı/hata sayaçları.
 
 ## 🛠️ Kodlama Standartları & Kurallar
 - ESM kullanılmalı: `import/export`.

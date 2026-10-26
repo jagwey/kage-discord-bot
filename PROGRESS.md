@@ -54,8 +54,10 @@ Hedefler: docs/PROJE_HEDEFLERI.md. Kullanıcı istemeden commit atılmaz.
 - [x] 34. /kehanet komutu: Günlük samuray şans falı, uğurlu element ve sürpriz Ryo hediyesi.
 - [x] 35. /sunucu-kur mimarisi zenginleştirildi: kage95.com canlı manga platformu, #kage95-canlı-platform, #spoiler-odası, #ai-görsel-atölyesi, #samuray-kehaneti, #klan-sancakları ve #yoldaş-barınağı kategorileriyle donatıldı.
 - [x] 36. Claude Code ve harici AI asistanları için CLAUDE.md oluşturuldu; mimari, kurallar ve JagTech standartları belgelendi.
+- [x] 37. Groq gpt-oss düzeltmesi (max_tokens 4096, reasoning_effort low), /gorev (günlük 3 görev, gorevServisi), /ai-durum (sağlayıcı sayaçları), package.json engines node>=20, CLAUDE.md düzeltmeleri.
+- [x] 38. /sunucu-kur baştan yazıldı: aksansız/emojisiz ad anahtarıyla eşleştirme (kopya üretmez), mevcut kanal taşıma + konu + izin senkronu, tanıtım mesajı yalnız botun yazmadığı kanala, kopyalar raporlanır (kopya-sil ile silinir), önizle modu, ai-tema ile yapay zeka kural/karşılama metni, gerçek sayılı rapor, zaman aşımı temizliği. Rol izinleri komut gereksinimlerine göre bölündü (Hatamoto moderatör, Daimyo yönetim, Kage sahip) ve şogun-meclisi'ne yetki rehberi eklendi. Mock testte 2. çalıştırma 0 yeni rol/kanal/mesaj; canlı Discord testi yok. Deploy gerekli (npm run deploy).
 
 ## Sürüyor
-- Kullanıcı isteği: indie oyunlar. Sıra: /balik, /boss, /kule, /zindan yükseltmesi hepsi tamam. Sonraki fikirler (başlanmadı): evcil hayvan, günlük/haftalık görev, zanaat, klan savaşı.
+- Kullanıcı isteği: indie oyunlar. Sıra: /balik, /boss, /kule, /zindan yükseltmesi hepsi tamam. Sonraki fikirler (başlanmadı): evcil hayvan, zanaat, klan savaşı.
 
 ## Bekliyor

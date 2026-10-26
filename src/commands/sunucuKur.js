@@ -8,116 +8,115 @@ import {
   MessageFlags
 } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
-import { kageMimarisiInsaEt } from '../services/sunucuMimarisiServisi.js';
+import { kageMimarisiInsaEt, sunucuDurumunuCikar } from '../services/sunucuMimarisiServisi.js';
 
 export const data = new SlashCommandBuilder()
   .setName('sunucu-kur')
-  .setDescription('Sunucuyu detaylı samuray hiyerarşisi, kayıt kapısı, manga ve oyun odalarıyla kurar.')
-  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+  .setDescription('Roller, kayıt kapısı, manga ve oyun odalarıyla sunucuyu kurar. Tekrar çalıştırmak güvenli.')
+  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+  .setDMPermission(false)
+  .addStringOption(o => o
+    .setName('mod')
+    .setDescription('Kur: eksikleri tamamla. Önizle: değişiklik yapmadan durumu göster.')
+    .addChoices({ name: 'Kur (eksikleri tamamla)', value: 'kur' }, { name: 'Önizle (değişiklik yapma)', value: 'onizle' }))
+  .addStringOption(o => o
+    .setName('ai-tema')
+    .setDescription('Yapay zeka kurallar ve karşılamayı bu temaya göre yazsın (örn: siberpunk samuray)')
+    .setMaxLength(120))
+  .addBooleanOption(o => o
+    .setName('kopya-sil')
+    .setDescription('Aynı işi yapan kopya kanalları sil (varsayılan: sadece raporla)'));
+
+const liste = (dizi, en = 6) => dizi.length
+  ? dizi.slice(0, en).join(', ') + (dizi.length > en ? ` ve ${dizi.length - en} tane daha` : '')
+  : '—';
 
 export async function execute(interaction) {
-  // Anında defer et ki Discord 3 saniyelik zaman aşımına düşmesin ("Uygulama yanıt vermedi" hatasını önler)
-  await interaction.deferReply();
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const guild = interaction.guild;
+  const mod = interaction.options.getString('mod') || 'kur';
+  const tema = interaction.options.getString('ai-tema') || '';
+  const kopyaSil = interaction.options.getBoolean('kopya-sil') || false;
 
-  const onayEmbed = kageEmbed({
-    baslik: '⛩️ DETAYLI KAGE SUNUCU MİMARİSİ KURULUMU',
+  const durum = await sunucuDurumunuCikar(guild);
+  const onizleme = kageEmbed({
+    baslik: mod === 'onizle' ? 'KURULUM ÖNİZLEMESİ' : 'KAGE KALESİ KURULUMU',
     renk: TEMA.RENKLER.KAN_KIRMIZISI,
-    aciklama: `**${guild.name}** sunucusu için tam teşekküllü Kage Manga & Samuray Topluluk Mimarisi inşa edilmek üzere!\n\n` +
-      `📜 **Neler Kurulacak?**\n` +
-      `• **Tam Teşekküllü Rol Hiyerarşisi:**\n` +
-      `  👑 \`Kage (Şogun)\` • 🗡️ \`Daimyo (Yönetim)\` • 🛡️ \`Hatamoto (Muhafız)\` • 🤖 \`Bot & Muhafızlar\`\n` +
-      `  ⚔️ \`Shinobi (Kayıtlı Üye)\` • 📜 \`Ronin (Kayıtsız)\` • 📖 \`Manga Okuru\` • 🎮 \`Gölge Oyuncusu\`\n` +
-      `  🏆 Seviye Rolleri: \`Kage Efsanesi\`, \`Jonin Komutanı\`, \`Chunin Kıdemlisi\`, \`Genin Savaşçısı\`\n\n` +
-      `• **Kayıt Sistemi & Güvenlik:**\n` +
-      `  Yeni gelenler sadece \`#kayıt-kapısı\` ve \`#kadim-kurallar\`ı görür. Mührü basınca diğer tüm kanallar anında açılır!\n\n` +
-      `• **Özel Kategoriler & Kanallar (Kage 95 & JagTech Punk Tasarımı):**\n` +
-      `  ╭━━━ ⛩️ GİRİŞ & BİLGİ ━━━╮ (#kayıt-kapısı, #kage95-canlı-platform, #manga-yayınları, #kadim-kurallar, #kage-dev)\n` +
-      `  ╭━━━ 💬 GÖLGE TOPLULUĞU ━━━╮ (#meydan-sohbeti, #manga-tartışma, #spoiler-odası, #anime-dünyası, #manga-panelleri)\n` +
-      `  ╭━━━ 🔮 YAPAY ZEKA MABEDİ ━━━╮ (#gölge-veziri-ai, #ai-görsel-atölyesi, #samuray-kehaneti)\n` +
-      `  ╭━━━ ⚔️ ARENA & RYO BAHİS ━━━╮ (#düello, #klan-sancakları, #yoldaş-barınağı, #zindan, #kumar, #boss, #kule, #dojo, #çekiliş)\n` +
-      `  ╭━━━ 🔒 ŞOGUN KALESİ ━━━╮ (#şogun-meclisi, #ceza-sicil-log, #ekonomi-log, #bilet-log)\n` +
-      `  ╭━━━ 🎫 DESTEK ━━━╮ (#destek-bileti)\n` +
-      `  ╭━━━ 🔊 SAMURAY SES ODALARI ━━━╮\n\n` +
-      `*Mevcut kanallar silinmez, var olan roller ve kanallar yeniden kullanılır (tekrar çalıştırmak güvenli). Tüm kanalları sıfırlamak istiyorsanız \`/sunucu-sifirla\` komutunu kullanabilirsiniz.*`,
-    altMetin: `Kurulumu onaylamak için 60 saniyeniz var.`
+    aciklama: `**${guild.name}** sunucusunun mevcut durumu kontrol edildi. Hiçbir kanal veya rol silinmez` +
+      (kopyaSil ? ', yalnız kopya kanallar silinir' : '') + '. Var olanlar yeniden kullanılır, eksikler eklenir.',
+    alanlar: [
+      { name: `Roller (${durum.rolYeni.length} yeni, ${durum.rolVar.length} var)`, value: liste(durum.rolYeni), inline: false },
+      { name: `Kanallar (${durum.kanalYeni.length} yeni, ${durum.kanalVar.length} var)`, value: liste(durum.kanalYeni, 8), inline: false },
+      { name: `Kopyalar (${durum.kopyalar.length})`, value: liste(durum.kopyalar.map(k => k.ad)), inline: false },
+      { name: 'Yapay zeka', value: tema ? `Tema: *${tema}*` : 'Kapalı: standart kurallar ve karşılama kullanılır.', inline: false }
+    ],
+    altMetin: mod === 'onizle' ? 'Önizleme: hiçbir şey değişmedi.' : 'Onaylamak için 60 saniyen var.'
   });
+
+  if (mod === 'onizle') return interaction.editReply({ embeds: [onizleme] });
 
   const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId('kurulum_onayla')
-      .setLabel('Evet, Mimarisiyle Birlikte Kur')
-      .setStyle(ButtonStyle.Success)
-      .setEmoji(TEMA.EMOJILER.TORII),
-    new ButtonBuilder()
-      .setCustomId('kurulum_iptal')
-      .setLabel('İptal Et')
-      .setStyle(ButtonStyle.Danger)
-      .setEmoji('❌')
+    new ButtonBuilder().setCustomId('kurulum_onayla').setLabel('Kur').setStyle(ButtonStyle.Success).setEmoji(TEMA.EMOJILER.TORII),
+    new ButtonBuilder().setCustomId('kurulum_iptal').setLabel('İptal').setStyle(ButtonStyle.Danger).setEmoji('❌')
   );
-
-  const yanit = await interaction.editReply({
-    embeds: [onayEmbed],
-    components: [row]
-  });
+  const yanit = await interaction.editReply({ embeds: [onizleme], components: [row] });
 
   const collector = yanit.createMessageComponentCollector({
     componentType: ComponentType.Button,
-    time: 60000
+    time: 60000,
+    filter: i => i.user.id === interaction.user.id
   });
 
+  let islendi = false;
   collector.on('collect', async i => {
-    if (i.user.id !== interaction.user.id) {
-      return i.reply({ content: 'Bu kararı sadece kurulumu başlatan yönetici verebilir.', flags: MessageFlags.Ephemeral });
-    }
-
+    islendi = true;
+    collector.stop();
     if (i.customId === 'kurulum_iptal') {
-      collector.stop();
-      return i.update({
-        content: `${TEMA.EMOJILER.KATANA} Kurulum iptal edildi.`,
-        embeds: [],
-        components: []
-      });
+      return i.update({ content: `${TEMA.EMOJILER.KATANA} Kurulum iptal edildi.`, embeds: [], components: [] });
     }
 
-    if (i.customId === 'kurulum_onayla') {
-      collector.stop();
-      await i.deferUpdate();
+    await i.update({
+      content: tema
+        ? '⛩️ **Kale inşa ediliyor.** Yapay zeka metinleri yazıyor, bu birkaç dakika sürebilir...'
+        : '⛩️ **Kale inşa ediliyor.** Roller, kanallar ve kayıt kapısı ayarlanıyor, bekle...',
+      embeds: [],
+      components: []
+    });
+
+    try {
+      const s = await kageMimarisiInsaEt(guild, interaction, { tema, kopyaSil });
+      const r = s.rapor;
+      const alanlar = [
+        { name: 'Roller', value: `${r.rolYeni.length} yeni • ${r.rolVar.length} mevcut`, inline: true },
+        { name: 'Kanallar', value: `${r.kanalYeni.length} yeni • ${r.kanalVar.length} mevcut • ${r.tasinan.length} taşındı`, inline: true },
+        { name: 'Mesajlar', value: `${r.mesaj.length} tanıtım gönderildi`, inline: true },
+        { name: 'Kayıt kapısı', value: `${s.kayitKapisi}`, inline: true },
+        { name: 'Manga bildirimleri', value: `${s.mangaDuyuru}`, inline: true },
+        { name: 'Yapay zeka', value: `${s.aiKanal}${r.ai ? ' • metinleri yapay zeka yazdı' : ''}`, inline: true }
+      ];
+      const kopyalar = [...r.kopyalar, ...r.silinenKopya.map(k => `${k} (silindi)`)];
+      if (kopyalar.length) alanlar.push({ name: 'Kopyalar', value: liste(kopyalar, 8), inline: false });
+      if (r.uyarilar.length) alanlar.push({ name: 'Uyarılar', value: liste(r.uyarilar, 3).slice(0, 1000), inline: false });
+
       await interaction.editReply({
-        content: `⛩️ **Kage Kalesi İnşa Ediliyor...** Roller, kategoriler, kayıt kapısı ve web entegrasyonu ayarlanıyor, lütfen bekleyin...`,
-        embeds: [],
+        content: null,
+        embeds: [kageEmbed({
+          baslik: 'KAGE KALESİ HAZIR',
+          renk: r.uyarilar.length ? TEMA.RENKLER.ALTIN : TEMA.RENKLER.BASARI,
+          aciklama: 'Kurulum bitti. Tekrar çalıştırırsan yalnız eksikler tamamlanır, aynı mesajlar tekrar gönderilmez.\n' +
+            'Yetki dağılımı için ŞOGUN KALESİ içindeki **şogun-meclisi** kanalına bak.',
+          alanlar
+        })],
         components: []
       });
-
-      try {
-        const sonuclar = await kageMimarisiInsaEt(guild, interaction);
-
-        const basariEmbed = kageEmbed({
-          baslik: '⛩️ KAGE KALESİ EKSİKSİZ İNŞA EDİLDİ!',
-          renk: TEMA.RENKLER.BASARI,
-          aciklama: `**Tebrikler Şogun!** Kage 95 mimarisi başarıyla kuruldu.\n\n` +
-            `🏮 **Neler Yapıldı?**\n` +
-            `• 14 adet samuray hiyerarşi rolü oluşturuldu ve yetkilendirildi.\n` +
-            `• ${sonuclar.kayitKapisi} kanalına butonlu otomatik kayıt kapısı kuruldu.\n` +
-            `• ${sonuclar.mangaDuyuru} kanalı manga ve bölüm bildirimlerine bağlandı.\n` +
-            `• ${sonuclar.aiKanal} yapay zeka asistanı kanalı hazırlandı.\n` +
-            `• Kage 95 web sitesi (\`kage95.com\`) ile anlık webhook dinleyicileri entegre edildi.\n\n` +
-            `*Artık sunucunuz tam teşekküllü bir anime/manga & oyun kalesidir!*`
-        });
-
-        await interaction.editReply({
-          content: null,
-          embeds: [basariEmbed],
-          components: []
-        });
-      } catch (err) {
-        console.error('[SunucuKur Hatası]:', err);
-        await interaction.editReply({
-          content: `❌ Kurulum sırasında bir hata oluştu: ${err.message}`,
-          embeds: [],
-          components: []
-        });
-      }
+    } catch (err) {
+      console.error('[SunucuKur Hatası]:', err);
+      await interaction.editReply({ content: `❌ Kurulum sırasında hata: ${err.message}`, embeds: [], components: [] });
     }
+  });
+
+  collector.on('end', async () => {
+    if (islendi) return;
+    await interaction.editReply({ content: 'Süre doldu, kurulum iptal edildi.', embeds: [], components: [] }).catch(() => {});
   });
 }

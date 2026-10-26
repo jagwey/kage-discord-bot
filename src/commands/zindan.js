@@ -1,3 +1,4 @@
+import { gorevIlerlet } from '../services/gorevServisi.js';
 import {
   SlashCommandBuilder,
   ActionRowBuilder,
@@ -491,6 +492,7 @@ export async function execute(interaction) {
       }
 
       zindanZaferiDetayli(userId, kazanilanRyo, dusenItem);
+      gorevIlerlet(userId, 'zindan');
       const bonus = zaferIsle(userId, secilenZindan, kazanilanRyo);
       const bonusSatirlari = [];
       if (aktifYoldas && yoldasBonusu > 0) bonusSatirlari.push(`🐾 ${aktifYoldas.ad}: +${yoldasBonusu} Ryo`);

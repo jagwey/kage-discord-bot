@@ -1,3 +1,4 @@
+import { gorevIlerlet } from './gorevServisi.js';
 import { jsonDepo } from './jsonDepo.js';
 import { ryoEkle, ryoDus } from './ekonomiServisi.js';
 
@@ -102,6 +103,7 @@ export function oltaAt(userId, simdi = Date.now(), rng = Math.random) {
   if (yeniRekor) k.rekor = { id: balik.id, kg };
   depo.yaz(db);
   if (bonus > 0) ryoEkle(userId, bonus, 'Balık keşif bonusu');
+  gorevIlerlet(userId, 'balik');
   return { basarili: true, balik, kg, yeniTur, bonus, yeniRekor };
 }
 
