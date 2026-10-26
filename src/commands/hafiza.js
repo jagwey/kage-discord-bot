@@ -1,5 +1,6 @@
 import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
+import { saygiIhlaliVarMi } from '../services/egitimServisi.js';
 import { hafizaYukle, hafizaArama, bilgiOgren, gunlukDerinOgrenme, profilGetir, kullaniciHafizasiGetir, kullaniciUnut } from '../services/kageHafizaServisi.js';
 
 export const data = new SlashCommandBuilder()
@@ -134,6 +135,10 @@ export async function execute(interaction) {
     const kategori = interaction.options.getString('kategori');
     const baslik = interaction.options.getString('baslik');
     const bilgi = interaction.options.getString('bilgi');
+
+    if (saygiIhlaliVarMi(`${baslik} ${bilgi}`)) {
+      return interaction.reply({ content: '❌ Aile, din, dil veya ırka hakaret içeren bilgi öğretilemez.', flags: MessageFlags.Ephemeral });
+    }
 
     const kayit = bilgiOgren(kategori, baslik, bilgi, interaction.user.tag);
 

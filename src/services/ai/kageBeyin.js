@@ -4,6 +4,7 @@ import { aracListesi, aracCalistir, YIKICI_EYLEMLER, yonetimEylemiMi } from './a
 import { onayOlustur } from './onayServisi.js';
 import { denetimKaydet } from './denetim.js';
 import { hafizaBaglamMetniUret, profilGuncelle } from '../kageHafizaServisi.js';
+import { egitimBaglami, ciktiyiDenetle } from '../egitimServisi.js';
 
 const MAKS_DONGU = 5;
 const MAKS_ARAC_CIKTISI = 6000;
@@ -31,7 +32,7 @@ const ARAYA_GIRME_EKI = `
 
 Şu an kimse seni çağırmadı; sohbete kendi inisiyatifinle katılma fırsatın var. Yalnızca gerçekten değer katacaksan (soruya cevap, esprili ve yerinde bir laf, manga/ekonomi bilgisi) kısa bir cevap yaz. Aksi halde sadece [SUS] yaz. Şüphedeysen [SUS]. Araç kullanma gereği duyuyorsan yalnızca okuma araçlarını kullan.`;
 
-function sistemMetni({ yazarAdi, yonetici, guild, channel, araGirme, hafiza }) {
+function sistemMetni({ yazarAdi, yonetici, guild, channel, araGirme, hafiza, egitim }) {
   const tarih = new Date().toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' });
   return `${KISILIK}${araGirme ? ARAYA_GIRME_EKI : ''}
 
@@ -39,7 +40,7 @@ Bağlam:
 - Zaman: ${tarih}
 - Sunucu: ${guild?.name || 'DM'} | Kanal: #${channel?.name || '?'}
 - Son mesajı yazan: ${yazarAdi} (${yonetici ? 'yetkili: yönetim araçları açık' : 'normal üye: yönetim araçları kapalı'})
-${hafiza ? `\nHafızandan ilgili notlar:\n${hafiza}` : ''}`;
+${hafiza ? `\nHafızandan ilgili notlar:\n${hafiza}` : ''}${egitim ? `\n\n${egitim}` : ''}`;
 }
 
 function kes(obj) {
@@ -79,7 +80,11 @@ export async function kageyeSor({ metin, yazarAdi, userId, guild, channel, membe
   } catch { /* hafıza yoksa devam */ }
 
   const yetkiliAraclar = yonetici && !araGirme;
-  const sistem = sistemMetni({ yazarAdi, yonetici: yetkiliAraclar, guild, channel, araGirme, hafiza });
+  let egitim = '';
+  try {
+    egitim = egitimBaglami(guild?.id ?? null, userId, metin) || '';
+  } catch { /* eğitim yoksa devam */ }
+  const sistem = sistemMetni({ yazarAdi, yonetici: yetkiliAraclar, guild, channel, araGirme, hafiza, egitim });
   const araclar = aracListesi({ yonetici: yetkiliAraclar });
   const ctx = { guild, channel, member, client, yonetici: yetkiliAraclar };
 
@@ -98,7 +103,7 @@ export async function kageyeSor({ metin, yazarAdi, userId, guild, channel, membe
 
       const cagrilar = parts.filter(p => p.functionCall);
       if (!cagrilar.length) {
-        cevap = parts.filter(p => p.text && !p.thought).map(p => p.text).join('').trim();
+        cevap = ciktiyiDenetle(parts.filter(p => p.text && !p.thought).map(p => p.text).join('').trim());
         break;
       }
 

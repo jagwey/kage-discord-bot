@@ -1,6 +1,7 @@
 import { PermissionFlagsBits } from 'discord.js';
 import { geminiUret, anahtarVarMi } from './ai/geminiClient.js';
 import { kageyeSor } from './ai/kageBeyin.js';
+import { egitimBaglami, ciktiyiDenetle } from './egitimServisi.js';
 
 const BASIT_SISTEM = 'Sen Kage\'sin: kage95.com manga topluluğunun gölge ninjası. Türkçe, samimi ve öz yanıt ver.';
 
@@ -47,12 +48,12 @@ export async function aiDanis(mesaj, baglam = {}) {
   }
 
   const { parts } = await geminiUret({
-    systemInstruction: BASIT_SISTEM,
+    systemInstruction: `${BASIT_SISTEM}\n\n${egitimBaglami(null, userId, mesaj)}`,
     contents: [{ role: 'user', parts: [{ text: mesaj }] }],
     userId,
     maxOutputTokens: 1500
   });
-  const cevap = parts.filter(p => p.text && !p.thought).map(p => p.text).join('').trim();
+  const cevap = ciktiyiDenetle(parts.filter(p => p.text && !p.thought).map(p => p.text).join('').trim());
   return { cevap: cevap || '…', saglayici: 'Kage-95' };
 }
 

@@ -7,6 +7,7 @@ import { TEMA, kageEmbed, rastgeleSlogan } from '../config/tema.js';
 import { bakiyeGetir, liderlikListesi, KILIC_SEVIYELERI } from './ekonomiServisi.js';
 import { tumMangalariGetir, mangaAra } from './mangaServisi.js';
 import { hafizaBaglamMetniUret, kullaniciNotuEkle, hafizaArama } from './kageHafizaServisi.js';
+import { egitimBaglami, ciktiyiDenetle, stickerKurali, argoModuMu, saygiIhlaliVarMi } from './egitimServisi.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -224,10 +225,14 @@ async function geminiPersonaSohbet(kullaniciMesaji, baglam) {
 
   const hafizaBaglami = hafizaBaglamMetniUret(kullaniciMesaji, baglam.userId, baglam.userName);
 
+  const egitimBlogu = egitimBaglami(baglam.guildId, baglam.userId, kullaniciMesaji);
+
   const prompt = `Sen Kage-95 (https://kage95.com) manga platformunun ve bu Discord kalesinin bilge, zeki, anime sever, samuray muhafızısın. Kurucumuz ve liderimiz Jagwey'dir.
 Konuştuğun kullanıcı: ${baglam.userName} (Kalenin ${baglam.katilimMetni} bir savaşçısı, elinde ${baglam.kilicAd} var, kesesinde ${baglam.ryo} Ryo taşıyor).
 
 ${hafizaBaglami}
+
+${egitimBlogu}
 
 Kullanıcı sana şunu sordu/söyledi:
 "${kullaniciMesaji}"
@@ -249,7 +254,7 @@ GÖREVİN:
     );
 
     const text = yanit.data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    return text ? text.trim() : null;
+    return text ? ciktiyiDenetle(text.trim()) : null;
   } catch (err) {
     console.warn('[ChatBot Gemini] Persona yanıtı üretilemedi:', err.message);
     return null;
@@ -720,7 +725,7 @@ export async function chatBotYanitla(mesajMetni, user, guild = null, member = nu
     renk = TEMA.RENKLER.UYARI_SARI;
     aciklama = `MEE6 veya yabancı tüccar botları mı? Onları Kage Kalesi'nin kapısından içeri bile sokmuyoruz! Biz yerli, katanalı, RPG zindanlı ve yapay zeka destekli tek başımıza koca bir orduyuz!`;
   }
-  else if (!aciklama && iceriyorMu(metin, KUFUR_HAKARET)) {
+  else if (!aciklama && iceriyorMu(metin, KUFUR_HAKARET) && (!argoModuMu(user.id) || saygiIhlaliVarMi(mesajMetni))) {
     duygu = 'ofke';
     baslik = '🥋 TERBİYE VE ONUR DERSİ';
     renk = TEMA.RENKLER.UYARI_SARI;
@@ -813,6 +818,7 @@ export async function chatBotYanitla(mesajMetni, user, guild = null, member = nu
   if (!aciklama && metin.length > 3) {
     try {
       const aiCevap = await geminiPersonaSohbet(mesajMetni, {
+        guildId: guild?.id ?? null,
         userId: user.id,
         userName,
         katilimMetni,
@@ -852,7 +858,8 @@ export async function chatBotYanitla(mesajMetni, user, guild = null, member = nu
   // =========================================================================
   const stickerHaritasi = isFemale ? STICKER_DOSYALARI_KUNOICHI : STICKER_DOSYALARI_ERKEK;
   const stickerDosyaAdi = isFemale ? 'kunoichi_sticker.png' : 'kage_sticker.png';
-  const stickerPath = stickerHaritasi[duygu] || stickerHaritasi.cay;
+  const ogretilenDuygu = stickerKurali(guild?.id ?? null, user.id, mesajMetni);
+  const stickerPath = stickerHaritasi[ogretilenDuygu] || stickerHaritasi[duygu] || stickerHaritasi.cay;
   const files = [];
 
   if (fs.existsSync(stickerPath)) {
