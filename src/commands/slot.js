@@ -6,7 +6,7 @@ import {
   ComponentType, MessageFlags } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { bakiyeGetir, ryoEkle, ryoDus, MAKS_BAHIS } from '../services/ekonomiServisi.js';
-import { bekle, ryoYaz } from '../config/oyunGorsel.js';
+import { bekle, ryoYaz, oyunStickerEkini } from '../config/oyunGorsel.js';
 
 export const data = new SlashCommandBuilder()
   .setName('slot')
@@ -130,32 +130,40 @@ export async function execute(interaction) {
     const net = odeme - bahis;
     const bakiye = bakiyeGetir(userId).ryo;
 
-    let baslikSon, renk, durum;
+    let baslikSon, renk, durum, duyguSonuc;
     if (sonuc.tur === 'uclu') {
       const buyuk = sonuc.sembol.uclu >= 12;
       baslikSon = buyuk ? '👑 BÜYÜK İKRAMİYE!' : '🎉 ÜÇLÜ HİZA!';
       renk = buyuk ? TEMA.RENKLER.ALTIN : TEMA.RENKLER.BASARI;
       durum = `${sonuc.sembol.emoji} ×3 • **${sonuc.sembol.uclu}×** çarpan\n**+${ryoYaz(net)}** net kazanç`;
+      duyguSonuc = 'para';
     } else if (sonuc.tur === 'cift') {
       baslikSon = net > 0 ? '✨ ÇİFT EŞLEŞME' : '🤝 BAHİS İADE';
       renk = net > 0 ? TEMA.RENKLER.BASARI : TEMA.RENKLER.BILGI;
       durum = net > 0
         ? `${sonuc.sembol.emoji} ×2 • **${sonuc.carpan}×** çarpan\n**+${ryoYaz(net)}** net kazanç`
         : `${sonuc.sembol.emoji} ×2 • bahsin geri döndü.`;
+      duyguSonuc = net > 0 ? 'zafer' : 'cay';
     } else {
       baslikSon = '💀 KAYBETTİN';
       renk = TEMA.RENKLER.HATA;
       durum = `Hizalama yok. **-${ryoYaz(bahis)}**`;
+      duyguSonuc = 'aglama';
     }
+
+    const { files, attachmentUrl } = oyunStickerEkini(interaction.user, interaction.member, duyguSonuc);
+    const sonucEmbed = kageEmbed({
+      baslik: baslikSon,
+      renk,
+      aciklama: `${cerceve(a.emoji, b.emoji, c.emoji)}\n${durum}\n🪙 Bakiye: **${ryoYaz(bakiye)}**`,
+      altMetin: tekrarMumkun ? `Bahis: ${ryoYaz(bahis)} • 45 sn içinde tekrar çevirebilirsin` : 'Bakiyen bir sonraki tur için yetersiz'
+    });
+    if (attachmentUrl) sonucEmbed.setThumbnail(attachmentUrl);
 
     const tekrarMumkun = bakiye >= bahis;
     await duzenle({
-      embeds: [kageEmbed({
-        baslik: baslikSon,
-        renk,
-        aciklama: `${cerceve(a.emoji, b.emoji, c.emoji)}\n${durum}\n🪙 Bakiye: **${ryoYaz(bakiye)}**`,
-        altMetin: tekrarMumkun ? `Bahis: ${ryoYaz(bahis)} • 45 sn içinde tekrar çevirebilirsin` : 'Bakiyen bir sonraki tur için yetersiz'
-      })],
+      embeds: [sonucEmbed],
+      files,
       components: tekrarMumkun ? [tekrarButonu(false)] : []
     });
   }

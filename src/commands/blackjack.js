@@ -6,7 +6,7 @@ import {
   ComponentType, MessageFlags } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { bakiyeGetir, ryoEkle, ryoDus, MAKS_BAHIS } from '../services/ekonomiServisi.js';
-import { bekle, ryoYaz, kartlariCiz, skorEtiketi } from '../config/oyunGorsel.js';
+import { bekle, ryoYaz, kartlariCiz, skorEtiketi, oyunStickerEkini } from '../config/oyunGorsel.js';
 
 export const data = new SlashCommandBuilder()
   .setName('blackjack')
@@ -190,13 +190,17 @@ export async function execute(interaction) {
     const oyuncuSkor = elSkoruHesapla(oyuncuEli);
 
     if (oyuncuSkor > 21) {
+      const { files, attachmentUrl } = oyunStickerEkini(interaction.user, interaction.member, 'aglama');
+      const bustEmbed = masaEmbed({
+        baslik: '💥 YANDIN! (BUST)',
+        renk: TEMA.RENKLER.HATA,
+        durum: `Skorun 21'i aştı.\n💸 **Kayıp:** -${ryoYaz(bahis)} • Bakiye: **${ryoYaz(bakiyeGetir(userId).ryo)}**`,
+        gizli: false
+      });
+      if (attachmentUrl) bustEmbed.setThumbnail(attachmentUrl);
       return mesaj.edit({
-        embeds: [masaEmbed({
-          baslik: '💥 YANDIN! (BUST)',
-          renk: TEMA.RENKLER.HATA,
-          durum: `Skorun 21'i aştı.\n💸 **Kayıp:** -${ryoYaz(bahis)} • Bakiye: **${ryoYaz(bakiyeGetir(userId).ryo)}**`,
-          gizli: false
-        })],
+        embeds: [bustEmbed],
+        files,
         components: []
       });
     }
@@ -228,32 +232,40 @@ export async function execute(interaction) {
     await bekle(800);
 
     const krupiyeSkor = elSkoruHesapla(krupiyeEli);
-    let baslik, renk, durum;
+    let baslik, renk, durum, duyguSonuc;
 
     if (krupiyeSkor > 21 || oyuncuSkor > krupiyeSkor) {
       ryoEkle(userId, bahis * 2, 'blackjack ödeme');
       baslik = krupiyeSkor > 21 ? '🎉 KRUPİYE PATLADI!' : '🏆 MASAYI YENDİN!';
       renk = TEMA.RENKLER.BASARI;
       durum = `**+${ryoYaz(bahis)}** kazandın (ödeme: ${ryoYaz(bahis * 2)})`;
+      duyguSonuc = 'zafer';
     } else if (oyuncuSkor === krupiyeSkor) {
       ryoEkle(userId, bahis, 'blackjack iade');
       baslik = '🤝 BERABERE (PUSH)';
       renk = TEMA.RENKLER.BILGI;
       durum = 'Skorlar eşit, bahsin iade edildi.';
+      duyguSonuc = 'cay';
     } else {
       baslik = '💀 KRUPİYE KAZANDI';
       renk = TEMA.RENKLER.HATA;
       durum = `**-${ryoYaz(bahis)}** kaybettin.`;
+      duyguSonuc = 'aglama';
     }
 
+    const { files, attachmentUrl } = oyunStickerEkini(interaction.user, interaction.member, duyguSonuc);
+    const sonucEmbed = masaEmbed({
+      baslik,
+      renk,
+      durum: `${durum}\n🪙 Bakiye: **${ryoYaz(bakiyeGetir(userId).ryo)}**`,
+      gizli: false,
+      altMetin: 'Kage 21 Casino • Tekrar oynamak için /blackjack'
+    });
+    if (attachmentUrl) sonucEmbed.setThumbnail(attachmentUrl);
+
     await mesaj.edit({
-      embeds: [masaEmbed({
-        baslik,
-        renk,
-        durum: `${durum}\n🪙 Bakiye: **${ryoYaz(bakiyeGetir(userId).ryo)}**`,
-        gizli: false,
-        altMetin: 'Kage 21 Casino • Tekrar oynamak için /blackjack'
-      })],
+      embeds: [sonucEmbed],
+      files,
       components: []
     }).catch(() => {});
   });

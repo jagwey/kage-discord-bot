@@ -5,6 +5,7 @@ import {
   ButtonStyle,
   ComponentType, MessageFlags } from 'discord.js';
 import { TEMA, kageEmbed, rastgeleSlogan } from '../config/tema.js';
+import { oyunStickerEkini } from '../config/oyunGorsel.js';
 import {
   bakiyeGetir,
   zindanZaferiDetayli,
@@ -513,7 +514,10 @@ export async function execute(interaction) {
         altMetin: `Eşyalarını görmek için /envanter yazabilirsin • kage95.com`
       });
 
-      return bi.message.edit({ embeds: [nihaiZaferEmbed], components: [] });
+      const { files: zaferFiles, attachmentUrl: zaferAtt } = oyunStickerEkini(interaction.user, interaction.member, 'zafer');
+      if (zaferAtt) nihaiZaferEmbed.setThumbnail(zaferAtt);
+
+      return bi.message.edit({ embeds: [nihaiZaferEmbed], files: zaferFiles, components: [] });
     }
 
     // ==========================================
@@ -556,7 +560,10 @@ export async function execute(interaction) {
         altMetin: `Kage Zindan RPG • Ölüm ciddidir.`
       });
 
-      return bi.message.edit({ embeds: [olumEmbed], components: [] });
+      const { files: olumFiles, attachmentUrl: olumAtt } = oyunStickerEkini(interaction.user, interaction.member, 'aglama');
+      if (olumAtt) olumEmbed.setThumbnail(olumAtt);
+
+      return bi.message.edit({ embeds: [olumEmbed], files: olumFiles, components: [] });
     }
 
     tur++;

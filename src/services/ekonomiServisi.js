@@ -15,14 +15,20 @@ export const KILIC_SEVIYELERI = [
   { seviye: 2, ad: '⚔️ Çelik Katana', bonus: 10, maliyet: 500, desc: 'Dövülmüş çelik. Düello ve zindanda +%10 kazanma bonusu.' },
   { seviye: 3, ad: '🩸 Kanlı Muramasa', bonus: 20, maliyet: 1500, desc: 'Lanetli keskinlik. +%20 kazanma bonusu.' },
   { seviye: 4, ad: '🐉 Kage Ejder Kılıcı', bonus: 35, maliyet: 3500, desc: 'Ateşle dövülmüş efsanevi katana. +%35 kazanma bonusu.' },
-  { seviye: 5, ad: '👑 Efsanevi Gölge Kılıcı', bonus: 50, maliyet: 8000, desc: 'Şogunların kadim yadigarı. +%50 nihai kazanma bonusu.' }
+  { seviye: 5, ad: '👑 Efsanevi Gölge Kılıcı', bonus: 50, maliyet: 8000, desc: 'Şogunların kadim yadigarı. +%50 nihai kazanma bonusu.' },
+  { seviye: 6, ad: '✨ Kadim Kusanagi no Tsurugi', bonus: 70, maliyet: 16000, desc: 'Fırtına tanrısının göklerden indirdiği kutsal kılıç. +%70 üstün hasar bonusu.' },
+  { seviye: 7, ad: '🌌 Kozmik Hiçlik Katanası', bonus: 100, maliyet: 35000, desc: 'Yıldız tozu ve ebedi gölgenin birleşimi. +%100 nihai tanrısal güç.' }
 ];
 
 export const MARKET_URUNLERI = [
   { id: 'unvan_golge', ad: '🥷 Gölge Suikastçısı Unvanı', fiyat: 800, tip: 'unvan', deger: 'Gölge Suikastçısı', desc: 'Profilinizde görünen havalı bir samuray unvanı.' },
   { id: 'unvan_ronin', ad: '📜 Başıboş Ronin Unvanı', fiyat: 400, tip: 'unvan', deger: 'Başıboş Ronin', desc: 'Yalnız bir kılıç ustasının unvanı.' },
   { id: 'unvan_onur', ad: '⛩️ Onurlu Daimyo Unvanı', fiyat: 2000, tip: 'unvan', deger: 'Onurlu Daimyo', desc: 'Klan meclisinin en saygın unvanı.' },
-  { id: 'muska_sans', ad: '🏮 Kızıl Şans Muskası', fiyat: 600, tip: 'muska', deger: 'sans_muskasi', desc: 'Zindan seferlerinde ganimeti %25 artırır.' }
+  { id: 'unvan_shogun', ad: '👑 Büyük Şogun Unvanı', fiyat: 5000, tip: 'unvan', deger: 'Büyük Şogun', desc: 'Kalenin mutlak hükümdarlık unvanı.' },
+  { id: 'unvan_kunoichi', ad: '🌸 Kiraz Çiçeği Kunoichi Unvanı', fiyat: 1500, tip: 'unvan', deger: 'Kiraz Çiçeği Kunoichi', desc: 'Zarif ve ölümcül savaşçı hanımların unvanı.' },
+  { id: 'muska_sans', ad: '🏮 Kızıl Şans Muskası', fiyat: 600, tip: 'muska', deger: 'sans_muskasi', desc: 'Zindan seferlerinde ganimeti %25 artırır.' },
+  { id: 'muska_koruma', ad: '🪬 Çelik Koruma Tılsımı', fiyat: 1000, tip: 'muska', deger: 'koruma_muskasi', desc: 'Zindanda ölüm cezasını (para kaybını) yarı yarıya düşürür.' },
+  { id: 'bilet_kumarhane', ad: '🎫 VIP Kumarhane Kartı', fiyat: 2500, tip: 'kart', deger: 'vip_kumar', desc: 'Blackjack ve slot masalarında kayıpların %10\'unu kasadan geri iade eder.' }
 ];
 
 function veriyiYukle() {

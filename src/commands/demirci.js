@@ -13,7 +13,7 @@ export async function execute(interaction) {
   const sonrakiKilic = KILIC_SEVIYELERI.find(k => k.seviye === mevcutKilic.seviye + 1);
 
   let aciklama = `**Usta Demircinin Ocağına Hoş Geldiniz!**\n\n` +
-    `🗡️ **Mevcut Katananız:** **${mevcutKilic.ad}** (Seviye ${mevcutKilic.seviye}/5)\n` +
+    `🗡️ **Mevcut Katananız:** **${mevcutKilic.ad}** (Seviye ${mevcutKilic.seviye}/${KILIC_SEVIYELERI.length})\n` +
     `⚡ **Kazanma Bonusu:** \`+%${mevcutKilic.bonus}\`\n` +
     `💰 **Cüzdanınız:** \`${bakiye.ryo} Ryo\`\n\n`;
 
@@ -23,7 +23,7 @@ export async function execute(interaction) {
       `🪙 **Gereken Maliyet:** \`${sonrakiKilic.maliyet} Ryo\`\n\n` +
       `*Kılıcınızı bir üst kademeye dövmek için aşağıdaki butona basın!*`;
   } else {
-    aciklama += `👑 **Tebrikler!** Katananız ulaşılabilecek en yüksek kademede (**Efsanevi Gölge Kılıcı**) parlıyor!`;
+    aciklama += `👑 **Tebrikler Efsanevi Usta!** Katananız ulaşılabilecek en yüce kozmik kademede (**${mevcutKilic.ad}**) parlıyor!`;
   }
 
   const embed = kageEmbed({

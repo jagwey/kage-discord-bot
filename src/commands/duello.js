@@ -6,7 +6,8 @@ import {
   ComponentType, MessageFlags } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { bakiyeGetir, duelloSonucuKaydet, ryoDus, ryoEkle, MAKS_BAHIS } from '../services/ekonomiServisi.js';
-import { canCubugu, ryoYaz } from '../config/oyunGorsel.js';
+import { canCubugu, ryoYaz, oyunStickerEkini } from '../config/oyunGorsel.js';
+import { kullaniciNotuEkle } from '../services/kageHafizaServisi.js';
 
 export const data = new SlashCommandBuilder()
   .setName('duello')
@@ -42,27 +43,30 @@ export async function execute(interaction) {
     });
   }
 
-  if (rakip.bot) {
+  const botMu = rakip.id === interaction.client.user.id;
+  if (rakip.bot && !botMu) {
     return interaction.reply({
-      content: '🤖 Yapay zeka ve botlara kılıç çekemezsin. Etli kemikli bir savaşçı seç!',
+      content: '🤖 Diğer botlara kılıç çekemezsin. Etli kemikli bir savaşçı seç ya da doğrudan bana (@Kage-95) meydan oku!',
       flags: MessageFlags.Ephemeral
     });
   }
 
   if (bahis > 0) {
     const bM = bakiyeGetir(meydanOkuyan.id);
-    const bR = bakiyeGetir(rakip.id);
     if (bM.ryo < bahis) {
       return interaction.reply({
         content: `❌ Yeterli Ryo'nuz yok! Bakiyeniz: **${ryoYaz(bM.ryo)}**, istenen bahis: **${ryoYaz(bahis)}**.`,
         flags: MessageFlags.Ephemeral
       });
     }
-    if (bR.ryo < bahis) {
-      return interaction.reply({
-        content: `❌ Rakibiniz ${rakip.username} bu bahsi karşılayacak kadar Ryo'ya sahip değil! (Bakiyesi: **${ryoYaz(bR.ryo)}**)`,
-        flags: MessageFlags.Ephemeral
-      });
+    if (!botMu) {
+      const bR = bakiyeGetir(rakip.id);
+      if (bR.ryo < bahis) {
+        return interaction.reply({
+          content: `❌ Rakibiniz ${rakip.username} bu bahsi karşılayacak kadar Ryo'ya sahip değil! (Bakiyesi: **${ryoYaz(bR.ryo)}**)`,
+          flags: MessageFlags.Ephemeral
+        });
+      }
     }
   }
 
@@ -84,16 +88,28 @@ export async function execute(interaction) {
   const yanit = await interaction.reply({
     content: `${rakip}`,
     embeds: [kageEmbed({
-      baslik: '⚔️ KANLI DÜELLO MEYDAN OKUMASI!',
+      baslik: botMu ? '⚔️ GÖLGE VEZİRİ MEYDAN OKUMANI KABUL ETTİ!' : '⚔️ KANLI DÜELLO MEYDAN OKUMASI!',
       renk: TEMA.RENKLER.KAN_KIRMIZISI,
-      aciklama: `**${meydanOkuyan.username}**, katanasını kınından çıkarıp **${rakip}** savaşçısına meydan okudu!\n\n` +
-        `🪙 **Ortadaki Bahis:** ${bahis > 0 ? `**${ryoYaz(bahis * 2)}** (${bahis} + ${bahis})` : 'Sadece onur ve şeref'}\n\n` +
-        `Ey ${rakip}, bu onurlu çarpışmayı kabul ediyor musun?`,
-      altMetin: '60 saniye içinde yanıt verilmezse düello iptal edilir.'
+      aciklama: botMu
+        ? `**${meydanOkuyan.username}**, katanasını kınından çıkarıp doğrudan **Kage-95**'e meydan okudu!\n\n` +
+          `*'Cesaretini takdir ettim savaşçı! Ama kalede şogun benim, kılıcım acımaz!'*\n\n` +
+          `🪙 **Ortadaki Bahis:** ${bahis > 0 ? `**${ryoYaz(bahis * 2)}**` : 'Onur ve Klan Şerefi'}\n\n` +
+          `⚔️ *Çarpışma hemen başlıyor!*`
+        : `**${meydanOkuyan.username}**, katanasını kınından çıkarıp **${rakip}** savaşçısına meydan okudu!\n\n` +
+          `🪙 **Ortadaki Bahis:** ${bahis > 0 ? `**${ryoYaz(bahis * 2)}** (${bahis} + ${bahis})` : 'Sadece onur ve şeref'}\n\n` +
+          `Ey ${rakip}, bu onurlu çarpışmayı kabul ediyor musun?`,
+      altMetin: botMu ? 'Kage AI Boss Çarpışması Başlıyor!' : '60 saniye içinde yanıt verilmezse düello iptal edilir.'
     })],
-    components: [davetRow()],
+    components: botMu ? [] : [davetRow()],
     fetchReply: true
   });
+
+  if (botMu) {
+    if (bahis > 0) {
+      ryoDus(meydanOkuyan.id, bahis, 'kage düello bahis');
+    }
+    return dovusuBaslat();
+  }
 
   let baslandi = false;
 
@@ -153,7 +169,7 @@ export async function execute(interaction) {
   function dovusuBaslat() {
     const oyuncular = {
       [meydanOkuyan.id]: { kullanici: meydanOkuyan, hp: 100, savunma: false, meditasyon: MEDITASYON_HAKKI },
-      [rakip.id]: { kullanici: rakip, hp: 100, savunma: false, meditasyon: MEDITASYON_HAKKI }
+      [rakip.id]: { kullanici: rakip, hp: botMu ? 120 : 100, savunma: false, meditasyon: MEDITASYON_HAKKI }
     };
     let sira = Math.random() < 0.5 ? meydanOkuyan : rakip;
     let tur = 1;
@@ -171,28 +187,38 @@ export async function execute(interaction) {
         baslik: `⚔️ SAMURAY MEYDANI • TUR #${tur}`,
         renk: bitti ? TEMA.RENKLER.ALTIN : TEMA.RENKLER.KAN_KIRMIZISI,
         aciklama:
-          `**${meydanOkuyan.username}** ${durum(p1)}\n${canCubugu(p1.hp)}\n\n` +
-          `**${rakip.username}** ${durum(p2)}\n${canCubugu(p2.hp)}\n\n` +
+          `**${meydanOkuyan.username}** ${durum(p1)}\n${canCubugu(p1.hp, 100)}\n\n` +
+          `**${rakip.username}** ${durum(p2)}\n${canCubugu(p2.hp, botMu ? 120 : 100)}\n\n` +
           `📜 **Olay Günlüğü**\n${kayit.map(k => `> ${k}`).join('\n')}\n\n` +
           (sonMesaj || `👉 **Sıra:** ${sira}`),
         altMetin: bahis > 0 ? `Havuz: ${ryoYaz(bahis * 2)} • Her hamle için 30 sn` : 'Dostluk düellosu • Her hamle için 30 sn'
       });
 
+      let files = [];
+      if (bitti) {
+        const kazananBenMi = oyuncular[meydanOkuyan.id].hp > 0;
+        const stickerDuygu = kazananBenMi ? 'zafer' : 'aglama';
+        const st = oyunStickerEkini(meydanOkuyan, interaction.member, stickerDuygu);
+        if (st.attachmentUrl) embed.setThumbnail(st.attachmentUrl);
+        files = st.files;
+      }
+
       const satir = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('hamle_katana').setLabel('Katana (20-30)')
-          .setStyle(ButtonStyle.Primary).setEmoji('🗡️').setDisabled(bitti),
+          .setStyle(ButtonStyle.Primary).setEmoji('🗡️').setDisabled(bitti || (botMu && sira.id === rakip.id)),
         new ButtonBuilder().setCustomId('hamle_golge').setLabel('Gölge (10-45)')
-          .setStyle(ButtonStyle.Secondary).setEmoji('🌪️').setDisabled(bitti),
+          .setStyle(ButtonStyle.Secondary).setEmoji('🌪️').setDisabled(bitti || (botMu && sira.id === rakip.id)),
         new ButtonBuilder().setCustomId('hamle_savunma').setLabel('Kalkan')
-          .setStyle(ButtonStyle.Success).setEmoji('🛡️').setDisabled(bitti),
+          .setStyle(ButtonStyle.Success).setEmoji('🛡️').setDisabled(bitti || (botMu && sira.id === rakip.id)),
         new ButtonBuilder().setCustomId('hamle_meditasyon').setLabel('Meditasyon (+15-25)')
           .setStyle(ButtonStyle.Secondary).setEmoji('🧘')
-          .setDisabled(bitti || oyuncular[sira.id].meditasyon <= 0)
+          .setDisabled(bitti || (botMu && sira.id === rakip.id) || (oyuncular[sira.id]?.meditasyon <= 0))
       );
 
       return yanit.edit({
         content: bitti ? '🏁 Dövüş bitti!' : `${sira} hamleni seç! (30 sn)`,
         embeds: [embed],
+        files,
         components: [satir]
       }).catch(() => null);
     };
@@ -202,15 +228,70 @@ export async function execute(interaction) {
       bitti = true;
       clearTimeout(sureAsimi);
       dovusCollector.stop('bitti');
-      duelloSonucuKaydet(kazanan.id, kaybeden.id, bahis * 2);
+      
+      const odulRyo = bahis > 0 ? bahis * 2 : (botMu && kazanan.id === meydanOkuyan.id ? 250 : 0);
+      if (odulRyo > 0) {
+        ryoEkle(kazanan.id, odulRyo, 'düello zaferi');
+      }
+      duelloSonucuKaydet(kazanan.id, kaybeden.id, odulRyo);
+
+      if (botMu && kazanan.id === meydanOkuyan.id) {
+        kullaniciNotuEkle(meydanOkuyan.id, meydanOkuyan.username, 'Kage-95 ile yaptığı efsanevi düelloyu kazandı ve kalenin saygısını kazandı! 🏆');
+      }
+
       await arenaGonder(
         `👑 **ZAFER!** **${kazanan.username}** ${neden}` +
-        (bahis > 0 ? `\n🪙 **${ryoYaz(bahis * 2)}** kazandı!` : '')
+        (odulRyo > 0 ? `\n🪙 **${ryoYaz(odulRyo)}** kazandı!` : '')
       );
+    };
+
+    const kageBotHamlesi = () => {
+      if (bitti) return;
+      setTimeout(async () => {
+        if (bitti) return;
+        const kageObj = oyuncular[rakip.id];
+        const playerObj = oyuncular[meydanOkuyan.id];
+
+        if (kageObj.hp < 45 && kageObj.meditasyon > 0) {
+          kageObj.meditasyon--;
+          const heal = rastgele(20, 30);
+          kageObj.hp = Math.min(120, kageObj.hp + heal);
+          kayitEkle(`🍵 **Kage-95** bir yudum sıcak çay içti ve yaralarını sardı! (+${heal} HP)`);
+        } else {
+          const rand = Math.random();
+          if (rand < 0.20 && !kageObj.savunma) {
+            kageObj.savunma = true;
+            kayitEkle(`🛡️ **Kage-95** Kiraz Çiçeği Kalkanı ile pusuya yattı!`);
+          } else if (rand < 0.65) {
+            let hasar = rastgele(20, 35);
+            if (playerObj.savunma) { hasar = Math.round(hasar * 0.5); playerObj.savunma = false; }
+            playerObj.hp = Math.max(0, playerObj.hp - hasar);
+            kayitEkle(`🗡️ **Kage-95** [Gölge Katana] ile **${hasar}** hasar vurdu!`);
+          } else {
+            const kritik = Math.random() > 0.65;
+            let hasar = Math.round(rastgele(15, 45) * (kritik ? 1.4 : 1));
+            if (playerObj.savunma) { hasar = Math.round(hasar * 0.5); playerObj.savunma = false; }
+            playerObj.hp = Math.max(0, playerObj.hp - hasar);
+            kayitEkle(kritik ? `💥 **KRİTİK!** **Kage-95** Kadim Şogun Darbesi ile **${hasar}** hasar indirdi!` : `🌪️ **Kage-95** gölgelere karışarak **${hasar}** hasar vurdu!`);
+          }
+        }
+
+        if (playerObj.hp <= 0) {
+          return bitir(rakip, meydanOkuyan, 'katana hüneriyle seni mağlup etti!');
+        }
+
+        sira = meydanOkuyan;
+        tur++;
+        sureyiKur();
+        await arenaGonder();
+      }, 1200);
     };
 
     const sureyiKur = () => {
       clearTimeout(sureAsimi);
+      if (botMu && sira.id === rakip.id && !bitti) {
+        return kageBotHamlesi();
+      }
       sureAsimi = setTimeout(() => {
         if (bitti) return;
         const kaybeden = sira;

@@ -1,3 +1,12 @@
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { AttachmentBuilder } from 'discord.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const STICKERS_DIR = path.join(__dirname, '../../assets/stickers');
+
 /**
  * Oyun komutları için ortak görsel yardımcılar: ASCII kart çizimi, can çubukları,
  * kısa gecikme ve para biçimleme. Böylece blackjack, düello, yazı-tura ve slot
@@ -52,4 +61,35 @@ export function skorEtiketi(skor) {
   if (skor > 21) return `💥 ${skor}`;
   if (skor === 21) return `✨ ${skor}`;
   return `${skor}`;
+}
+
+/**
+ * Oyun içi zafer, mağlubiyet veya durum anlarında kullanıcıya uygun dinamik piksel sticker döner.
+ * @param {import('discord.js').User} user
+ * @param {import('discord.js').GuildMember|null} member
+ * @param {'zafer'|'para'|'aglama'|'ofke'|'cay'|'savas'|'uyku'|'yemek'|'sok'} duygu
+ * @returns {{ files: AttachmentBuilder[], attachmentUrl: string|null }}
+ */
+export function oyunStickerEkini(user, member = null, duygu = 'zafer') {
+  try {
+    const isFemale = kullaniciKizMiKontrol(user, member);
+    const altDir = isFemale ? 'kunoichi' : 'boy';
+    const dosyaAdi = isFemale ? 'kunoichi_sticker.png' : 'kage_sticker.png';
+    const safDuygu = String(duygu).replace(/^kage_/, '');
+    const filePath = path.join(STICKERS_DIR, altDir, `kage_${safDuygu}.png`);
+
+    if (fs.existsSync(filePath)) {
+      const att = new AttachmentBuilder(filePath, { name: dosyaAdi });
+      return { files: [att], attachmentUrl: `attachment://${dosyaAdi}` };
+    }
+  } catch {}
+  return { files: [], attachmentUrl: null };
+}
+
+function kullaniciKizMiKontrol(user, member) {
+  const KIZ_ISIMLERI = ['chan', 'girl', 'kiz', 'kız', 'bayan', 'prenses', 'alya', 'sakura', 'marin', 'waifu'];
+  const name = (member?.displayName || user?.username || '').toLowerCase();
+  if (KIZ_ISIMLERI.some(k => name.includes(k))) return true;
+  if (member?.roles?.cache?.some?.(r => r.name.toLowerCase().includes('kunoichi') || r.name.toLowerCase().includes('kız'))) return true;
+  return false;
 }
