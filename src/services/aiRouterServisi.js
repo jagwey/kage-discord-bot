@@ -91,33 +91,63 @@ async function groqMetinUret(prompt, systemInstruction = '') {
 /**
  * OpenRouter metin üretimi (Varsa DeepSeek / Llama free modelleri)
  */
-async function openRouterMetinUret(prompt, systemInstruction = '', model = 'meta-llama/llama-3.3-70b-instruct:free') {
+async function openRouterMetinUret(prompt, systemInstruction = '', ozelModel = null) {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) throw new Error('OPENROUTER_API_KEY yok');
+
+  const denenecekModeller = [
+    ozelModel,
+    process.env.OPENROUTER_MODEL,
+    'openrouter/free',
+    'nvidia/nemotron-3.5-lightning:free',
+    'dots-studio/dots-3-note-preview:free',
+    'google/gemma-4-31b-it:free'
+  ].filter(Boolean);
 
   const messages = [];
   if (systemInstruction) messages.push({ role: 'system', content: systemInstruction });
   messages.push({ role: 'user', content: prompt });
 
-  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': 'https://kage95.com',
-      'X-Title': 'Kage Bot'
-    },
-    body: JSON.stringify({
-      model,
-      messages,
-      temperature: 0.7,
-      max_tokens: 1024
-    })
-  });
+  let sonHata = null;
 
-  if (!res.ok) throw new Error(`OpenRouter HTTP ${res.status}`);
-  const data = await res.json();
-  return data.choices?.[0]?.message?.content?.trim();
+  for (const model of denenecekModeller) {
+    try {
+      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + apiKey,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://kage95.com',
+          'X-Title': 'Kage Bot'
+        },
+        body: JSON.stringify({
+          model,
+          messages,
+          temperature: 0.7,
+          max_tokens: 1500,
+          reasoning: { max_tokens: 250 }
+        })
+      });
+
+      if (!res.ok) {
+        const errText = await res.text().catch(() => '');
+        throw new Error('HTTP ' + res.status + ': ' + errText.slice(0, 100));
+      }
+
+      const data = await res.json();
+      const choice = data.choices?.[0];
+      const yanit = (choice?.message?.content || choice?.message?.reasoning || '').trim();
+
+      if (yanit) {
+        return yanit;
+      }
+    } catch (err) {
+      sonHata = err;
+      console.warn(`[AI Router] OpenRouter modeli ${model} hata: ${err.message}`);
+    }
+  }
+
+  throw sonHata || new Error('OpenRouter modelleri yanıt veremedi');
 }
 
 /**
