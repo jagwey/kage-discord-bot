@@ -66,6 +66,7 @@ export function yardimKartiOlustur() {
         value: '`• /ai <soru>` : Sınırsız yetkili yapay zeka gölge vezirine danışın.\n' +
           '`• /hafiza [durum|ara|ogren|yenile]` : Kage AI kalıcı hafıza bankasını yönetin.\n' +
           '`• /egit [ekle|liste|sil]` : Yapay zekaya sticker, bilgi ve davranış kuralı öğret.\n' +
+          '`• /sticker [duygu] [tur]` : Kage stickerlarını göster.\n' +
           '`• /ton <mod>` : Sohbet botu ve yapay zeka sana sakin, samimi, argo veya ayna tonda konuşsun (aile, din, dil, ırk asla hedef alınmaz).\n' +
           '`• /guncelleme` : Son bot sürümü ve yama raporunu gösterir.\n' +
           '`• /oyun` : Kage indie oyun lore ve devlog bilgileri.',
