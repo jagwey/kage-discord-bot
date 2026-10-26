@@ -46,16 +46,23 @@ Sunucunuz tamamen boş veya dağınık olsa dahi, tek bir komutla tüm sunucuyu 
 
 ---
 
-### 2. 🧠 Yapay Zeka Veziri, Kendi Kendine Öğrenen Hafıza & Kişilik Adaptasyonu
-- **/ai & Doğal Sohbet**: Yöneticilere özel stratejik danışmanlık, kural türetme, üye anlaşmazlıklarında tarafsız adalet ve etkinlik fermanları.
+### 2. 🧠 Akıllı Çoklu Yapay Zeka Ağı (Multi-AI Mesh) & Kendi Kendine Öğrenen Hafıza
+- **Çoklu Model Yönlendiricisi (`aiRouterServisi.js`)**: Tek bir sağlayıcıya bağımlı kalmaz. Göreve göre en uygun yapay zekayı dinamik seçer:
+  - **Google Gemini 2.5 Flash**: Derin muhakeme, sunucu yönetimi, hafıza ve araç çağırma (Tool Calling) çekirdeği.
+  - **Groq Cloud (Llama 3.3 70B)**: Saniyede 500+ token jet hızında ultra akıcı sohbet.
+  - **Pollinations AI**: %100 ücretsiz, API anahtarsız metin ve görsel üretim motoru.
+  - **OpenRouter**: DeepSeek-R1 ve açık kaynak modeller.
+- **Sıfır Kesinti Fallback Kalkanı**: Gemini kota sınırına takılırsa bot anında sessizce Groq veya Pollinations'a geçer; sohbet tek bir saniye dahi aksamaz.
 - **"Kage" / "AI" Sohbet Tetikleyicisi**: Belirlenen kanalda ya da mesajında `kage`, `ai`, `Ai`, `Aİ` geçen cümlelerde akıllı yanıt verme yeteneği.
 - **Kendi Kendine Öğrenen Kalıcı Hafıza (`/egit` & `/hafiza`)**: Sunucuya ait kuralları, klan bilgilerini ve özel bilgileri öğrenir, konuşmalarında bu hafızayı kullanarak bağlamsal yanıtlar üretir.
 - **Dinamik Ton & Ruh Hali (`/ton`)**: Kage'nin kişiliği tek komutla değiştirilebilir (*Sakin Samuray*, *Tsundere Kunoichi*, *Bilge Usta*, *Karanlık Gölge*, *Neşeli Yoldaş*).
-- **Yüksek Hızlı Hibrit Altyapı**: Google Gemini 2.5 Flash motoru ve harici yedek yapay zeka fallback desteği.
 
 ---
 
-### 3. ⚔️ RPG, Dövüş, Demirci & Ekonomi Sistemi
+### 3. ⚔️ RPG, Dövüş, Klan, Yoldaş & Ekonomi Sistemi
+- **Samuray Klan & Lonca Sistemi (`/klan`)**: 2.500 Ryo ile kendi klanını kur (`/klan kur`), klan sancağı altında savaşçı topla (`/klan katil`), kasaya Ryo bağışlayarak seviye atlat (`/klan bagis`) ve sunucu klan liderliğinde (`/klan liderlik`) yarış!
+- **Kutsal Gölge Yoldaşı / Pet Sistemi (`/yoldas`)**: Zindanda kritik hasar veren *Gölge Kurdu*, +%20 ek Ryo kazandıran *Alev Tilkisi*, kaçınma sağlayan *Mistik Kuzgun* veya zırh kalkanı veren *Yeşim Ejderi* yoldaşlarını edin, besle ve seviye atlat.
+- **Samuray Kehaneti & Günlük Fal (`/kehanet`)**: Günlük savaş şansı (%0-%100), koruyucu element, bilge sözü ve tapınak sunağından sürpriz Ryo hediyesi.
 - **Kage Bot Mini-Boss Düellosu (`/duello @Kage-95`)**: Oyuncular bota meydan okuyabilir! Kage 120 HP ile savaşı kabul eder, her 1.2 saniyede bir akıllı hamleler yapar (*Kiraz Çiçeği Kalkanı*, *Matcha Çayı İyileşmesi*, *Kadim Şogun Darbesi*). Kazanan oyuncuya 750 Ryo ve hafıza başarımı verilir!
 - **7 Seviye Katana Yükseltme Ağacı (`/demirci`)**:
   - Seviye 1: *Paslı Katana*
@@ -65,7 +72,7 @@ Sunucunuz tamamen boş veya dağınık olsa dahi, tek bir komutla tüm sunucuyu 
   - Seviye 5: *Ejderha Dişi Katanası*
   - **Seviye 6:** *✨ Kadim Kusanagi no Tsurugi* (+%70 hasar)
   - **Seviye 7:** *🌌 Kozmik Hiçlik Katanası* (+%100 hasar)
-- **Zindan Seferi (`/zindan`)**: Derin zindan katlarında canavarlarla savaş, kritik vuruşlar ve ganimet sandıkları.
+- **Zindan Seferi (`/zindan`)**: Derin zindan katlarında yoldaşınla canavarlarla savaş, kritik vuruşlar ve ganimet sandıkları.
 - **Dojo (`/dojo`), Dünya Bossu (`/boss`) & Gölge Kulesi (`/kule`)**: Seviye atlama antrenmanları, sunucu ortak boss akınları ve kat basamakları.
 - **Balıkçılık (`/balik`), Günlük Ryo (`/gunluk`), Bakiye & Transfer (`/bakiye`, `/ode`)**: Dinamik ekonomi ve liderlik tablosu (`/liderlik`).
 - **Geniş RPG Marketi (`/market`) & Kişisel Envanter (`/envanter`)**: Şans muskaları, özel klan unvanları ve savaş teçhizatları.
@@ -112,6 +119,13 @@ Sunucunuza tek tıkla (`/sticker-yukle`) yüklenebilen ve doğrudan sohbete gön
 - **/profil [üye]**: Okur seviyesi, görsel XP çubuğu (`[████████░░]`), klanı ve samuray rütbesi.
 - **/oyun**: Kage indie oyunu devlog'u, feodal hikayesi ve mekanikleri.
 - **Otomatik Bölüm Takipçisi (Background Poller)**: 5 dakikada bir siteyi arka planda sessizce kontrol eder ve yeni bölümleri duyuru kanalına basar.
+
+---
+
+### 9. 🎨 Yapay Zeka Görsel Üretim Atölyesi (`/ciz`)
+- **/ciz <tarif> [stil] [oran]**: Pollinations AI altyapısıyla Discord içinde dilediğin anime, samuray, siberpunk, piksel veya sinematik sahneyi %100 ücretsiz çizer.
+- **En-Boy Oranları**: `1:1 Kare` (Profil resmi), `9:16 Dikey` (Mobil / Duvar kağıdı), `16:9 Yatay` (Masaüstü / Banner).
+- **Yüksek Çözünürlük & Doğrudan Yükleme**: Görselleri doğrudan Discord dosyası olarak yükler, link kırılması yaşanmaz.
 
 ---
 
@@ -197,12 +211,13 @@ Sunucunuza tek tıkla (`/sticker-yukle`) yüklenebilen ve doğrudan sohbete gön
 │   └── kage-tam-sigan-afis.png
 ├── data/                         # Kalıcı JSON Depoları (.gitignore korumalı)
 ├── src/
-│   ├── commands/                 # 59 Adet Eğik Çizgi (Slash) Komutu
-│   │   ├── ai.js, egit.js, hafiza.js, ton.js
+│   ├── commands/                 # 63 Adet Eğik Çizgi (Slash) Komutu
+│   │   ├── ai.js, ciz.js, egit.js, hafiza.js, ton.js
 │   │   ├── sunucuKur.js, sunucuSifirla.js, ayarlar.js, karsilama.js
 │   │   ├── ban.js, unban.js, kick.js, timeout.js, untimeout.js, sil.js, kilit.js, uyari.js, rol.js
 │   │   ├── otomod.js, ticket.js, cekilis.js, hatirlatici.js, seviye.js
 │   │   ├── duello.js, demirci.js, zindan.js, dojo.js, boss.js, kule.js, balik.js
+│   │   ├── klan.js, yoldas.js, kehanet.js
 │   │   ├── market.js, envanter.js, bakiye.js, ode.js, gunluk.js, liderlik.js, ekonomiLog.js
 │   │   ├── blackjack.js, slot.js, yazitura.js
 │   │   ├── sticker.js, sticker-yukle.js
@@ -217,7 +232,7 @@ Sunucunuza tek tıkla (`/sticker-yukle`) yüklenebilen ve doğrudan sohbete gön
 │   │   ├── guildMemberAdd.js     # Karşılama, oto-rol ve kayıt karşılama
 │   │   ├── guildMemberRemove.js  # Ayrılan üye audit takibi
 │   │   └── guildCreate.js        # Yeni sunucuya katılım kurulumu
-│   ├── services/                 # 28 Adet Bağımsız Modüler Servis Motoru
+│   ├── services/                 # 31 Adet Bağımsız Modüler Servis Motoru
 │   │   ├── ai/                   # Gelişmiş Yapay Zeka Çekirdeği
 │   │   │   ├── kageBeyin.js      # Düşünce motoru & Akıl yürütme
 │   │   │   ├── geminiClient.js   # Google Gemini API istemcisi
@@ -225,11 +240,14 @@ Sunucunuza tek tıkla (`/sticker-yukle`) yüklenebilen ve doğrudan sohbete gön
 │   │   │   ├── konusmaGecmisi.js # Oturum & Sohbet belleği
 │   │   │   ├── onayServisi.js    # Kritik yetkili eylemleri için teyit mekanizması
 │   │   │   └── denetim.js        # Güvenlik ve yetki denetleyicisi
+│   │   ├── aiRouterServisi.js    # Akıllı Çoklu Model Yönlendiricisi & Fallback (Gemini, Groq, Pollinations)
 │   │   ├── aiServisi.js          # Temel AI ve Fallback yönlendiricisi
 │   │   ├── chatBotServisi.js     # Doğal dilde 'kage' ve 'ai' sohbet motoru
 │   │   ├── kageHafizaServisi.js  # Kendi kendine öğrenen hafıza veritabanı
 │   │   ├── duyguServisi.js       # Kişilik & ton adaptasyon motoru
 │   │   ├── ekonomiServisi.js     # Ryo, Demirci seviyeleri ve Market motoru
+│   │   ├── klanServisi.js        # Samuray klanı & lonca yönetim motoru
+│   │   ├── yoldasServisi.js      # Gölge yoldaşı & zindan pet motoru
 │   │   ├── zindanServisi.js      # RPG Zindan dövüş mantığı
 │   │   ├── dojoServisi.js        # Karakter antrenman motoru
 │   │   ├── bossServisi.js        # Dünya bossu akın sistemi
@@ -279,10 +297,12 @@ DISCORD_TOKEN=BOT_TOKENINIZ
 CLIENT_ID=BOT_APPLICATION_CLIENT_ID
 GUILD_ID=GELISTIRME_SUNUCU_IDSI_OPSIYONEL
 
-# 🧠 Yapay Zeka (aistudio.google.com adresinden %100 ÜCRETSİZ alabilirsiniz)
-AI_PROVIDER=gemini
-GEMINI_API_KEY=AIzaSy...
+# 🧠 Çoklu Yapay Zeka Ağı (Multi-AI Mesh & Fallback)
+GEMINI_API_KEY=AIzaSy...              # aistudio.google.com (%100 ÜCRETSİZ)
 GEMINI_MODEL=gemini-2.5-flash
+GROQ_API_KEY=gsk_...                 # console.groq.com (%100 ÜCRETSİZ - Llama 3.3 70B Jet Hızında)
+OPENROUTER_API_KEY=sk-or-...         # openrouter.ai (Opsiyonel / Ücretsiz DeepSeek modelleri)
+# Pollinations AI: Görsel çizim (/ciz) ve sınırsız metin için sıfır key ile otomatiktir!
 
 # Kage Platform Bilgileri
 API_BASE_URL=https://kage95.com/api
