@@ -2,7 +2,7 @@ import { SlashCommandBuilder, MessageFlags } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { belirliModelUret, DESTEKLENEN_MODELLER, saglayiciDurumu } from '../services/aiRouterServisi.js';
 import { aiErisimKontrol, aiSpamKontrol } from '../services/aiErisimServisi.js';
-import { kullaniciModelSec, kullaniciModelGetir } from '../services/kageHafizaServisi.js';
+import { kullaniciModelSec, kullaniciModelGetir, kullaniciHafizasiGetir } from '../services/kageHafizaServisi.js';
 
 export const data = new SlashCommandBuilder()
   .setName('model')
@@ -119,11 +119,20 @@ export async function execute(interaction) {
     await interaction.deferReply();
 
     try {
+      const kHafiza = kullaniciHafizasiGetir(interaction.user.id);
+      let hafizaNotu = '';
+      if (kHafiza?.notlar?.length) {
+        hafizaNotu += `\n[KULLANICI BİLGİLERİ (Hafıza)]: Bu kullanıcı hakkında bildiklerin: ${kHafiza.notlar.map(n => n.not).join(', ')}.`;
+      }
+      if (kHafiza?.profil?.kisaOzet) {
+        hafizaNotu += `\n[PROFİL]: ${kHafiza.profil.kisaOzet}`;
+      }
+
       const { metin, model, sureMs } = await belirliModelUret({
         prompt: mesaj,
         modelKodu,
         userId: interaction.user.id,
-        system: `Sen Kage-95 Discord botunun bilge, adaletli ve samimi samuray asistanısın. Türkçe, samimi ve net yanıt ver.`
+        system: `Sen Kage-95 Discord botunun bilge, adaletli ve samimi samuray asistanısın. Türkçe, samimi ve net yanıt ver.${hafizaNotu}`
       });
 
       const kirpilmis = metin.length > 4000 ? metin.slice(0, 3990) + '...\n*(Uzun metin kesildi)*' : metin;

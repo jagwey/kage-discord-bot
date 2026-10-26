@@ -54,6 +54,9 @@ export function golgeGozDurumu() {
 // Reklam ve davet linki regex'i
 const REKLAM_LINK_REGEX = /(?:https?:\/\/)?(?:www\.)?(?:discord\.(?:gg|io|me|li)|discord(?:app)?\.com\/invite)\/[a-zA-Z0-9]+/i;
 
+// Ağır küfür & toksisite sezici regex (0 ms maliyetsiz yerel filtre)
+const KUFUR_REGEX = /\b(?:amk|amq|aq|sik(?:ik|erim|er|is|tir)?|orospu|pi[cç]|yarr?ak|g[oö]t(?:o[sş]|veren)?|ibne|kahpe|pezevenk)\b/i;
+
 /**
  * Gelen mesajları 0 ms yerel sezgisel süzgeçten geçirir ve Gölge Havuzuna aktarır.
  * Botu ve sunucuyu asla yavaşlatmaz, asenkron ve non-blocking çalışır.
@@ -68,10 +71,11 @@ export async function golgeGozMesajIsle(message) {
   const metin = (message.content || '').trim();
   if (!metin || metin.length < 3) return;
 
+  const isYonetici = message.member?.permissions?.has('ManageMessages');
+
   // 1. ANLIK REKLAM / DAVET TESPİTİ (0 ms)
   if (REKLAM_LINK_REGEX.test(metin)) {
-    // Yönetici değilse işaretle ve logla
-    if (!message.member?.permissions?.has('ManageMessages')) {
+    if (!isYonetici) {
       v.onlenenIhlalSayisi += 1;
       const ihlalKayit = {
         kullanici: message.author.tag,
@@ -84,12 +88,50 @@ export async function golgeGozMesajIsle(message) {
       if (v.sonIhlaller.length > 20) v.sonIhlaller.pop();
       gozKaydet();
 
-      // Admin kanalına canlı istihbarat bildir
       adminIhlalBildir(message, 'İzinsiz Discord Davet Linki', metin);
     }
   }
 
-  // 2. Anlamlı ve Bilgi Taşıyan Mesajları Gölge Havuzuna Ekle
+  // 2. ANLIK AĞIR KÜFÜR / TOKSİSİTE TESPİTİ (0 ms)
+  if (KUFUR_REGEX.test(metin) && !isYonetici) {
+    v.onlenenIhlalSayisi += 1;
+    const ihlalKayit = {
+      kullanici: message.author.tag,
+      kullaniciId: message.author.id,
+      kanal: message.channel.name,
+      tip: 'Ağır Küfür / Hakaret',
+      zaman: new Date().toISOString()
+    };
+    v.sonIhlaller.unshift(ihlalKayit);
+    if (v.sonIhlaller.length > 20) v.sonIhlaller.pop();
+    gozKaydet();
+
+    adminIhlalBildir(message, 'Ağır Küfür / Hakaret', metin);
+  }
+
+  // 3. ANLIK CAPS SPAM / TEKRAR SPAMI (0 ms)
+  const harfSayisi = (metin.match(/[a-zA-ZğüşıöçĞÜŞİÖÇ]/g) || []).length;
+  const buyukSayisi = (metin.match(/[A-ZĞÜŞİÖÇ]/g) || []).length;
+  const isCapsSpam = harfSayisi >= 20 && (buyukSayisi / harfSayisi) > 0.80;
+  const isTekrarSpam = /(.)\1{8,}/i.test(metin);
+
+  if ((isCapsSpam || isTekrarSpam) && !isYonetici) {
+    v.onlenenIhlalSayisi += 1;
+    const tip = isCapsSpam ? 'Aşırı Büyük Harf (Caps Spam)' : 'Karakter Tekrarı Spamı';
+    v.sonIhlaller.unshift({
+      kullanici: message.author.tag,
+      kullaniciId: message.author.id,
+      kanal: message.channel.name,
+      tip,
+      zaman: new Date().toISOString()
+    });
+    if (v.sonIhlaller.length > 20) v.sonIhlaller.pop();
+    gozKaydet();
+
+    adminIhlalBildir(message, tip, metin);
+  }
+
+  // 4. Anlamlı ve Bilgi Taşıyan Mesajları Gölge Havuzuna Ekle
   // Kısa selamlar, tek kelimelik mesajlar API'ye gitmez (Sıfır Kota Tüketimi)
   if (metin.length >= 15 && !metin.startsWith('/') && !metin.startsWith('!')) {
     mesajHavuzu.push({
@@ -102,6 +144,14 @@ export async function golgeGozMesajIsle(message) {
 
     if (mesajHavuzu.length > 50) {
       mesajHavuzu.shift();
+    }
+
+    // ⚡ Otonom Hızlı Aktarım: Havuzda 8 veya daha fazla anlamlı mesaj birikirse
+    // 60 saniyelik zamanlayıcıyı beklemeden derhal arka planda otonom AI aktarımını tetikle!
+    if (mesajHavuzu.length >= 8 && !taramaSuruyor) {
+      setImmediate(() => {
+        golgeGozTopluAnaliz(message.client).catch(() => null);
+      });
     }
   }
 }
@@ -137,7 +187,7 @@ function adminIhlalBildir(message, ihlalTipi, icerik) {
  * @param {import('discord.js').Client} client 
  */
 export async function golgeGozTopluAnaliz(client) {
-  if (taramaSuruyor || mesajHavuzu.length < 5) return;
+  if (taramaSuruyor || mesajHavuzu.length < 2) return;
   taramaSuruyor = true;
   const v = gozYukle();
 
