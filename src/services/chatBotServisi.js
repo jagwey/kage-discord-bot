@@ -25,15 +25,23 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const STICKERS_DIR = path.join(__dirname, '../../assets/stickers');
 const KUNOICHI_DIR = path.join(STICKERS_DIR, 'kunoichi');
+const BOY_DIR = path.join(STICKERS_DIR, 'boy');
 
 const STICKER_DOSYALARI_ERKEK = {
-  savas: path.join(STICKERS_DIR, 'kage_savas.png'),
-  cay: path.join(STICKERS_DIR, 'kage_cay.png'),
-  ofke: path.join(STICKERS_DIR, 'kage_ofke.png'),
-  zafer: path.join(STICKERS_DIR, 'kage_zafer.png'),
-  para: path.join(STICKERS_DIR, 'kage_para.png'),
-  sevgi: path.join(STICKERS_DIR, 'kage_sevgi.png'),
-  dusunce: path.join(STICKERS_DIR, 'kage_dusunce.png')
+  savas: path.join(BOY_DIR, 'kage_savas.png'),
+  cay: path.join(BOY_DIR, 'kage_cay.png'),
+  ofke: path.join(BOY_DIR, 'kage_ofke.png'),
+  zafer: path.join(BOY_DIR, 'kage_zafer.png'),
+  para: path.join(BOY_DIR, 'kage_para.png'),
+  sevgi: path.join(BOY_DIR, 'kage_sevgi.png'),
+  dusunce: path.join(BOY_DIR, 'kage_dusunce.png'),
+  uyku: path.join(BOY_DIR, 'kage_uyku.png'),
+  yemek: path.join(BOY_DIR, 'kage_yemek.png'),
+  sok: path.join(BOY_DIR, 'kage_sok.png'),
+  aglama: path.join(BOY_DIR, 'kage_aglama.png'),
+  selam: path.join(BOY_DIR, 'kage_selam.png'),
+  oyun: path.join(BOY_DIR, 'kage_oyun.png'),
+  utanma: path.join(BOY_DIR, 'kage_utanma.png')
 };
 
 const STICKER_DOSYALARI_KUNOICHI = {
@@ -43,7 +51,14 @@ const STICKER_DOSYALARI_KUNOICHI = {
   zafer: path.join(KUNOICHI_DIR, 'kage_zafer.png'),
   para: path.join(KUNOICHI_DIR, 'kage_para.png'),
   sevgi: path.join(KUNOICHI_DIR, 'kage_sevgi.png'),
-  dusunce: path.join(KUNOICHI_DIR, 'kage_dusunce.png')
+  dusunce: path.join(KUNOICHI_DIR, 'kage_dusunce.png'),
+  uyku: path.join(KUNOICHI_DIR, 'kage_uyku.png'),
+  yemek: path.join(KUNOICHI_DIR, 'kage_yemek.png'),
+  sok: path.join(KUNOICHI_DIR, 'kage_sok.png'),
+  aglama: path.join(KUNOICHI_DIR, 'kage_aglama.png'),
+  selam: path.join(KUNOICHI_DIR, 'kage_selam.png'),
+  oyun: path.join(KUNOICHI_DIR, 'kage_oyun.png'),
+  utanma: path.join(KUNOICHI_DIR, 'kage_utanma.png')
 };
 
 // ==========================================
@@ -358,7 +373,7 @@ GÖREV VE KURALLAR:
 5. Kullanıcı kendisiyle ilgili yeni bir kişisel bilgi verirse (adı, hissi, hobisi, favori mangası vb.), yanıtının EN SONUNA şunu ekle (kullanıcıya gösterilmeyecek, sisteme işlenecek):
 [ÖĞRENİLDİ: <kullanıcı hakkında kalıcı 1 cümlelik gerçek>]
 6. Bu konuşmadaki ruh haline en uygun duyguyu seç ve EN SONA şu etiketi ekle:
-[DUYGU: <savas|cay|ofke|zafer|para|sevgi|dusunce>]
+[DUYGU: <savas|cay|ofke|zafer|para|sevgi|dusunce|uyku|yemek|sok|aglama|selam|oyun|utanma>]
 7. Yanıtın 1-3 paragraf arasında akıcı, doğal ve tatmin edici olsun.`;
 
   // Konuşma geçmişini yükle
@@ -386,7 +401,7 @@ GÖREV VE KURALLAR:
     let ogrenilen = null;
 
     // Duygu etiketini yakala
-    const duyguMatch = hamMetin.match(/\[DUYGU:\s*(savas|cay|ofke|zafer|para|sevgi|dusunce)\]/i);
+    const duyguMatch = hamMetin.match(/\[DUYGU:\s*(savas|cay|ofke|zafer|para|sevgi|dusunce|uyku|yemek|sok|aglama|selam|oyun|utanma)\]/i);
     if (duyguMatch) {
       secilenDuygu = duyguMatch[1].toLowerCase();
     }
@@ -533,7 +548,43 @@ export async function chatBotYanitla(mesajMetni, user, guild = null, member = nu
       baslik = isFemale ? '👑 KUNOICHI PİKSEL ÇIKARTMASI • KUNOICHI ZAFERİ' : '👑 KAGE PİKSEL ÇIKARTMASI • ŞOGUN ZAFERİ';
       aciklama = isFemale
         ? `Altın kanzashi çiçeğimiz saçımızda, zafer katanamızın ucunda! Bu kalede sadece en güçlü kunoichiler parlar. 🌸👑`
-        : `Şogun tacı başımızda, zafer katanamızın ucunda! Bu kalede sadece en güçlüler ayakta kalır.`;
+        : `Zafer bizim kılıç kardeşim! Bu kalede sadece en azimli olanlar ayakta kalır. 👑`;
+    } else if (metin.includes('yemek') || metin.includes('ramen') || metin.includes('acıktım') || metin.includes('lezzetli')) {
+      duygu = 'yemek';
+      baslik = isFemale ? '🍜 KUNOICHI PİKSEL ÇIKARTMASI • SICAK RAMEN ZİYAFETİ' : '🍜 KAGE PİKSEL ÇIKARTMASI • SICAK RAMEN ZİYAFETİ';
+      aciklama = isFemale
+        ? `Dumanı tüten sıcacık bir kase ramen ve leziz soya soslu yumurta! 🍜🌸 Yanında matcha çayıyla ziyafet vakti tatlı kunoichi **${userName}**!`
+        : `Dumanı tüten sıcacık bir kase ramen! 🍜 Çubukları hazırla **${userName}**, kılıç bileyenlerin karnı tok olmalı!`;
+    } else if (metin.includes('uyku') || metin.includes('uyu') || metin.includes('yorgun') || metin.includes('geceler')) {
+      duygu = 'uyku';
+      baslik = isFemale ? '💤 KUNOICHI PİKSEL ÇIKARTMASI • TATLI UYKULAR' : '💤 KAGE PİKSEL ÇIKARTMASI • HUZURLU DİNLENME';
+      aciklama = isFemale
+        ? `Göz kapakların ağırlaşıyor tatlı kunoichi **${userName}**... Yumuşacık yastığına sarıl, kılıcını başucuna koy ve tatlı rüyalar gör! 💤🌸`
+        : `Katanayı kınına sok ve dinlen **${userName}**... Yarın fethedilecek yeni zindanlar bizi bekler, iyi uykular! 💤`;
+    } else if (metin.includes('şok') || metin.includes('şaşır') || metin.includes('nası yani') || metin.includes('oha')) {
+      duygu = 'sok';
+      baslik = isFemale ? '😱 KUNOICHI PİKSEL ÇIKARTMASI • BÜYÜK ŞOK' : '😱 KAGE PİKSEL ÇIKARTMASI • BÜYÜK ŞOK';
+      aciklama = isFemale
+        ? `N-Nasıl yani?! Gözlerime inanamıyorum **${userName}**! Bu beklenmedik gelişme karşısında kalbim hızla çarptı! 😱🌸`
+        : `N-Nasıl yani?! Bu beklenmedik hamle gölgelerin efendisini bile hayrete düşürdü! 😱`;
+    } else if (metin.includes('ağla') || metin.includes('üzgün') || metin.includes('gözyaşı')) {
+      duygu = 'aglama';
+      baslik = isFemale ? '😭 KUNOICHI PİKSEL ÇIKARTMASI • DUYGUSAL ANLAR' : '😭 KAGE PİKSEL ÇIKARTMASI • DUYGUSAL ANLAR';
+      aciklama = isFemale
+        ? `Hıhık... Gözlerimden yaşlar sel oldu aktı... Sakın üzülme tatlı kunoichim **${userName}**, gölge kardeşlerin hep yanında! 😭🌸`
+        : `Gözlerim doldu be samuray **${userName}**... Ama samuraylar ağlamaz derler, bu sadece kiraz çiçeği tozu! 😭`;
+    } else if (metin.includes('selam') || metin.includes('merhaba') || metin.includes('günaydın') || metin.includes('yo')) {
+      duygu = 'selam';
+      baslik = isFemale ? '👋 KUNOICHI PİKSEL ÇIKARTMASI • NEŞELİ SELAM' : '👋 KAGE PİKSEL ÇIKARTMASI • DOSTÇA SELAM';
+      aciklama = isFemale
+        ? `Konnichiwaaa! Neşeyle el sallıyorum tatlı kunoichi **${userName}**, kaleme hoş sefalar getirdin! 👋🌸`
+        : `Yo! Selamlar kılıç kardeşim **${userName}**, Kage Kalesi'ne hoş geldin! 👋`;
+    } else if (metin.includes('oyun') || metin.includes('game') || metin.includes('gamer')) {
+      duygu = 'oyun';
+      baslik = isFemale ? '🎮 KUNOICHI PİKSEL ÇIKARTMASI • GAMER MODU' : '🎮 KAGE PİKSEL ÇIKARTMASI • GAMER MODU';
+      aciklama = isFemale
+        ? `Kulaklıkları taktım, oyun kolunu elime aldım! Zindan bossunu tek hamlede indirmeye hazır mısın **${userName}**? 🎮🌸`
+        : `Kulaklıkları taktım, konsolu açtım! Oyunda kimse elimden kurtulamaz kılıç kardeşim **${userName}**! 🎮`;
     } else {
       duygu = 'cay';
       baslik = isFemale ? '🍵 KUNOICHI PİKSEL ÇIKARTMASI • SAKİN ÇAY MOLASI' : '🍵 KAGE PİKSEL ÇIKARTMASI • SAKİN ÇAY MOLASI';

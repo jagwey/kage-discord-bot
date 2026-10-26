@@ -7,19 +7,24 @@ const STICKER_HARITASI = {
   gurur: 'zafer',
   sevgi: 'sevgi',
   minnet: 'sevgi',
-  uzuntu: 'dusunce',
-  yalnizlik: 'dusunce',
+  uzuntu: 'aglama',
+  aglama: 'aglama',
+  yalnizlik: 'aglama',
   endise: 'dusunce',
-  korku: 'dusunce',
+  korku: 'sok',
   merak: 'dusunce',
-  saskinlik: 'dusunce',
+  saskinlik: 'sok',
+  sok: 'sok',
   ofke: 'ofke',
-  sikinti: 'ofke',
+  sikinti: 'uyku',
+  uyku: 'uyku',
   sinir: 'ofke',
   rekabet: 'savas',
   eglence: 'cay',
   sakin: 'cay',
-  para: 'para'
+  para: 'para',
+  yemek: 'yemek',
+  selam: 'selam'
 };
 
 const TON_ONERISI = {
@@ -57,10 +62,13 @@ const KURALLAR = [
   ['heyecan', /\b(heyecan|inanilmaz|muthis|harika|efsane|bayildim|cok guzel|super|mukemmel|vay be|yasasin|yaasasin|helal)/, 2],
   ['sevinc', /\b(mutluyum|sevindim|cok sevindim|iyiyim|keyifli|keyfim yerinde|gulme|haha|ahaha|ehehe|:d|xd|lol|😂|🤣|😄|😁)/, 1],
   ['merak', /\b(nasil|neden|niye|nedir|ne demek|kim|hangi|kac|ne zaman|nerede|\?)/, 0],
-  ['saskinlik', /\b(sasirdim|inanamiyorum|gercekten mi|yok artik|ciddi misin|ne\?!|nasil yani|vay)/, 1],
+  ['saskinlik', /\b(sasirdim|inanamiyorum|gercekten mi|yok artik|ciddi misin|ne\?!|nasil yani|vay|oha|sok oldum)/, 1],
   ['rekabet', /\b(duello|dovus|kapisalim|meydan oku|yenerim|savas|kavga|zindan|boss|rakip)/, 1],
   ['eglence', /\b(saka|komik|gulduruyor|gulmekten|kahkaha|espri|eglenc|bomba)/, 1],
-  ['para', /\b(ryo|para|zengin|fakir|bahis|kumar|market|bakiye|maas|fiyat)/, 1]
+  ['para', /\b(ryo|para|zengin|fakir|bahis|kumar|market|bakiye|maas|fiyat)/, 1],
+  ['uyku', /\b(uyku|uykum|uyuyacagim|yorgunum|yattim|iyi geceler|uyumak|esniyorum|pestilim cikti|dinleniyorum)/, 2],
+  ['yemek', /\b(aciktim|yemek|ramen|makarna|pizza|corba|doydum|karnim acikti|afiyet|atistirmalik|lezzetli)/, 2],
+  ['selam', /\b(gunaydin|iyi aksamlar|selam|merhaba|naber|selamlar|hey|yo\b|hos geldin)/, 1]
 ];
 
 const OLUMSUZLAR = ['ofke', 'uzuntu', 'yalnizlik', 'endise', 'korku', 'sikinti'];
