@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { ryoYaz } from '../config/oyunGorsel.js';
 import { bossDurumu, saldir, ganimetHavuzu } from '../services/bossServisi.js';
@@ -55,7 +55,7 @@ export async function buton(interaction) {
 
   const s = saldir(interaction.guildId, interaction.user.id);
   if (!s.basarili) {
-    return interaction.reply({ content: `Kılıcın dinleniyor, **${sureYaz(s.beklemeMs)}** sonra tekrar vurabilirsin.`, ephemeral: true });
+    return interaction.reply({ content: `Kılıcın dinleniyor, **${sureYaz(s.beklemeMs)}** sonra tekrar vurabilirsin.`, flags: MessageFlags.Ephemeral });
   }
   let not = `${interaction.user} **${s.hasar}** hasar vurdu${s.kritik ? ' (KRİTİK!)' : ''}.`;
   if (s.oldu) {

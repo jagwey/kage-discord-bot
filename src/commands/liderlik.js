@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from 'discord.js';
+import { SlashCommandBuilder, MessageFlags } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { liderlikListesi } from '../services/ekonomiServisi.js';
 import { ryoYaz } from '../config/oyunGorsel.js';
@@ -12,7 +12,7 @@ const MADALYA = ['🥇', '🥈', '🥉'];
 export async function execute(interaction) {
   const liste = liderlikListesi(10).filter(l => l.toplam > 0);
   if (!liste.length) {
-    return interaction.reply({ content: 'Henüz kimsenin serveti yok.', ephemeral: true });
+    return interaction.reply({ content: 'Henüz kimsenin serveti yok.', flags: MessageFlags.Ephemeral });
   }
 
   const satirlar = liste.map((l, i) =>

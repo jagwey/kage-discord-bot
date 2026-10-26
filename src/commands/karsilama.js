@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits, ChannelType } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, ChannelType, MessageFlags } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { sunucuAyarGetir, sunucuAyarGuncelle } from '../services/veritabaniServisi.js';
 
@@ -23,19 +23,19 @@ export async function execute(interaction) {
     const rol = interaction.options.getRole('rol');
     const mesaj = interaction.options.getString('mesaj');
     if (!kanal && !rol && !mesaj) {
-      return interaction.reply({ content: 'En az bir seçenek ver: kanal, rol veya mesaj.', ephemeral: true });
+      return interaction.reply({ content: 'En az bir seçenek ver: kanal, rol veya mesaj.', flags: MessageFlags.Ephemeral });
     }
     const yeni = {};
     if (kanal) yeni.hosgeldinKanalId = kanal.id;
     if (rol) yeni.otoRolId = rol.id;
     if (mesaj) yeni.hosgeldinMesaji = mesaj;
     sunucuAyarGuncelle(guildId, yeni);
-    return interaction.reply({ content: 'Karşılama ayarları kaydedildi.', ephemeral: true });
+    return interaction.reply({ content: 'Karşılama ayarları kaydedildi.', flags: MessageFlags.Ephemeral });
   }
 
   if (sub === 'sifirla') {
     sunucuAyarGuncelle(guildId, { hosgeldinMesaji: null });
-    return interaction.reply({ content: 'Karşılama mesajı varsayılana döndü.', ephemeral: true });
+    return interaction.reply({ content: 'Karşılama mesajı varsayılana döndü.', flags: MessageFlags.Ephemeral });
   }
 
   const a = sunucuAyarGetir(guildId);
@@ -49,7 +49,7 @@ export async function execute(interaction) {
         { name: 'Mesaj', value: a.hosgeldinMesaji || 'Varsayılan', inline: false }
       ]
     })],
-    ephemeral: true,
+    flags: MessageFlags.Ephemeral,
     allowedMentions: { parse: [] }
   });
 }

@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { modLogGonder } from '../services/modLogServisi.js';
 
@@ -18,7 +18,7 @@ export const data = new SlashCommandBuilder()
 
 export async function execute(interaction) {
   if (!interaction.memberPermissions.has(PermissionFlagsBits.BanMembers)) {
-    return interaction.reply({ content: 'Bu komut için `Üyeleri Yasakla` yetkiniz olmalıdır.', ephemeral: true });
+    return interaction.reply({ content: 'Bu komut için `Üyeleri Yasakla` yetkiniz olmalıdır.', flags: MessageFlags.Ephemeral });
   }
 
   const targetUser = interaction.options.getUser('kullanici');
@@ -32,7 +32,7 @@ export async function execute(interaction) {
     if (!targetMember.bannable) {
       return interaction.reply({
         content: `${TEMA.EMOJILER.KATANA} Bu üyeyi yasaklayamam. Üyenin rolü benim rolümden veya sizin rolünüzden daha yüksekte.`,
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
     }
   }

@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { modLogGonder } from '../services/modLogServisi.js';
 
@@ -11,7 +11,7 @@ export const data = new SlashCommandBuilder()
 
 export async function execute(interaction) {
   if (!interaction.memberPermissions.has(PermissionFlagsBits.KickMembers)) {
-    return interaction.reply({ content: 'Bu komut için `Üyeleri At` yetkiniz olmalıdır.', ephemeral: true });
+    return interaction.reply({ content: 'Bu komut için `Üyeleri At` yetkiniz olmalıdır.', flags: MessageFlags.Ephemeral });
   }
 
   const targetUser = interaction.options.getUser('kullanici');
@@ -19,13 +19,13 @@ export async function execute(interaction) {
   const member = await interaction.guild.members.fetch(targetUser.id).catch(() => null);
 
   if (!member) {
-    return interaction.reply({ content: 'Bu üye sunucuda bulunamadı.', ephemeral: true });
+    return interaction.reply({ content: 'Bu üye sunucuda bulunamadı.', flags: MessageFlags.Ephemeral });
   }
 
   if (!member.kickable) {
     return interaction.reply({
       content: `${TEMA.EMOJILER.KATANA} Bu üyeyi atamam. Rol hiyerarşisi nedeniyle yetkim yetersiz.`,
-      ephemeral: true
+      flags: MessageFlags.Ephemeral
     });
   }
 

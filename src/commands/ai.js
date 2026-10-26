@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { aiDanis } from '../services/aiServisi.js';
 
@@ -18,7 +18,7 @@ export async function execute(interaction) {
   if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
     return interaction.reply({
       content: `${TEMA.EMOJILER.KATANA} Bu komut sadece sunucu yöneticilerine ve moderatörlere açıktır.`,
-      ephemeral: true
+      flags: MessageFlags.Ephemeral
     });
   }
 

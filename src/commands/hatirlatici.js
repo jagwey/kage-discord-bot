@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from 'discord.js';
+import { SlashCommandBuilder, MessageFlags } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import {
   hatirlaticiEkle, hatirlaticiListele, hatirlaticiSil, MAKS_METIN
@@ -28,28 +28,28 @@ export async function execute(interaction) {
       metin: interaction.options.getString('metin'),
       dakika: interaction.options.getInteger('dakika')
     });
-    if (!sonuc.basarili) return interaction.reply({ content: `❌ ${sonuc.hata}`, ephemeral: true });
+    if (!sonuc.basarili) return interaction.reply({ content: `❌ ${sonuc.hata}`, flags: MessageFlags.Ephemeral });
     const t = Math.floor(sonuc.hatirlatici.zaman / 1000);
     return interaction.reply({
       content: `⏰ Tamam. <t:${t}:R> (<t:${t}:t>) sana haber vereceğim. Kod: \`${sonuc.hatirlatici.id}\``,
-      ephemeral: true
+      flags: MessageFlags.Ephemeral
     });
   }
 
   if (alt === 'liste') {
     const liste = hatirlaticiListele(userId).sort((a, b) => a.zaman - b.zaman);
-    if (!liste.length) return interaction.reply({ content: 'Bekleyen hatırlatıcın yok.', ephemeral: true });
+    if (!liste.length) return interaction.reply({ content: 'Bekleyen hatırlatıcın yok.', flags: MessageFlags.Ephemeral });
     const embed = kageEmbed({
       baslik: '⏰ HATIRLATICILARIN',
       renk: TEMA.RENKLER.KAN_KIRMIZISI,
       aciklama: liste.map(h => `\`${h.id}\` • <t:${Math.floor(h.zaman / 1000)}:R> • ${h.metin}`).join('\n')
     });
-    return interaction.reply({ embeds: [embed], ephemeral: true });
+    return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
   }
 
   const silindi = hatirlaticiSil(userId, interaction.options.getString('id').trim());
   return interaction.reply({
     content: silindi ? '🗑️ Hatırlatıcı silindi.' : '❌ Bu kodla senin bir hatırlatıcın yok.',
-    ephemeral: true
+    flags: MessageFlags.Ephemeral
   });
 }

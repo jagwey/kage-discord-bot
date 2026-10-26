@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType } from 'discord.js';
+import { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, MessageFlags } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { KILIC_SEVIYELERI, kilicGelistir, bakiyeGetir } from '../services/ekonomiServisi.js';
 
@@ -53,12 +53,12 @@ export async function execute(interaction) {
 
   collector.on('collect', async i => {
     if (i.user.id !== interaction.user.id) {
-      return i.reply({ content: 'Bu demirci ocağı sadece komutu yazan samuraya aittir.', ephemeral: true });
+      return i.reply({ content: 'Bu demirci ocağı sadece komutu yazan samuraya aittir.', flags: MessageFlags.Ephemeral });
     }
 
     const sonuc = kilicGelistir(userId);
     if (!sonuc.basarili) {
-      return i.reply({ content: `❌ ${sonuc.mesaj}`, ephemeral: true });
+      return i.reply({ content: `❌ ${sonuc.mesaj}`, flags: MessageFlags.Ephemeral });
     }
 
     await i.update({

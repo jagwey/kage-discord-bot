@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { modLogGonder } from '../services/modLogServisi.js';
 
@@ -21,13 +21,13 @@ export const data = new SlashCommandBuilder()
 
 export async function execute(interaction) {
   if (!interaction.memberPermissions.has(PermissionFlagsBits.ManageMessages)) {
-    return interaction.reply({ content: 'Bu komut için `Mesajları Yönet` yetkiniz olmalıdır.', ephemeral: true });
+    return interaction.reply({ content: 'Bu komut için `Mesajları Yönet` yetkiniz olmalıdır.', flags: MessageFlags.Ephemeral });
   }
 
   const miktar = interaction.options.getInteger('miktar');
   const hedefKullanici = interaction.options.getUser('kullanici');
 
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   try {
     const mesajlar = await interaction.channel.messages.fetch({ limit: miktar });

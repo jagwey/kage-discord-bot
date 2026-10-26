@@ -1,4 +1,4 @@
-import { Events } from 'discord.js';
+import { Events, MessageFlags } from 'discord.js';
 import { onayButonuMu, onayButonunuIsle } from '../services/ai/onayServisi.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { ryoEkle } from '../services/ekonomiServisi.js';
@@ -50,7 +50,7 @@ export async function execute(interaction) {
           return await komut.buton(interaction);
         } catch (err) {
           console.error(`[InteractionCreate] ${komut.butonOnek} buton hatası:`, err.message);
-          const yanit = { content: '❌ Bu işlem şu an yapılamadı.', ephemeral: true };
+          const yanit = { content: '❌ Bu işlem şu an yapılamadı.', flags: MessageFlags.Ephemeral };
           if (interaction.replied || interaction.deferred) return interaction.followUp(yanit).catch(() => null);
           return interaction.reply(yanit).catch(() => null);
         }
@@ -77,14 +77,14 @@ export async function execute(interaction) {
           `*Onurlu bir samuray veya kunoichi sözünü tutar, kılıcını adaletsizce çekmez.*`,
         altMetin: 'Kage Kalesi Onur Yasası'
       });
-      return interaction.reply({ embeds: [kurallarEmbed], ephemeral: true });
+      return interaction.reply({ embeds: [kurallarEmbed], flags: MessageFlags.Ephemeral });
     }
   }
 
   // 3. Modal Form Gönderimleri (Detaylı Kayıt İşlemi)
   if (interaction.isModalSubmit()) {
     if (interaction.customId === 'kage_kayit_modal') {
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
       const isimYas = interaction.fields.getTextInputValue('kayit_isim_yas');
       const cinsiyet = interaction.fields.getTextInputValue('kayit_cinsiyet');
@@ -129,7 +129,7 @@ export async function execute(interaction) {
     }
 
     if (hizSiniriAsildiMi(interaction.user.id)) {
-      return interaction.reply({ content: '⏳ Biraz yavaş, samuray. Komutlar arasında bir saniye bekle.', ephemeral: true }).catch(() => null);
+      return interaction.reply({ content: '⏳ Biraz yavaş, samuray. Komutlar arasında bir saniye bekle.', flags: MessageFlags.Ephemeral }).catch(() => null);
     }
 
     try {
@@ -144,9 +144,9 @@ export async function execute(interaction) {
       });
 
       if (interaction.replied || interaction.deferred) {
-        await interaction.followUp({ embeds: [hataEmbed], ephemeral: true }).catch(() => null);
+        await interaction.followUp({ embeds: [hataEmbed], flags: MessageFlags.Ephemeral }).catch(() => null);
       } else {
-        await interaction.reply({ embeds: [hataEmbed], ephemeral: true }).catch(() => null);
+        await interaction.reply({ embeds: [hataEmbed], flags: MessageFlags.Ephemeral }).catch(() => null);
       }
     }
   }

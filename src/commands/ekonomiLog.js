@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { sonHareketler, MIN_KAYIT_MIKTARI } from '../services/ekonomiLogServisi.js';
 
@@ -15,7 +15,7 @@ export async function execute(interaction) {
   const adet = interaction.options.getInteger('adet') || 15;
   const liste = sonHareketler(adet, uye?.id || null);
   if (!liste.length) {
-    return interaction.reply({ content: 'Kayıtlı Ryo hareketi yok.', ephemeral: true });
+    return interaction.reply({ content: 'Kayıtlı Ryo hareketi yok.', flags: MessageFlags.Ephemeral });
   }
 
   const satirlar = liste.map(k => {
@@ -32,7 +32,7 @@ export async function execute(interaction) {
       aciklama: satirlar.join('\n'),
       altMetin: `${MIN_KAYIT_MIKTARI} Ryo altı hareketler kaydedilmez.`
     })],
-    ephemeral: true,
+    flags: MessageFlags.Ephemeral,
     allowedMentions: { parse: [] }
   });
 }

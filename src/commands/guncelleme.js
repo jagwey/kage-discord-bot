@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from 'discord.js';
 import { changelogYukle, guncellemeKartiOlustur, kageDevKontrolEtVeDuyur } from '../services/kageDevServisi.js';
 
 export const data = new SlashCommandBuilder()
@@ -18,11 +18,11 @@ export async function execute(interaction) {
     if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) {
       return interaction.reply({
         content: '⛩️ Bu güncellemeyi resmi olarak kanala duyurmak için **Yönetici** yetkisine sahip olmalısınız.',
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
     }
 
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     await kageDevKontrolEtVeDuyur(interaction.client, true);
     return interaction.editReply({
       content: '✅ Güncelleme notları **#kage-dev** kanalına başarıyla gönderildi!'

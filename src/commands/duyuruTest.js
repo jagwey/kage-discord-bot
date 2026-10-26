@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { duyuruTestEt } from '../services/duyuruServisi.js';
 
@@ -15,10 +15,10 @@ export async function execute(interaction) {
       renk: TEMA.RENKLER.HATA,
       aciklama: `${TEMA.EMOJILER.KATANA} Bu kutsal gölge komutunu sadece **Sunucuyu Yönet** yetkisine sahip samuraylar kullanabilir.`
     });
-    return interaction.reply({ embeds: [yetkiEmbed], ephemeral: true });
+    return interaction.reply({ embeds: [yetkiEmbed], flags: MessageFlags.Ephemeral });
   }
 
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   try {
     const hedefKanalId = process.env.ANNOUNCEMENT_CHANNEL_ID || interaction.channelId;

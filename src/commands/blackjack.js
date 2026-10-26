@@ -3,8 +3,7 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  ComponentType
-} from 'discord.js';
+  ComponentType, MessageFlags } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { bakiyeGetir, ryoEkle, ryoDus, MAKS_BAHIS } from '../services/ekonomiServisi.js';
 import { bekle, ryoYaz, kartlariCiz, skorEtiketi } from '../config/oyunGorsel.js';
@@ -64,12 +63,12 @@ export async function execute(interaction) {
   if (bakiye.ryo < bahis) {
     return interaction.reply({
       content: `❌ Yetersiz bakiye! Cüzdanında **${ryoYaz(bakiye.ryo)}** var, gereken bahis: **${ryoYaz(bahis)}**.`,
-      ephemeral: true
+      flags: MessageFlags.Ephemeral
     });
   }
 
   if (!ryoDus(userId, bahis, 'blackjack bahis')) {
-    return interaction.reply({ content: '❌ Bahis düşülemedi, bakiye değişmiş olabilir.', ephemeral: true });
+    return interaction.reply({ content: '❌ Bahis düşülemedi, bakiye değişmiş olabilir.', flags: MessageFlags.Ephemeral });
   }
 
   const deste = desteOlustur();

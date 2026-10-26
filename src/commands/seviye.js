@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from 'discord.js';
+import { SlashCommandBuilder, MessageFlags } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { seviyeDurumu, seviyeSiralamasi, sunucuSirasi } from '../services/seviyeServisi.js';
 
@@ -18,7 +18,7 @@ function ilerlemeCubugu(ilerleme, esik, uzunluk = 12) {
 export async function execute(interaction) {
   if (interaction.options.getSubcommand() === 'siralama') {
     const liste = seviyeSiralamasi(interaction.guildId, 10);
-    if (!liste.length) return interaction.reply({ content: 'Henüz kimse XP kazanmadı.', ephemeral: true });
+    if (!liste.length) return interaction.reply({ content: 'Henüz kimse XP kazanmadı.', flags: MessageFlags.Ephemeral });
     const madalya = ['🥇', '🥈', '🥉'];
     const satirlar = liste.map((x, i) => `${madalya[i] || `**${i + 1}.**`} <@${x.userId}> • Seviye **${x.seviye}** • ${x.xp} XP`);
     return interaction.reply({
@@ -28,7 +28,7 @@ export async function execute(interaction) {
   }
 
   const hedef = interaction.options.getUser('uye') || interaction.user;
-  if (hedef.bot) return interaction.reply({ content: 'Botların seviyesi yok.', ephemeral: true });
+  if (hedef.bot) return interaction.reply({ content: 'Botların seviyesi yok.', flags: MessageFlags.Ephemeral });
   const d = seviyeDurumu(interaction.guildId, hedef.id);
   const sira = sunucuSirasi(interaction.guildId, hedef.id);
   return interaction.reply({

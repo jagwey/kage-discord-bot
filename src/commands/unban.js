@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { modLogGonder } from '../services/modLogServisi.js';
 
@@ -11,7 +11,7 @@ export const data = new SlashCommandBuilder()
 
 export async function execute(interaction) {
   if (!interaction.memberPermissions.has(PermissionFlagsBits.BanMembers)) {
-    return interaction.reply({ content: 'Bu komut için `Üyeleri Yasakla` yetkiniz olmalıdır.', ephemeral: true });
+    return interaction.reply({ content: 'Bu komut için `Üyeleri Yasakla` yetkiniz olmalıdır.', flags: MessageFlags.Ephemeral });
   }
 
   const userId = interaction.options.getString('kullanici_id').trim();

@@ -34,7 +34,7 @@ export async function tumMangalariGetir(zorlaYenile = false) {
 
   try {
     const yanit = await axios.get(`${API_BASE}/mangas`, {
-      timeout: 8000,
+      timeout: 25000,
       headers: {
         'Accept': 'application/json',
         'User-Agent': 'Kage95-Discord-Bot/1.0 (+https://kage95.com)'
@@ -86,7 +86,7 @@ export async function mangaAra(sorgu) {
 export async function mangaDetayGetir(id) {
   try {
     const yanit = await axios.get(`${API_BASE}/mangas/${id}`, {
-      timeout: 8000,
+      timeout: 25000,
       headers: {
         'Accept': 'application/json',
         'User-Agent': 'Kage95-Discord-Bot/1.0 (+https://kage95.com)'

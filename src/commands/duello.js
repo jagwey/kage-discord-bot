@@ -3,8 +3,7 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  ComponentType
-} from 'discord.js';
+  ComponentType, MessageFlags } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { bakiyeGetir, duelloSonucuKaydet, ryoDus, ryoEkle, MAKS_BAHIS } from '../services/ekonomiServisi.js';
 import { canCubugu, ryoYaz } from '../config/oyunGorsel.js';
@@ -39,14 +38,14 @@ export async function execute(interaction) {
   if (rakip.id === meydanOkuyan.id) {
     return interaction.reply({
       content: '⛩️ Kendi kılıcınla kendi gölgeni kesemezsin! Başka bir samuraya meydan oku.',
-      ephemeral: true
+      flags: MessageFlags.Ephemeral
     });
   }
 
   if (rakip.bot) {
     return interaction.reply({
       content: '🤖 Yapay zeka ve botlara kılıç çekemezsin. Etli kemikli bir savaşçı seç!',
-      ephemeral: true
+      flags: MessageFlags.Ephemeral
     });
   }
 
@@ -56,13 +55,13 @@ export async function execute(interaction) {
     if (bM.ryo < bahis) {
       return interaction.reply({
         content: `❌ Yeterli Ryo'nuz yok! Bakiyeniz: **${ryoYaz(bM.ryo)}**, istenen bahis: **${ryoYaz(bahis)}**.`,
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
     }
     if (bR.ryo < bahis) {
       return interaction.reply({
         content: `❌ Rakibiniz ${rakip.username} bu bahsi karşılayacak kadar Ryo'ya sahip değil! (Bakiyesi: **${ryoYaz(bR.ryo)}**)`,
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
     }
   }
@@ -105,7 +104,7 @@ export async function execute(interaction) {
 
   davetCollector.on('collect', async i => {
     if (i.user.id !== rakip.id) {
-      return i.reply({ content: 'Bu düello senin için değil!', ephemeral: true }).catch(() => null);
+      return i.reply({ content: 'Bu düello senin için değil!', flags: MessageFlags.Ephemeral }).catch(() => null);
     }
 
     if (i.customId === 'duello_red') {
@@ -231,7 +230,7 @@ export async function execute(interaction) {
         const katilimci = bi.user.id === meydanOkuyan.id || bi.user.id === rakip.id;
         return bi.reply({
           content: katilimci ? 'Şu an rakibinin sırası, bekle!' : 'Bu düelloda yerin yok.',
-          ephemeral: true
+          flags: MessageFlags.Ephemeral
         }).catch(() => null);
       }
       await bi.deferUpdate().catch(() => null);
@@ -259,7 +258,7 @@ export async function execute(interaction) {
         kayitEkle(`🛡️ **${saldiran.username}** savunma duruşuna geçti, sıradaki hasar yarıya inecek.`);
       } else if (bi.customId === 'hamle_meditasyon') {
         if (ben.meditasyon <= 0) {
-          return bi.followUp({ content: 'Meditasyon hakkın kalmadı.', ephemeral: true }).catch(() => null);
+          return bi.followUp({ content: 'Meditasyon hakkın kalmadı.', flags: MessageFlags.Ephemeral }).catch(() => null);
         }
         ben.meditasyon--;
         const iyilesme = Math.min(100 - ben.hp, rastgele(15, 25));

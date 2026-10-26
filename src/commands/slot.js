@@ -3,8 +3,7 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  ComponentType
-} from 'discord.js';
+  ComponentType, MessageFlags } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { bakiyeGetir, ryoEkle, ryoDus, MAKS_BAHIS } from '../services/ekonomiServisi.js';
 import { bekle, ryoYaz } from '../config/oyunGorsel.js';
@@ -85,11 +84,11 @@ export async function execute(interaction) {
   if (mevcut < bahis) {
     return interaction.reply({
       content: `❌ Yetersiz bakiye! Cüzdanında **${ryoYaz(mevcut)}** var, gereken bahis: **${ryoYaz(bahis)}**.`,
-      ephemeral: true
+      flags: MessageFlags.Ephemeral
     });
   }
   if (!ryoDus(userId, bahis, 'slot bahis')) {
-    return interaction.reply({ content: '❌ Bahis düşülemedi, bakiye değişmiş olabilir.', ephemeral: true });
+    return interaction.reply({ content: '❌ Bahis düşülemedi, bakiye değişmiş olabilir.', flags: MessageFlags.Ephemeral });
   }
 
   const mesaj = await interaction.reply({
@@ -169,7 +168,7 @@ export async function execute(interaction) {
 
   collector.on('collect', async bi => {
     if (bi.user.id !== userId) {
-      return bi.reply({ content: '⛔ Bu makine senin değil. Kendi `/slot` oyununu başlat.', ephemeral: true }).catch(() => null);
+      return bi.reply({ content: '⛔ Bu makine senin değil. Kendi `/slot` oyununu başlat.', flags: MessageFlags.Ephemeral }).catch(() => null);
     }
     await bi.deferUpdate().catch(() => null);
     if (mesgul) return;

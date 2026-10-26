@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 
 export const data = new SlashCommandBuilder()
@@ -16,14 +16,14 @@ export const data = new SlashCommandBuilder()
 
 export async function execute(interaction) {
   if (!interaction.memberPermissions.has(PermissionFlagsBits.ManageChannels)) {
-    return interaction.reply({ content: 'Bu komut için `Kanalları Yönet` yetkiniz olmalıdır.', ephemeral: true });
+    return interaction.reply({ content: 'Bu komut için `Kanalları Yönet` yetkiniz olmalıdır.', flags: MessageFlags.Ephemeral });
   }
 
   const saniye = interaction.options.getInteger('saniye');
   const targetChannel = interaction.options.getChannel('kanal') || interaction.channel;
 
   if (!targetChannel.isTextBased()) {
-    return interaction.reply({ content: 'Sadece metin kanallarına yavaş mod uygulanabilir.', ephemeral: true });
+    return interaction.reply({ content: 'Sadece metin kanallarına yavaş mod uygulanabilir.', flags: MessageFlags.Ephemeral });
   }
 
   await interaction.deferReply();

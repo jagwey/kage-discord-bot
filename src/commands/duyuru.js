@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 
 export const data = new SlashCommandBuilder()
@@ -23,7 +23,7 @@ export const data = new SlashCommandBuilder()
 
 export async function execute(interaction) {
   if (!interaction.memberPermissions.has(PermissionFlagsBits.MentionEveryone)) {
-    return interaction.reply({ content: 'Bu komut için `Kitleyi Etiketleme / Duyuru` yetkiniz olmalıdır.', ephemeral: true });
+    return interaction.reply({ content: 'Bu komut için `Kitleyi Etiketleme / Duyuru` yetkiniz olmalıdır.', flags: MessageFlags.Ephemeral });
   }
 
   const kanal = interaction.options.getChannel('kanal');
@@ -34,10 +34,10 @@ export async function execute(interaction) {
   const gorselUrl = interaction.options.getString('gorsel_url');
 
   if (!kanal.isTextBased()) {
-    return interaction.reply({ content: 'Duyurular sadece metin kanallarına gönderilebilir.', ephemeral: true });
+    return interaction.reply({ content: 'Duyurular sadece metin kanallarına gönderilebilir.', flags: MessageFlags.Ephemeral });
   }
 
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   try {
     let etiketMetni = '';

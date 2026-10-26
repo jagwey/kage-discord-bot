@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { sunucuAyarGetir, sunucuAyarGuncelle } from '../services/veritabaniServisi.js';
 
@@ -33,7 +33,7 @@ export const data = new SlashCommandBuilder()
 
 export async function execute(interaction) {
   if (!interaction.memberPermissions.has(PermissionFlagsBits.Administrator)) {
-    return interaction.reply({ content: 'Bu komut için `Yönetici (Administrator)` yetkiniz olmalıdır.', ephemeral: true });
+    return interaction.reply({ content: 'Bu komut için `Yönetici (Administrator)` yetkiniz olmalıdır.', flags: MessageFlags.Ephemeral });
   }
 
   const sub = interaction.options.getSubcommand();
@@ -59,24 +59,24 @@ export async function execute(interaction) {
   if (sub === 'mod-log') {
     const kanal = interaction.options.getChannel('kanal');
     sunucuAyarGuncelle(guildId, { modLogKanalId: kanal.id });
-    return interaction.reply({ content: `✅ Mod-log denetim kanalı başarıyla ${kanal} olarak ayarlandı.`, ephemeral: true });
+    return interaction.reply({ content: `✅ Mod-log denetim kanalı başarıyla ${kanal} olarak ayarlandı.`, flags: MessageFlags.Ephemeral });
   }
 
   if (sub === 'oto-rol') {
     const rol = interaction.options.getRole('rol');
     sunucuAyarGuncelle(guildId, { otoRolId: rol.id });
-    return interaction.reply({ content: `✅ Otomatik verilecek yeni üye rolü **${rol.name}** olarak ayarlandı.`, ephemeral: true });
+    return interaction.reply({ content: `✅ Otomatik verilecek yeni üye rolü **${rol.name}** olarak ayarlandı.`, flags: MessageFlags.Ephemeral });
   }
 
   if (sub === 'hosgeldin') {
     const kanal = interaction.options.getChannel('kanal');
     sunucuAyarGuncelle(guildId, { hosgeldinKanalId: kanal.id });
-    return interaction.reply({ content: `✅ Karşılama kanalı başarıyla ${kanal} olarak ayarlandı.`, ephemeral: true });
+    return interaction.reply({ content: `✅ Karşılama kanalı başarıyla ${kanal} olarak ayarlandı.`, flags: MessageFlags.Ephemeral });
   }
 
   if (sub === 'ai-kanal') {
     const kanal = interaction.options.getChannel('kanal');
     sunucuAyarGuncelle(guildId, { aiYonetimKanalId: kanal.id });
-    return interaction.reply({ content: `✅ Yönetici AI sohbet kanalı ${kanal} olarak ayarlandı. Bu kanalda bota yazılan her şeye AI yanıt verecektir.`, ephemeral: true });
+    return interaction.reply({ content: `✅ Yönetici AI sohbet kanalı ${kanal} olarak ayarlandı. Bu kanalda bota yazılan her şeye AI yanıt verecektir.`, flags: MessageFlags.Ephemeral });
   }
 }

@@ -1,6 +1,5 @@
 import {
-  SlashCommandBuilder, PermissionFlagsBits, ChannelType, ActionRowBuilder, ButtonBuilder, ButtonStyle
-} from 'discord.js';
+  SlashCommandBuilder, PermissionFlagsBits, ChannelType, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { sunucuAyarGetir, sunucuAyarGuncelle } from '../services/veritabaniServisi.js';
 
@@ -37,7 +36,7 @@ export async function execute(interaction) {
     })],
     components: [row]
   });
-  return interaction.reply({ content: 'Bilet paneli gönderildi.', ephemeral: true });
+  return interaction.reply({ content: 'Bilet paneli gönderildi.', flags: MessageFlags.Ephemeral });
 }
 
 /** Kanal adı için kullanıcı adını güvenli hale getirir. */
@@ -54,9 +53,9 @@ export async function buton(interaction) {
   if (eylem === 'ac') {
     const mevcut = guild.channels.cache.find(c => c.topic === `ticket:${interaction.user.id}`);
     if (mevcut) {
-      return interaction.reply({ content: `Zaten açık biletin var: ${mevcut}`, ephemeral: true });
+      return interaction.reply({ content: `Zaten açık biletin var: ${mevcut}`, flags: MessageFlags.Ephemeral });
     }
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const izinler = [
       { id: guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] },
       {
@@ -103,11 +102,11 @@ export async function buton(interaction) {
 
   if (eylem === 'kapat') {
     const sahipId = interaction.channel.topic?.startsWith('ticket:') ? interaction.channel.topic.slice(7) : null;
-    if (!sahipId) return interaction.reply({ content: 'Bu bir bilet kanalı değil.', ephemeral: true });
+    if (!sahipId) return interaction.reply({ content: 'Bu bir bilet kanalı değil.', flags: MessageFlags.Ephemeral });
     const yetkili = interaction.member.permissions.has(PermissionFlagsBits.ManageChannels)
       || (ayar.ticketRolId && interaction.member.roles.cache.has(ayar.ticketRolId));
     if (interaction.user.id !== sahipId && !yetkili) {
-      return interaction.reply({ content: 'Bu bileti kapatamazsın.', ephemeral: true });
+      return interaction.reply({ content: 'Bu bileti kapatamazsın.', flags: MessageFlags.Ephemeral });
     }
     await interaction.reply('Bilet 5 saniye içinde kapanıyor.');
 

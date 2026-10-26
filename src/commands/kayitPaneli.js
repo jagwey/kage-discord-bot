@@ -1,7 +1,6 @@
 import {
   SlashCommandBuilder,
-  PermissionFlagsBits
-} from 'discord.js';
+  PermissionFlagsBits, MessageFlags } from 'discord.js';
 import { kayitPaneliKartiOlustur } from '../services/kayitServisi.js';
 
 export const data = new SlashCommandBuilder()
@@ -19,6 +18,6 @@ export async function execute(interaction) {
 
   return interaction.reply({
     content: '✅ Butonlu ve modal destekli detaylı kayıt paneli bu kanala başarıyla kuruldu!',
-    ephemeral: true
+    flags: MessageFlags.Ephemeral
   });
 }

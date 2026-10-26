@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { modLogGonder } from '../services/modLogServisi.js';
 
@@ -20,7 +20,7 @@ export const data = new SlashCommandBuilder()
 
 export async function execute(interaction) {
   if (!interaction.memberPermissions.has(PermissionFlagsBits.ManageRoles)) {
-    return interaction.reply({ content: 'Bu komut için `Rolleri Yönet` yetkiniz olmalıdır.', ephemeral: true });
+    return interaction.reply({ content: 'Bu komut için `Rolleri Yönet` yetkiniz olmalıdır.', flags: MessageFlags.Ephemeral });
   }
 
   const islem = interaction.options.getString('islem');
@@ -29,7 +29,7 @@ export async function execute(interaction) {
 
   const member = await interaction.guild.members.fetch(targetUser.id).catch(() => null);
   if (!member) {
-    return interaction.reply({ content: 'Bu üye sunucuda bulunamadı.', ephemeral: true });
+    return interaction.reply({ content: 'Bu üye sunucuda bulunamadı.', flags: MessageFlags.Ephemeral });
   }
 
   // Botun rolünün hedef rolden yüksek olup olmadığını kontrol et
@@ -37,7 +37,7 @@ export async function execute(interaction) {
   if (targetRole.position >= botMember.roles.highest.position) {
     return interaction.reply({
       content: `${TEMA.EMOJILER.KATANA} Bu rolü yönetemem. Rolün hiyerarşisi benim en yüksek rolümden üstte veya eşit.`,
-      ephemeral: true
+      flags: MessageFlags.Ephemeral
     });
   }
 

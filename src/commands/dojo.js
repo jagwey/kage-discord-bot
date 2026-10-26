@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { ryoYaz } from '../config/oyunGorsel.js';
 import { dojoDurumu, dojoTopla, dojoGelistir, MAKS_SEVIYE, DEPO_SAAT } from '../services/dojoServisi.js';
@@ -37,7 +37,7 @@ export async function execute(interaction) {
 export async function buton(interaction) {
   const [eylem, sahip] = interaction.customId.slice(butonOnek.length).split(':');
   if (sahip !== interaction.user.id) {
-    return interaction.reply({ content: 'Bu dojo sana ait değil. Kendin için `/dojo` yaz.', ephemeral: true });
+    return interaction.reply({ content: 'Bu dojo sana ait değil. Kendin için `/dojo` yaz.', flags: MessageFlags.Ephemeral });
   }
   let not = '';
   if (eylem === 'topla') {

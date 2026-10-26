@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from 'discord.js';
 import { kayitModaliOlustur, kullaniciKayitBilgileriniGetir } from '../services/kayitServisi.js';
 import { kageEmbed, TEMA } from '../config/tema.js';
 
@@ -26,11 +26,11 @@ export async function execute(interaction) {
   if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageRoles)) {
     return interaction.reply({
       content: '⛔ Başka bir üyenin kaydını sıfırlamak için Rolleri Yönet yetkisine sahip olmalısınız.',
-      ephemeral: true
+      flags: MessageFlags.Ephemeral
     });
   }
 
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const hedefMember = await interaction.guild.members.fetch(hedefUser.id).catch(() => null);
   if (!hedefMember) {
     return interaction.editReply({ content: '❌ Hedef üye sunucuda bulunamadı.' });

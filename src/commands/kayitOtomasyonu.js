@@ -1,8 +1,7 @@
 import {
   SlashCommandBuilder,
   PermissionFlagsBits,
-  ChannelType
-} from 'discord.js';
+  ChannelType, MessageFlags } from 'discord.js';
 import {
   kayitPaneliKartiOlustur,
   kayitModaliOlustur,
@@ -90,7 +89,7 @@ export async function execute(interaction) {
     if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
       return interaction.reply({
         content: '⛔ Kayıt panelini kurmak için Şogun (Yönetici) yetkisi gerekir.',
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
     }
 
@@ -104,7 +103,7 @@ export async function execute(interaction) {
 
     return interaction.reply({
       content: `⛩️ Butonlu kayıt otomasyonu paneli başarıyla ${hedefKanal} kanalına kuruldu!`,
-      ephemeral: true
+      flags: MessageFlags.Ephemeral
     });
   }
 
@@ -120,11 +119,11 @@ export async function execute(interaction) {
     if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageRoles)) {
       return interaction.reply({
         content: '⛔ Bir üyenin kaydını sıfırlamak için Rolleri Yönet yetkisi gerekir.',
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
     }
 
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const hedefUser = interaction.options.getUser('uye');
     const hedefMember = await interaction.guild.members.fetch(hedefUser.id).catch(() => null);
     if (!hedefMember) {
@@ -164,7 +163,7 @@ export async function execute(interaction) {
     if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageRoles)) {
       return interaction.reply({
         content: '⛔ Başka üyeyi manuel kaydetmek için Rolleri Yönet yetkisi gerekir.',
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
     }
 

@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from 'discord.js';
 import {
   kayitModaliOlustur,
   kayitIsleminiTamamla,
@@ -48,7 +48,7 @@ export async function execute(interaction) {
   if (targetUser.id !== interaction.user.id && !interaction.memberPermissions?.has(PermissionFlagsBits.ManageRoles)) {
     return interaction.reply({
       content: '⛔ Başka bir üyeyi manuel kaydetmek için Rolleri Yönet yetkisine sahip olmalısınız.',
-      ephemeral: true
+      flags: MessageFlags.Ephemeral
     });
   }
 

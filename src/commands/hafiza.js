@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { hafizaYukle, hafizaArama, bilgiOgren, gunlukDerinOgrenme, profilGetir, kullaniciHafizasiGetir, kullaniciUnut } from '../services/kageHafizaServisi.js';
 
@@ -111,7 +111,7 @@ export async function execute(interaction) {
     if (sonuclar.length === 0) {
       return interaction.reply({
         content: `🔍 Hafıza bankamda **"${sorgu}"** ile eşleşen bir kayıt bulunamadı.`,
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
     }
 
@@ -168,7 +168,7 @@ export async function execute(interaction) {
         : 'Hakkında henüz bir şey öğrenmedim.',
       altMetin: 'Sadece sana görünür'
     });
-    return interaction.reply({ embeds: [embed], ephemeral: true });
+    return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
   }
 
   // UNUT
@@ -178,7 +178,7 @@ export async function execute(interaction) {
       content: r.profil || r.not
         ? `🌫️ Unuttum. Profil silindi${r.not ? `, ${r.not} kişisel not silindi` : ''}.`
         : 'Zaten hakkında kayıt yok.',
-      ephemeral: true
+      flags: MessageFlags.Ephemeral
     });
   }
 
@@ -187,7 +187,7 @@ export async function execute(interaction) {
     if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
       return interaction.reply({
         content: '⛔ Derin öğrenme senkronizasyonunu manuel tetiklemek için Şogun (Yönetici) yetkisi gerekir.',
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
     }
 

@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } from 'discord.js';
 import { aiEylemiCalistir } from '../aiAjanServisi.js';
 import { denetimKaydet } from './denetim.js';
 
@@ -57,7 +57,7 @@ export async function onayButonunuIsle(interaction) {
     return interaction.update({ content: '⌛ Bu onayın süresi doldu.', components: [] }).catch(() => null);
   }
   if (interaction.user.id !== kayit.userId) {
-    return interaction.reply({ content: 'Bu onay sana ait değil.', ephemeral: true }).catch(() => null);
+    return interaction.reply({ content: 'Bu onay sana ait değil.', flags: MessageFlags.Ephemeral }).catch(() => null);
   }
   if (interaction.guildId !== kayit.guildId) return;
 

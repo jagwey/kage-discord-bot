@@ -3,8 +3,7 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  ComponentType
-} from 'discord.js';
+  ComponentType, MessageFlags } from 'discord.js';
 import { TEMA, kageEmbed, rastgeleSlogan } from '../config/tema.js';
 import {
   bakiyeGetir,
@@ -197,7 +196,7 @@ export async function execute(interaction) {
     const sn = Math.ceil((kalanMs % 60000) / 1000);
     return interaction.reply({
       content: `⏳ Katanan dinleniyor. Yeni zindan için **${dk}dk ${sn}sn** bekle.`,
-      ephemeral: true
+      flags: MessageFlags.Ephemeral
     });
   }
   zindanBeklemeBaslat(userId);

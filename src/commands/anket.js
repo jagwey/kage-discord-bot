@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 
 const SAYI_EMOJILERI = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣'];
@@ -23,7 +23,7 @@ export async function execute(interaction) {
     if (sec) secenekler.push(sec);
   }
 
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   try {
     let aciklama = `**${soru}**\n\n`;

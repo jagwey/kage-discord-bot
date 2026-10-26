@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { modLogGonder } from '../services/modLogServisi.js';
 
@@ -20,7 +20,7 @@ export const data = new SlashCommandBuilder()
 
 export async function execute(interaction) {
   if (!interaction.memberPermissions.has(PermissionFlagsBits.ManageChannels)) {
-    return interaction.reply({ content: 'Bu komut için `Kanalları Yönet` yetkiniz olmalıdır.', ephemeral: true });
+    return interaction.reply({ content: 'Bu komut için `Kanalları Yönet` yetkiniz olmalıdır.', flags: MessageFlags.Ephemeral });
   }
 
   const durum = interaction.options.getString('durum');
@@ -28,7 +28,7 @@ export async function execute(interaction) {
   const sebep = interaction.options.getString('sebep') || 'Yönetim kararı.';
 
   if (!targetChannel.isTextBased()) {
-    return interaction.reply({ content: 'Sadece metin kanalları kilitlenebilir.', ephemeral: true });
+    return interaction.reply({ content: 'Sadece metin kanalları kilitlenebilir.', flags: MessageFlags.Ephemeral });
   }
 
   await interaction.deferReply();

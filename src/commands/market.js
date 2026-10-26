@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType } from 'discord.js';
+import { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, MessageFlags } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { MARKET_URUNLERI, marketSatinAl, bakiyeGetir } from '../services/ekonomiServisi.js';
 
@@ -52,19 +52,19 @@ export async function execute(interaction) {
 
   collector.on('collect', async i => {
     if (i.user.id !== interaction.user.id) {
-      return i.reply({ content: 'Bu pazar tezgahı sadece komutu yazana aittir.', ephemeral: true });
+      return i.reply({ content: 'Bu pazar tezgahı sadece komutu yazana aittir.', flags: MessageFlags.Ephemeral });
     }
 
     const urunId = i.customId.replace('market_', '');
     const sonuc = marketSatinAl(userId, urunId);
 
     if (!sonuc.basarili) {
-      return i.reply({ content: `❌ ${sonuc.mesaj}`, ephemeral: true });
+      return i.reply({ content: `❌ ${sonuc.mesaj}`, flags: MessageFlags.Ephemeral });
     }
 
     await i.reply({
       content: `🎉 **Tebrikler!** **${sonuc.urun.ad}** satın alındı!\n💰 Kalan Bakiyeniz: \`${sonuc.kalanRyo} Ryo\`.`,
-      ephemeral: true
+      flags: MessageFlags.Ephemeral
     });
   });
 }

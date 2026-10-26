@@ -4,8 +4,7 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  ComponentType
-} from 'discord.js';
+  ComponentType, MessageFlags } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { eskiKanallariTemizle, eskiRolleriTemizle, kageMimarisiInsaEt } from '../services/sunucuMimarisiServisi.js';
 
@@ -63,7 +62,7 @@ export async function execute(interaction) {
 
   collector.on('collect', async i => {
     if (i.user.id !== interaction.user.id) {
-      return i.reply({ content: 'Bu kararı sadece sunucu yöneticisi verebilir.', ephemeral: true });
+      return i.reply({ content: 'Bu kararı sadece sunucu yöneticisi verebilir.', flags: MessageFlags.Ephemeral });
     }
 
     if (i.customId === 'sifirla_iptal') {
