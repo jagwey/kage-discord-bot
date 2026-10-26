@@ -11,6 +11,7 @@
   <a href="https://kage95.com"><img src="https://img.shields.io/badge/Platform-kage95.com-e53935?style=for-the-badge&logo=torii-gate&logoColor=white" alt="Kage Platform"></a>
   <a href="#"><img src="https://img.shields.io/badge/Commands-59%20Slash-blueviolet?style=for-the-badge" alt="Commands"></a>
   <a href="#"><img src="https://img.shields.io/badge/Stickers-28%20Twin%20Pack-ff69b4?style=for-the-badge" alt="Stickers"></a>
+  <a href="#"><img src="https://img.shields.io/badge/Enterprise-JagTech-FF4655?style=for-the-badge&logo=shield&logoColor=white" alt="JagTech"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-d4af37?style=for-the-badge" alt="License"></a>
 </p>
 
@@ -26,7 +27,7 @@
        ⛩️  K  A  G  E  •  B O T  ⛩️
 ```
 
-**Kage**, **[kage95.com](https://kage95.com)** canlı modern manga okuma platformu ve kurucusu **Jagwey** tarafından geliştirilen bağımsız indie oyunu için sıfırdan tasarlanmış; **MEE6, Carl-bot veya harici botlara ihtiyaç bırakmayan**, bünyesinde **Google Gemini Flash yapay zekasını, kendi kendine öğrenen hafıza motorunu, tam teşekküllü RPG ekonomi ve dövüş mekaniklerini, interaktif kayıt panelini ve 28 parçalık ikiz piksel sticker setini** barındıran hepsi bir arada Discord botudur.
+**Kage**, **[kage95.com](https://kage95.com)** canlı modern manga okuma platformu ve ana teknoloji şirketi **JagTech** çatısı altında kurucusu **Jagwey** tarafından geliştirilen bağımsız indie oyunu için sıfırdan tasarlanmış; **MEE6, Carl-bot veya harici botlara ihtiyaç bırakmayan**, bünyesinde **Google Gemini Flash yapay zekasını, kendi kendine öğrenen hafıza motorunu, tam teşekküllü RPG ekonomi ve dövüş mekaniklerini, interaktif kayıt panelini ve 28 parçalık ikiz piksel sticker setini** barındıran hepsi bir arada Discord botudur.
 
 ---
 
@@ -317,4 +318,4 @@ yazın ve açılan kartta **"Evet, Kaleyi İnşa Et"** butonuna basın. Kage san
 ---
 
 ### ⛩️ Kage • Mürekkep, Çelik ve Yapay Zeka
-Kurucu & Geliştirici: **Jagwey & Kage Ekibi** • [kage95.com](https://kage95.com)
+Kurucu & Geliştirici: **Jagwey • JagTech** • [kage95.com](https://kage95.com)
