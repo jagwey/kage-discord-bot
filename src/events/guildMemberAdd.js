@@ -14,15 +14,14 @@ export async function execute(member) {
 
   // 1. Kayıtsız (Ronin) veya Otomatik Rol Atama
   try {
-    const kayitsizRol = guild.roles.cache.find(r => r.name.includes('Ronin') || r.name.includes('Kayıtsız'));
-    const autoRoleId = ayarlar.otoRolId || process.env.AUTO_ROLE_ID;
+    // Ayarlı rol (/sunucu-kur veya /ayarlar) isim eşleşmesinden önce gelir.
+    const autoRoleId = ayarlar.roninRolId || ayarlar.otoRolId || process.env.AUTO_ROLE_ID;
+    const kayitsizRol = (autoRoleId ? await guild.roles.fetch(autoRoleId).catch(() => null) : null)
+      || guild.roles.cache.find(r => r.name.includes('Ronin') || r.name.includes('Kayıtsız'));
 
     if (kayitsizRol) {
       await member.roles.add(kayitsizRol);
-      console.log(`[GuildMemberAdd] ${member.user.tag} üyesine 'Ronin (Kayıtsız)' rolü verildi.`);
-    } else if (autoRoleId) {
-      const role = await guild.roles.fetch(autoRoleId).catch(() => null);
-      if (role) await member.roles.add(role);
+      console.log(`[GuildMemberAdd] ${member.user.tag} üyesine '${kayitsizRol.name}' rolü verildi.`);
     }
   } catch (err) {
     console.error(`[GuildMemberAdd] Rol atanamadı (${member.user.tag}):`, err.message);
@@ -40,7 +39,9 @@ export async function execute(member) {
   try {
     const siteUrl = process.env.SITE_URL || 'https://kage95.com';
     const avatarUrl = member.user.displayAvatarURL({ dynamic: true, size: 256 });
-    const kayitKanali = guild.channels.cache.find(c => c.name.includes('kayıt') || c.name.includes('kayit'));
+    // İsimle aramada "kayıt-log" kanalı yakalanmasın diye log kanalları elenir.
+    const kayitKanali = (ayarlar.kayitKanalId ? guild.channels.cache.get(ayarlar.kayitKanalId) : null)
+      || guild.channels.cache.find(c => c.isTextBased() && (c.name.includes('kayıt') || c.name.includes('kayit')) && !c.name.includes('log'));
 
     // Yönetici /karsilama ile şablon verdiyse varsayılan metnin yerine o kullanılır.
     const ozelMesaj = ayarlar.hosgeldinMesaji
@@ -54,7 +55,7 @@ export async function execute(member) {
       baslik: `⛩️ GÖLGE DİYARINA HOŞ GELDİN • ${member.user.displayName}`,
       renk: TEMA.RENKLER.KAN_KIRMIZISI,
       aciklama: ozelMesaj ? `${ozelMesaj}\n\n*${rastgeleSlogan()}*` : `Karanlık koridorları arala, parşömenlerin kadim bilgisine kulak ver.\n\n` +
-        `⚔️ **${member}**, Kage kalesine adırını bastı!\n` +
+        `⚔️ **${member}**, Kage kalesine adımını attı!\n` +
         `🏮 Sunucumuzun **${guild.memberCount}.** savaşçısı oldun.\n\n` +
         (kayitKanali ? `👉 **İlk Görevin:** ${kayitKanali} kanalına gidip mührünü basarak kaleye kayıt olmalısın!\n\n` : '') +
         `*${rastgeleSlogan()}*`,

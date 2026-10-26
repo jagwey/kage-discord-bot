@@ -75,6 +75,18 @@ Hedefler: docs/PROJE_HEDEFLERI.md. Kullanıcı istemeden commit atılmaz.
   - **/hafizam Komutu:** Kullanıcının Kage'nin aklında tuttuğu tüm hatıraları, takma adını, yaşını, ilgi alanlarını, favori mangalarını, elindeki katanayı ve Ryo servetini şık bir samuray parşömeni kartı olarak döker. Altında tek tıkla hafıza sıfırlama butonu bulunur.
   - **/ozet Komutu:** Kanaldaki son mesajları (10-100 adet) toplayıp bot mesajlarını ayıklayarak esprili, samimi 3-5 maddelik samuray kanal bülteni çıkarır.
   - deploy-commands ile komut sayısı 66'dan **68'e** yükseldi ve yerel sunucuya yüklendi.
+- [x] 42. Kage-95 Gölge Gözü (Shadow Eye Sentinel) & Otonom Mikro-Tamponlu Sohbet İzleme Mimarisi:
+  - **Sıfır Gecikmeli & Sıfır Kota Tüketimli Sezgisel Süzgeç:** Gelen tüm mesajlar 0 ms'de taranır. Sıradan mesajlar API'ye gitmez; gizli Discord davet linkleri anında tespit edilip `#gölge-odası` admin kanalına raporlanır.
+  - **Mikro-Tamponlu Toplu Analiz (Batch Ingestion):** Anlamlı mesajlar arka planda 5-15'lik mikro havuzda toplanır ve 60 saniyede bir TEK BİR API çağrısıyla (Groq/Pollinations) taranır. Böylece yapay zeka yorulmaz ve dakikalık kota asla patlamaz.
+  - **Kendi Kendini Eğitme (Autonomous Continuous Learning):** Chatte konuşulan kullanıcı gerçekleri (yaş, şehir, meslek, favori anime/manga) ve sunucu bilgileri otonom yakalanıp `data/kage_hafiza.json` ve `data/egitim.json` havuzuna kalıcı işlenir.
+  - **/golge-goz Komutu:** `/golge-goz durum` (canlı radar, izlenen mesaj, öğrenilen gerçek, önlenen ihlal), `/golge-goz rapor` (son istihbarat ve güvenlik kayıtları) ve `/golge-goz tara` (manuel anlık tarama).
+  - deploy-commands ile komut sayısı 68'den **69'a** yükseldi ve yerel sunucuya yüklendi.
+- [x] 43. Kayıt, kanal entegrasyonu, manga duyurusu ve site bağlantısı onarımı (/sunucu-kur geliştirmesi):
+  - /sunucu-kur artık duyuru/bot-komut kanal ID'lerini ve tüm rol ID'lerini (ronin, shinobi, manga okuru, rütbeler) ayara kaydeder; kayıt, karşılama, oto-rol ve rütbe güncelleme isim yerine bu ID'leri kullanır (isim eşleşmesi yedek).
+  - /sunucu-kur sağlık raporu: bot rol sırası, manga kanalı yetkisi, WEBHOOK_SECRET, SITE_URL ve site API erişimi kontrol edilir. Kayıt paneli tekrar gönderilmez, yerinde güncellenir (Profili Yenile ve Kurallar butonları eklendi).
+  - Kayıt: 150 Ryo yalnız ilk kayıtta verilir, tekrar kayıtta karşılama duyurusu atılmaz.
+  - Manga duyurusu: rastgele kanala düşme kaldırıldı, Manga Okuru rolü etiketlenir, kapak için `kapakResmiURL` okunur, bölüm başlığı `bolumBaslik` de okunur.
+  - Site linkleri: `/manga/{id}`, `manga.html` ve `/manga/{id}/bolum/{id}` 404 veriyordu. Tüm linkler `mangaSayfaUrl` (`/#/manga/{id}`) ve `bolumOkumaUrl` (`read.html?chapter={id}`) üzerinden üretilir.
 
 ## Sürüyor
 

@@ -94,9 +94,10 @@ export async function execute(interaction) {
         { name: 'Manga bildirimleri', value: `${s.mangaDuyuru}`, inline: true },
         { name: 'Yapay zeka', value: `${s.aiKanal}${r.ai ? ' • metinleri yapay zeka yazdı' : ''}`, inline: true }
       ];
+      if (s.saglik?.length) alanlar.push({ name: 'Bot ve site entegrasyonu', value: s.saglik.join('\n').slice(0, 1000), inline: false });
       const kopyalar = [...r.kopyalar, ...r.silinenKopya.map(k => `${k} (silindi)`)];
       if (kopyalar.length) alanlar.push({ name: 'Kopyalar', value: liste(kopyalar, 8), inline: false });
-      if (r.uyarilar.length) alanlar.push({ name: 'Uyarılar', value: liste(r.uyarilar, 3).slice(0, 1000), inline: false });
+      if (r.uyarilar.length) alanlar.push({ name: 'Uyarılar', value: r.uyarilar.slice(0, 5).map(u => `• ${u}`).join('\n').slice(0, 1000), inline: false });
 
       await interaction.editReply({
         content: null,

@@ -21,6 +21,16 @@ export function tamGorselUrl(url) {
   return `${SITE_URL}/${url}`;
 }
 
+// Site tek sayfa uygulaması: detay sayfası #/manga/{id}, okuyucu read.html?chapter={bolumId}.
+// /manga/{id} ve manga.html sunucuda 404 döner, bu yüzden linkler buradan üretilir.
+export function mangaSayfaUrl(mangaId) {
+  return mangaId ? `${SITE_URL}/#/manga/${mangaId}` : SITE_URL;
+}
+
+export function bolumOkumaUrl(bolumId, mangaId) {
+  return bolumId ? `${SITE_URL}/read.html?chapter=${bolumId}` : mangaSayfaUrl(mangaId);
+}
+
 /**
  * Canlı siteden tüm mangaların listesini çeker (önbellek destekli)
  * @param {boolean} zorlaYenile
@@ -124,7 +134,7 @@ export async function sonEklenenBolumleriGetir() {
             bolumNo: bolum.bolumNumarasi || bolum.no || 1,
             bolumBaslik: bolum.baslik || `Bölüm ${bolum.bolumNumarasi || bolum.no || 1}`,
             eklenmeTarihi: bolum.eklenmeTarihi || manga.eklenmeTarihi || new Date().toISOString(),
-            okumaUrl: `${SITE_URL}/manga/${manga.id}/bolum/${bolum.id || bolum.bolumNumarasi || 1}`
+            okumaUrl: bolumOkumaUrl(bolum.id, manga.id)
           });
         }
       }

@@ -475,12 +475,65 @@ export async function kageMimarisiInsaEt(guild, interaction = null, secenekler =
     aiYonetimKanalId: kanallar.ai.id,
     ticketKategoriId: kanallar.meclis.parentId,
     ticketRolId: roller.hatamoto.id,
-    ticketLogKanalId: kanallar.biletLog.id
+    ticketLogKanalId: kanallar.biletLog.id,
+    duyuruKanalId: kanallar.duyuru.id,
+    botKomutKanalId: kanallar.botKomut.id,
+    // Rol kimlikleri: kayıt, duyuru ve site rol senkronu isim aramak yerine bunları kullanır.
+    roninRolId: roller.ronin.id,
+    shinobiRolId: roller.shinobi.id,
+    mangaOkuruRolId: roller.mangaOkuru.id,
+    kunoichiRolId: roller.kunoichi.id,
+    samurayRolId: roller.samuray.id,
+    oyuncuRolId: roller.oyuncu.id,
+    geninRolId: roller.genin.id,
+    chuninRolId: roller.chunin.id,
+    joninRolId: roller.jonin.id,
+    efsaneRolId: roller.efsane.id
   });
 
+  // 4b. ENTEGRASYON SAĞLIK KONTROLÜ. Sorunlar rapora uyarı olarak yazılır.
+  const saglik = [];
+  const botEnUst = botMember.roles.highest.position;
+  const ustteKalan = ['shinobi', 'ronin', 'mangaOkuru', 'kunoichi', 'samuray', 'efsane']
+    .filter(r => roller[r] && roller[r].position >= botEnUst).map(r => roller[r].name);
+  if (ustteKalan.length) {
+    rapor.uyarilar.push(`Bot rolü şu rollerin altında, bunları veremez: ${ustteKalan.join(', ')}. Sunucu Ayarları > Roller'den bot rolünü en üste sürükle.`);
+    saglik.push('❌ Bot rol sırası');
+  } else saglik.push('✅ Bot rol sırası');
+  const mangaYetki = kanallar.manga.permissionsFor(botMember);
+  if (!mangaYetki?.has([P.ViewChannel, P.SendMessages, P.EmbedLinks])) {
+    rapor.uyarilar.push('Bot manga kanalına embed gönderemiyor.');
+    saglik.push('❌ Manga kanalı yetkisi');
+  } else saglik.push('✅ Manga kanalı yetkisi');
+  if (!roller.mangaOkuru.mentionable) await roller.mangaOkuru.setMentionable(true, SEBEP).catch(() => {});
+  if (process.env.WEBHOOK_SECRET) saglik.push('✅ WEBHOOK_SECRET');
+  else {
+    rapor.uyarilar.push('WEBHOOK_SECRET tanımlı değil: site anlık duyuru gönderemez, yalnız 3 dakikalık tarama çalışır. Render ve site tarafına aynı değeri gir.');
+    saglik.push('❌ WEBHOOK_SECRET');
+  }
+  saglik.push(process.env.SITE_URL ? `✅ SITE_URL (${process.env.SITE_URL})` : '⚠️ SITE_URL yok, kage95.com varsayıldı');
+  try {
+    const { tumMangalariGetir } = await import('./mangaServisi.js');
+    const liste = await tumMangalariGetir();
+    if (Array.isArray(liste) && liste.length) saglik.push(`✅ Site API (${liste.length} manga)`);
+    else { saglik.push('❌ Site API boş yanıt'); rapor.uyarilar.push('Site API manga listesi döndürmedi; otomatik bölüm taraması çalışmaz.'); }
+  } catch (err) {
+    saglik.push('❌ Site API erişilemedi');
+    rapor.uyarilar.push(`Site API hatası: ${err.message}`);
+  }
+  rapor.saglik = saglik;
+
   // 5. TANITIM MESAJLARI
-  const gonder = async (kanal, yuk, ad) => {
-    if (!(await tanitimGerekli(kanal, botMember.id))) return;
+  const gonder = async (kanal, yuk, ad, butonuGuncelle = null) => {
+    if (!(await tanitimGerekli(kanal, botMember.id))) {
+      // Eski kurulumun panelinde yeni butonlar yoksa mesaj tekrar atılmadan yerinde güncellenir.
+      if (butonuGuncelle) {
+        const eski = (await kanal.messages.fetch({ limit: 15 }).catch(() => null))
+          ?.find(m => m.author.id === botMember.id && m.components.some(r => r.components.some(c => c.customId === butonuGuncelle)));
+        if (eski) await eski.edit({ embeds: yuk.embeds, components: yuk.components }).then(() => rapor.mesaj.push(`${ad} (güncellendi)`)).catch(() => {});
+      }
+      return;
+    }
     await kanal.send(yuk).then(() => rapor.mesaj.push(ad)).catch(err => rapor.uyarilar.push(`${ad}: ${err.message}`));
   };
 
@@ -513,9 +566,13 @@ export async function kageMimarisiInsaEt(guild, interaction = null, secenekler =
           components: [new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('kage_kayit_ol_btn').setLabel('Mührü Bas & Kayıt Ol')
               .setStyle(ButtonStyle.Success).setEmoji(TEMA.EMOJILER.TORII),
+            new ButtonBuilder().setCustomId('kage_profil_guncelle_btn').setLabel('Profili Yenile')
+              .setStyle(ButtonStyle.Secondary).setEmoji('🔄'),
+            new ButtonBuilder().setCustomId('kage_kurallar_btn').setLabel('Kurallar')
+              .setStyle(ButtonStyle.Secondary).setEmoji('📜'),
             siteButonu
           )]
-        }, k.ad);
+        }, k.ad, 'kage_kayit_ol_btn');
       } else if (k.ozel === 'kurallar') {
         await gonder(kanal, tanitim('KALE KANUNLARI (KURALLAR)',
           `Kage kalesine adım atan her samuray bu kadim kanunlara uymakla yükümlüdür:\n\n${kurallarMetni}\n\n*Sessizce oku, derinlere in.*`), k.ad);
@@ -557,6 +614,7 @@ export async function kageMimarisiInsaEt(guild, interaction = null, secenekler =
     roller,
     kanallar,
     rapor,
+    saglik,
     kayitKapisi: kanallar.kayit,
     kurallar: kanallar.kurallar,
     duyurular: kanallar.duyuru,

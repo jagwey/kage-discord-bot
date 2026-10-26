@@ -3,7 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { TEMA, kageEmbed, rastgeleSlogan } from '../config/tema.js';
-import { tumMangalariGetir, mangaDetayGetir, tamGorselUrl, sonEklenenBolumleriGetir } from './mangaServisi.js';
+import { tumMangalariGetir, mangaDetayGetir, tamGorselUrl, sonEklenenBolumleriGetir, mangaSayfaUrl, bolumOkumaUrl } from './mangaServisi.js';
 import { sunucuAyarGetir } from './veritabaniServisi.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -48,14 +48,23 @@ function gorulenleriKaydet() {
 }
 
 /**
- * Duyuru kanalını dinamik olarak bulur (Asla boş kalmaz!)
+ * Ana sunucuyu seçer: GUILD_ID, yoksa /sunucu-kur ile manga kanalı ayarlanmış ilk sunucu.
+ */
+function anaSunucu(client) {
+  const guildId = process.env.GUILD_ID;
+  const sabit = guildId ? client.guilds.cache.get(guildId) : null;
+  if (sabit) return sabit;
+  return client.guilds.cache.find(g => sunucuAyarGetir(g.id)?.mangaDuyuruKanalId) || client.guilds.cache.first() || null;
+}
+
+/**
+ * Duyuru kanalını bulur. Uygun kanal yoksa null döner; rastgele bir kanala duyuru atılmaz.
  */
 export function duyuruKanaliniBul(client) {
-  const guildId = process.env.GUILD_ID;
-  const guild = (guildId ? client.guilds.cache.get(guildId) : null) || client.guilds.cache.first();
+  const guild = anaSunucu(client);
   if (!guild) return null;
 
-  // 1. Ayarlardan kanal ID'si
+  // 1. Ayarlardan kanal ID'si (/sunucu-kur veya /ayarlar)
   const ayarlar = sunucuAyarGetir(guild.id);
   if (ayarlar?.mangaDuyuruKanalId) {
     const k = guild.channels.cache.get(ayarlar.mangaDuyuruKanalId);
@@ -68,15 +77,24 @@ export function duyuruKanaliniBul(client) {
     if (k && k.isTextBased()) return k;
   }
 
-  // 3. Sunucudaki isimlerden otomatik keşfet
-  return guild.channels.cache.find(c => 
-    c.isTextBased() && (
-      c.name.includes('manga-yayın') ||
-      c.name.includes('manga-duyuru') ||
-      c.name.includes('duyuru') ||
-      c.name.includes('manga')
-    )
-  ) || guild.channels.cache.find(c => c.isTextBased()) || null;
+  // 3. Sunucudaki isimlerden keşfet (önce manga kanalı, sonra genel duyuru)
+  const metin = guild.channels.cache.filter(c => c.isTextBased() && !c.isThread?.());
+  return metin.find(c => c.name.includes('manga-yayın') || c.name.includes('manga-yayin') || c.name.includes('manga-duyuru'))
+    || metin.find(c => c.name.includes('manga'))
+    || metin.find(c => c.name.includes('duyuru') && !c.name.includes('log'))
+    || null;
+}
+
+/** Manga Okuru rolünü ayardan, yoksa isimden bulur. */
+function okurRoluBul(guild) {
+  const id = sunucuAyarGetir(guild.id)?.mangaOkuruRolId;
+  return (id && guild.roles.cache.get(id)) || guild.roles.cache.find(r => r.name.includes('Manga Okuru')) || null;
+}
+
+/** Rol etiketi yalnız o role izin verilir; @everyone veya başka roller yanlışlıkla pinglenmez. */
+function okurEtiketi(guild) {
+  const rol = okurRoluBul(guild);
+  return rol ? { content: `<@&${rol.id}>`, allowedMentions: { roles: [rol.id] } } : {};
 }
 
 /**
@@ -84,8 +102,10 @@ export function duyuruKanaliniBul(client) {
  */
 export function mangaDuyuruKartiOlustur(manga) {
   const siteUrl = process.env.SITE_URL || 'https://kage95.com';
-  const mangaUrl = manga.mangaUrl || `${siteUrl}/manga.html?id=${manga.id || manga.mangaId}`;
-  const kapak = manga.kapakResmi ? tamGorselUrl(manga.kapakResmi) : `${siteUrl}/favicon.svg`;
+  const mangaUrl = manga.mangaUrl || mangaSayfaUrl(manga.id || manga.mangaId);
+  // API kapakResmiURL döner, webhook kapakResmi gönderebilir.
+  const kapakKaynak = manga.kapakResmiURL || manga.kapakResmi;
+  const kapak = kapakKaynak ? tamGorselUrl(kapakKaynak) : `${siteUrl}/favicon.svg`;
 
   const embed = kageEmbed({
     baslik: `🔥 YENİ MANGA YAYINLANDI • ${manga.mangaAdi}`,
@@ -123,7 +143,7 @@ export function mangaDuyuruKartiOlustur(manga) {
  */
 export function bolumDuyuruKartiOlustur(bolum) {
   const siteUrl = process.env.SITE_URL || 'https://kage95.com';
-  const okumaUrl = bolum.okumaUrl || `${siteUrl}/read.html?mangaId=${bolum.mangaId}&chapterId=${bolum.bolumId}`;
+  const okumaUrl = bolum.okumaUrl || bolumOkumaUrl(bolum.bolumId, bolum.mangaId);
 
   const embed = kageEmbed({
     baslik: `⚡ YENİ BÖLÜM YAYINLANDI • ${bolum.mangaAdi}`,
@@ -171,12 +191,8 @@ export async function anlikMangaDuyur(client, mangaData) {
 
     const { embed, row } = mangaDuyuruKartiOlustur(mangaData);
 
-    const guild = kanal.guild;
-    const okurRolu = guild.roles.cache.find(r => r.name.includes('Manga Okuru'));
-    const content = okurRolu ? `<@&${okurRolu.id}>` : undefined;
-
     await kanal.send({
-      ...(content ? { content } : {}),
+      ...okurEtiketi(kanal.guild),
       embeds: [embed],
       components: [row]
     });
@@ -200,11 +216,13 @@ export async function anlikBolumDuyur(client, data) {
     const bolumObj = {
       mangaId: data.mangaId,
       mangaAdi: data.mangaAdi || 'Bilinmeyen Seri',
-      kapakResmi: data.kapakResmi,
+      kapakResmi: data.kapakResmi || data.kapakResmiURL,
       bolumId: data.bolumId || Date.now(),
       bolumNo: data.bolumNo || 1,
-      bolumBaslik: data.bolumAdi || `Bölüm ${data.bolumNo || 1}`,
-      okumaUrl: data.okumaUrl
+      // Poller bolumBaslik, site webhook'u bolumAdi gönderir.
+      bolumBaslik: data.bolumAdi || data.bolumBaslik || `Bölüm ${data.bolumNo || 1}`,
+      // bolumId yoksa Date.now() üretildi, okuyucu linki kurulamaz; seri sayfasına düşülür.
+      okumaUrl: data.okumaUrl || bolumOkumaUrl(data.bolumId, data.mangaId)
     };
 
     gorulenBolumler.add(String(bolumObj.bolumId));
@@ -212,12 +230,8 @@ export async function anlikBolumDuyur(client, data) {
 
     const { embed, row } = bolumDuyuruKartiOlustur(bolumObj);
 
-    const guild = kanal.guild;
-    const okurRolu = guild.roles.cache.find(r => r.name.includes('Manga Okuru'));
-    const content = okurRolu ? `<@&${okurRolu.id}>` : undefined;
-
     await kanal.send({
-      ...(content ? { content } : {}),
+      ...okurEtiketi(kanal.guild),
       embeds: [embed],
       components: [row]
     });
@@ -240,7 +254,7 @@ export async function anlikDuyuruDuyur(client, data) {
 
     const embed = kageEmbed({
       baslik: `📢 SİTE DUYURUSU: ${data.baslik || 'Önemli Bildirim'}`,
-      renk: data.onemli ? TEMA.RENKLER.UYARI_SARI : TEMA.RENKLER.KAN_KIRMIZISI,
+      renk: data.onemli ? TEMA.RENKLER.ALTIN : TEMA.RENKLER.KAN_KIRMIZISI,
       aciklama: data.icerik || 'Kage 95 platformunda yeni bir duyuru yayınlandı.',
       alanlar: [
         { name: '📜 Kategori', value: `\`${data.etiket || 'Genel'}\``, inline: true },
@@ -282,19 +296,21 @@ export async function anlikRolGuncelle(client, data) {
       console.error('[RolSync] Ryo kredisi hatası:', err.message);
     }
 
-    const guild = client.guilds.cache.get(process.env.GUILD_ID) || client.guilds.cache.first();
+    const guild = anaSunucu(client);
     if (!guild) return { ryoKredi };
 
     const member = await guild.members.fetch(discordId).catch(() => null);
     if (!member) return { ryoKredi };
 
-    let hedefRolAdi = 'Shinobi';
-    if (okunanBolumSayisi >= 300 || puan >= 3000) hedefRolAdi = 'Kage Efsanesi';
-    else if (okunanBolumSayisi >= 150 || puan >= 1500) hedefRolAdi = 'Jonin Komutanı';
-    else if (okunanBolumSayisi >= 50 || puan >= 500) hedefRolAdi = 'Chunin Kıdemlisi';
-    else if (okunanBolumSayisi >= 15 || puan >= 150) hedefRolAdi = 'Genin Savaşçısı';
+    let hedefRolAdi = 'Shinobi', ayarAnahtari = 'shinobiRolId';
+    if (okunanBolumSayisi >= 300 || puan >= 3000) [hedefRolAdi, ayarAnahtari] = ['Kage Efsanesi', 'efsaneRolId'];
+    else if (okunanBolumSayisi >= 150 || puan >= 1500) [hedefRolAdi, ayarAnahtari] = ['Jonin Komutanı', 'joninRolId'];
+    else if (okunanBolumSayisi >= 50 || puan >= 500) [hedefRolAdi, ayarAnahtari] = ['Chunin Kıdemlisi', 'chuninRolId'];
+    else if (okunanBolumSayisi >= 15 || puan >= 150) [hedefRolAdi, ayarAnahtari] = ['Genin Savaşçısı', 'geninRolId'];
 
-    const rol = guild.roles.cache.find(r => r.name.toLowerCase().includes(hedefRolAdi.toLowerCase()));
+    const rolId = sunucuAyarGetir(guild.id)?.[ayarAnahtari];
+    const rol = (rolId && guild.roles.cache.get(rolId))
+      || guild.roles.cache.find(r => r.name.toLowerCase().includes(hedefRolAdi.toLowerCase()));
     if (rol && !member.roles.cache.has(rol.id)) {
       await member.roles.add(rol);
       console.log(`[RolSync] ${member.user.tag} -> ${hedefRolAdi}`);

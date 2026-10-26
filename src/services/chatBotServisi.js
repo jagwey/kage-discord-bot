@@ -4,7 +4,7 @@ import { fileURLToPath } from 'url';
 import { AttachmentBuilder } from 'discord.js';
 import { TEMA, kageEmbed, rastgeleSlogan } from '../config/tema.js';
 import { bakiyeGetir, liderlikListesi, KILIC_SEVIYELERI } from './ekonomiServisi.js';
-import { tumMangalariGetir, mangaAra } from './mangaServisi.js';
+import { tumMangalariGetir, mangaAra, mangaSayfaUrl } from './mangaServisi.js';
 import {
   hafizaBaglamMetniUret,
   kullaniciNotuEkle,
@@ -760,7 +760,7 @@ export async function chatBotYanitla(mesajMetni, user, guild = null, member = nu
             `🏷️ **Tür:** *${(m.kategoriler || []).join(', ') || 'Genel'}*\n` +
             `✍️ **Yazar:** \`${m.yazar || 'Kage Ekibi'}\` | 👁️ **Okunma:** \`${m.okunmaSayisi || 0}\`\n\n` +
             `📜 **Konu:**\n*"${kisaOzet}"*\n\n` +
-            `👉 **[Buraya Tıklayarak Sitede Hemen Oku](${siteUrl}/manga/${m.id})** veya Discord'da \`/manga ${m.mangaAdi}\` yaz!`;
+            `👉 **[Buraya Tıklayarak Sitede Hemen Oku](${mangaSayfaUrl(m.id)})** veya Discord'da \`/manga ${m.mangaAdi}\` yaz!`;
         }
       } catch {}
     }
@@ -778,7 +778,7 @@ export async function chatBotYanitla(mesajMetni, user, guild = null, member = nu
       if (mangalar.length > 0) {
         const sonUc = mangalar.slice(0, 4);
         const listeMetni = sonUc.map((m, i) => 
-          `**${i + 1}. [${m.mangaAdi}](${siteUrl}/manga/${m.id})**\n` +
+          `**${i + 1}. [${m.mangaAdi}](${mangaSayfaUrl(m.id)})**\n` +
           `🏷️ Tür: *${(m.kategoriler || []).slice(0, 3).join(', ') || 'Genel'}* | 👁️ Okunma: \`${m.okunmaSayisi || 0}\``
         ).join('\n\n');
 
@@ -806,11 +806,11 @@ export async function chatBotYanitla(mesajMetni, user, guild = null, member = nu
         const aciklamaKisa = secilen.aciklama ? secilen.aciklama.slice(0, 220) + '...' : 'Efsanevi sürükleyici bir macera!';
 
         aciklama = `Senin için kage95.com kütüphanesinden özel bir seri seçtim **${userName}**:\n\n` +
-          `📖 **[${secilen.mangaAdi}](${siteUrl}/manga/${secilen.id})**\n` +
+          `📖 **[${secilen.mangaAdi}](${mangaSayfaUrl(secilen.id)})**\n` +
           `🏷️ **Tür:** *${kategoriStr}*\n` +
           `✍️ **Yazar/Çizer:** \`${secilen.yazar || 'Kage Ekibi'}\`\n\n` +
           `📜 **Özet:**\n*"${aciklamaKisa}"*\n\n` +
-          `👉 **[Buraya Tıklayarak Sitede Hemen Oku](${siteUrl}/manga/${secilen.id})** ya da Discord'da \`/manga ${secilen.mangaAdi}\` yaz!`;
+          `👉 **[Buraya Tıklayarak Sitede Hemen Oku](${mangaSayfaUrl(secilen.id)})** ya da Discord'da \`/manga ${secilen.mangaAdi}\` yaz!`;
       }
     } catch {}
   }

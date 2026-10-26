@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { TEMA, kageEmbed, rastgeleSlogan } from '../config/tema.js';
-import { tumMangalariGetir, tamGorselUrl } from '../services/mangaServisi.js';
+import { tumMangalariGetir, tamGorselUrl, mangaSayfaUrl } from '../services/mangaServisi.js';
 
 export const data = new SlashCommandBuilder()
   .setName('rastgele-manga')
@@ -19,7 +19,7 @@ export async function execute(interaction) {
   const secilen = mangalar[Math.floor(Math.random() * mangalar.length)];
   const kapak = tamGorselUrl(secilen.kapakResmiURL || secilen.kapakResmi);
   const siteUrl = process.env.SITE_URL || 'https://kage95.com';
-  const okumaUrl = `${siteUrl}/manga.html?id=${secilen.id}`;
+  const okumaUrl = mangaSayfaUrl(secilen.id);
 
   const embed = kageEmbed({
     baslik: `🎲 MANGA RULETİ • ${secilen.mangaAdi}`,

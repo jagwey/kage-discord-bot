@@ -11,8 +11,9 @@ import {
   AttachmentBuilder
 } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
-import { ryoEkle } from './ekonomiServisi.js';
+import { ryoEkle, bakiyeGetir } from './ekonomiServisi.js';
 import { kullaniciNotuEkle, kullaniciHafizasiGetir } from './kageHafizaServisi.js';
+import { sunucuAyarGetir } from './veritabaniServisi.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -23,6 +24,12 @@ function findInCache(cache, predicate) {
   if (typeof cache.find === 'function') return cache.find(predicate);
   const items = cache.values ? Array.from(cache.values()) : Array.isArray(cache) ? cache : [];
   return items.find(predicate) || null;
+}
+
+// /sunucu-kur'un kaydettiği kimlik önce denenir; eski sunucularda isim eşleşmesine düşülür.
+function ayarliVeyaBul(cache, id, predicate) {
+  const kayitli = id && cache?.get ? cache.get(id) : null;
+  return kayitli || findInCache(cache, predicate);
 }
 
 function hasInCache(cache, id) {
@@ -251,13 +258,19 @@ export async function kayitIsleminiTamamla(interaction, veriler) {
 
   let genderRole = null;
   let opposingRole = null;
-  let shinobiRole = findInCache(guild.roles.cache, r => r.name.includes('Shinobi') || r.name.includes('Kayıtlı'));
-  let mangaRole = findInCache(guild.roles.cache, r => r.name.includes('Manga Okuru'));
-  let roninRole = findInCache(guild.roles.cache, r => r.name.includes('Ronin') || r.name.includes('Kayıtsız'));
+  const ayar = sunucuAyarGetir(guild.id) || {};
+  const roller = guild.roles.cache;
+  let shinobiRole = ayarliVeyaBul(roller, ayar.shinobiRolId, r => r.name.includes('Shinobi') || r.name.includes('Kayıtlı'));
+  let mangaRole = ayarliVeyaBul(roller, ayar.mangaOkuruRolId, r => r.name.includes('Manga Okuru'));
+  let roninRole = ayarliVeyaBul(roller, ayar.roninRolId || ayar.otoRolId, r => r.name.includes('Ronin') || r.name.includes('Kayıtsız'));
+  const kunoichiRole = ayarliVeyaBul(roller, ayar.kunoichiRolId, r => r.name.includes('Kunoichi'));
+  const samurayRole = ayarliVeyaBul(roller, ayar.samurayRolId, r => r.name.includes('Gölge Samurayı'));
+  // Ryo ödülü yalnız ilk kayıtta verilir; profil yenilemek para kazandırmaz.
+  const zatenKayitli = !!(shinobiRole && hasInCache(member.roles.cache, shinobiRole.id));
 
   if (isFemale) {
-    genderRole = findInCache(guild.roles.cache, r => r.name.includes('Kunoichi'));
-    opposingRole = findInCache(guild.roles.cache, r => r.name.includes('Samurayı') && !r.name.includes('Kunoichi'));
+    genderRole = kunoichiRole;
+    opposingRole = samurayRole;
 
     // Rol yoksa otomatik oluştur
     if (!genderRole && botCanManageRoles) {
@@ -272,8 +285,8 @@ export async function kayitIsleminiTamamla(interaction, veriler) {
       } catch {}
     }
   } else {
-    genderRole = findInCache(guild.roles.cache, r => r.name.includes('Gölge Samurayı') || (r.name.includes('Samuray') && !r.name.includes('Kunoichi')));
-    opposingRole = findInCache(guild.roles.cache, r => r.name.includes('Kunoichi'));
+    genderRole = samurayRole;
+    opposingRole = kunoichiRole;
 
     // Rol yoksa otomatik oluştur
     if (!genderRole && botCanManageRoles) {
@@ -305,7 +318,8 @@ export async function kayitIsleminiTamamla(interaction, veriler) {
   }
 
   // 3. Ekonomi Başlangıç / Yenileme Bonusu (+150 Ryo)
-  const yeniRyo = ryoEkle(member.id, 150, 'kayıt ödülü');
+  const odul = zatenKayitli ? 0 : 150;
+  const yeniRyo = odul ? ryoEkle(member.id, odul, 'kayıt ödülü') : bakiyeGetir(member.id).ryo;
 
   // 4. Kage AI Derin Hafızasına Kalıcı Olarak Kaydet!
   const hafizaNotu = `Karakter Yolu: ${yolAdi} (${isFemale ? 'Kız' : 'Erkek'}), İsim/Yaş: ${rawIsimYas}, Favori Türü: ${mangaTuru}, Ruh Karakteri: ${karakter}, Yemin: "${yemin}"`;
@@ -333,7 +347,9 @@ export async function kayitIsleminiTamamla(interaction, veriler) {
       `📖 **Favori Manga Türü:** \`${mangaTuru}\`\n` +
       `📜 **Klan Mottosu:** *" ${yemin} "*\n\n` +
       `🛡️ **Bahşedilen Roller:** ${genderRole || '`' + yolAdi + '`'}, ${shinobiRole || '`Shinobi`'}, ${mangaRole || '`Manga Okuru`'}\n` +
-      `💰 **Kese Ödülü:** \`+150 Ryo\` cüzdanına aktarıldı! (Toplam Bakiye: \`${yeniRyo} Ryo\`)\n` +
+      (odul
+        ? `💰 **Kese Ödülü:** \`+${odul} Ryo\` cüzdanına aktarıldı! (Toplam Bakiye: \`${yeniRyo} Ryo\`)\n`
+        : `💰 **Bakiye:** \`${yeniRyo} Ryo\` (kayıt ödülü yalnız ilk kayıtta verilir)\n`) +
       `🧠 **Kage AI Entegrasyonu:** Bot ve yapay zeka veziri seni artık bu kimliğinle tanıdı!`,
     thumbnail: stickerVar ? 'attachment://kayit_zafer.png' : member.user.displayAvatarURL({ dynamic: true }),
     footer: `Kage-95 Kayıt ve Kimlik Sistemi • ${guild.name}`
@@ -359,7 +375,7 @@ export async function kayitIsleminiTamamla(interaction, veriler) {
   );
 
   // 7. Kayıt Log Kanalına Bildir
-  const logKanal = findInCache(guild.channels.cache, c => (c.isTextBased ? c.isTextBased() : true) && (c.name.includes('kayıt-log') || c.name.includes('kayit-log') || c.name.includes('mod-log')));
+  const logKanal = ayarliVeyaBul(guild.channels.cache, ayar.kayitLogKanalId || ayar.modLogKanalId, c => (c.isTextBased ? c.isTextBased() : true) && (c.name.includes('kayıt-log') || c.name.includes('kayit-log') || c.name.includes('mod-log')));
   if (logKanal) {
     logKanal.send({
       content: `📝 **[KAYIT/GÜNCELLEME]** ${member.user.tag} (${member.id}) -> **${yolAdi}** olarak kaydedildi. [Ad/Yaş: ${rawIsimYas} | Tür: ${mangaTuru} | Karakter: ${karakter}]`
@@ -367,8 +383,8 @@ export async function kayitIsleminiTamamla(interaction, veriler) {
   }
 
   // 8. Hoş Geldin Kanalında Coşkulu Anons
-  const hosgeldinKanal = findInCache(guild.channels.cache, c => (c.isTextBased ? c.isTextBased() : true) && (c.name.includes('yeni-savaşçılar') || c.name.includes('yeni-savascilar') || c.name.includes('hoş-geldin') || c.name.includes('hos-geldin')));
-  if (hosgeldinKanal) {
+  const hosgeldinKanal = ayarliVeyaBul(guild.channels.cache, ayar.hosgeldinKanalId, c => (c.isTextBased ? c.isTextBased() : true) && (c.name.includes('yeni-savaşçılar') || c.name.includes('yeni-savascilar') || c.name.includes('hoş-geldin') || c.name.includes('hos-geldin')));
+  if (hosgeldinKanal && !zatenKayitli) {
     const anonsEmbed = kageEmbed({
       baslik: isFemale ? '🌸 YENİ BİR KUNOICHI KLANIMIZA KATILDI!' : '🗡️ YENİ BİR SAMURAY KLANIMIZA KATILDI!',
       renk: isFemale ? 0xff66b2 : TEMA.RENKLER.BILGI,

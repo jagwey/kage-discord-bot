@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
-import { tumMangalariGetir, mangaAra, tamGorselUrl } from '../services/mangaServisi.js';
+import { tumMangalariGetir, mangaAra, tamGorselUrl, mangaSayfaUrl } from '../services/mangaServisi.js';
 
 export const data = new SlashCommandBuilder()
   .setName('manga')
@@ -68,7 +68,7 @@ export async function execute(interaction) {
   // İlk ve en iyi eşleşmeyi göster
   const manga = sonuclar[0];
   const siteUrl = process.env.SITE_URL || 'https://kage95.com';
-  const mangaUrl = `${siteUrl}/manga/${manga.id}`;
+  const mangaUrl = mangaSayfaUrl(manga.id);
   const kapak = tamGorselUrl(manga.kapakResmiURL);
 
   const durumMetni = manga.durum === 'DevamEdiyor'
