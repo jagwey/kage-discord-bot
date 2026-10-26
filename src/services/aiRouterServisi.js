@@ -35,9 +35,9 @@ async function pollinationsMetinUret(prompt, systemInstruction = '') {
 }
 
 /**
- * Groq Cloud metin üretimi (Varsa Llama 3.3 70B - Dünyanın en hızlısı)
+ * Groq Cloud metin üretimi (GPT-OSS-120B / Llama 3.3 / Qwen - Dünyanın en hızlısı)
  */
-async function groqMetinUret(prompt, systemInstruction = '', model = 'llama-3.3-70b-versatile') {
+async function groqMetinUret(prompt, systemInstruction = '') {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) throw new Error('GROQ_API_KEY yok');
 
@@ -45,23 +45,47 @@ async function groqMetinUret(prompt, systemInstruction = '', model = 'llama-3.3-
   if (systemInstruction) messages.push({ role: 'system', content: systemInstruction });
   messages.push({ role: 'user', content: prompt });
 
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      model,
-      messages,
-      temperature: 0.7,
-      max_tokens: 1024
-    })
-  });
+  const denenecekModeller = [
+    process.env.GROQ_MODEL,
+    'openai/gpt-oss-120b',
+    'qwen/qwen3.8-27b',
+    'llama-3.3-70b-versatile',
+    'llama-3.1-8b-instant'
+  ].filter(Boolean);
 
-  if (!res.ok) throw new Error(`Groq HTTP ${res.status}`);
-  const data = await res.json();
-  return data.choices?.[0]?.message?.content?.trim();
+  let sonHata = null;
+
+  for (const model of denenecekModeller) {
+    try {
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model,
+          messages,
+          temperature: 0.7,
+          max_tokens: 1024
+        })
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error?.message || `Groq HTTP ${res.status}`);
+      }
+
+      const data = await res.json();
+      const icerik = data.choices?.[0]?.message?.content?.trim();
+      if (icerik) return icerik;
+    } catch (err) {
+      sonHata = err;
+      continue;
+    }
+  }
+
+  throw sonHata || new Error('Groq modelleri yanıt veremedi');
 }
 
 /**
