@@ -36,7 +36,7 @@ export async function execute(interaction) {
       baslik: `📜 GÖLGE VEZİRİ MANGA TAVSİYESİ`,
       renk: TEMA.RENKLER.KAN_KIRMIZISI,
       aciklama: `**Talep:** *"${istek}"*\n\n${cevap}`,
-      footer: `Yapay Zeka Motoru: Kage-95 • kage95.com`
+      altMetin: `Yapay Zeka Motoru: Kage-95 • kage95.com`
     });
 
     const row = new ActionRowBuilder().addComponents(

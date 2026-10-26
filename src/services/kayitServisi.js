@@ -305,7 +305,7 @@ export async function kayitIsleminiTamamla(interaction, veriler) {
   }
 
   // 3. Ekonomi Başlangıç / Yenileme Bonusu (+150 Ryo)
-  const yeniRyo = ryoEkle(member.id, 150);
+  const yeniRyo = ryoEkle(member.id, 150, 'kayıt ödülü');
 
   // 4. Kage AI Derin Hafızasına Kalıcı Olarak Kaydet!
   const hafizaNotu = `Karakter Yolu: ${yolAdi} (${isFemale ? 'Kız' : 'Erkek'}), İsim/Yaş: ${rawIsimYas}, Favori Türü: ${mangaTuru}, Ruh Karakteri: ${karakter}, Yemin: "${yemin}"`;

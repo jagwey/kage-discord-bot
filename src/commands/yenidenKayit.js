@@ -60,7 +60,7 @@ export async function execute(interaction) {
     renk: TEMA.RENKLER.UYARI,
     aciklama: `**${hedefMember}** kullanıcısının klan kayıt mührü sıfırlandı ve \`Ronin (Kayıtsız)\` durumuna alındı.\n\n` +
       `Kullanıcı artık kayıt panelinden veya \`/yeniden-kayit\` komutuyla baştan kayıt olabilir.`,
-    footer: `Yetkili: ${interaction.user.tag}`
+    altMetin: `Yetkili: ${interaction.user.tag}`
   });
 
   return interaction.editReply({ embeds: [embed] });

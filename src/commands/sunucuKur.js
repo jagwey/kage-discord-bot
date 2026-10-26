@@ -38,7 +38,7 @@ export async function execute(interaction) {
       `  ╭━━━ 🔒 ŞOGUN KALESİ ━━━╮ (#şogun-meclisi, #ceza-sicil-log, #kayıt-mühür-log)\n` +
       `  ╭━━━ 🔊 SAMURAY SES ODALARI ━━━╮\n\n` +
       `*Mevcut kanallarınız silinmez. Tüm kanalları sıfırlamak istiyorsanız \`/sunucu-sifirla\` komutunu kullanabilirsiniz.*`,
-    footer: `Kurulumu onaylamak için 60 saniyeniz var.`
+    altMetin: `Kurulumu onaylamak için 60 saniyeniz var.`
   });
 
   const row = new ActionRowBuilder().addComponents(

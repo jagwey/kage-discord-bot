@@ -26,12 +26,24 @@ export function yardimKartiOlustur() {
       {
         name: `⚔️ Samuray Düello, Zindan & Ekonomi (Ryo)`,
         value: '`• /duello @rakip [bahis]` : Katana bonuslu turnuva düellosu!\n' +
-          '`• /zindan` : İblislerle interaktif savaş, ganimet ve ölüm riski!\n' +
+          '`• /zindan [sefer|profil|siralama]` : İblislerle savaş; zaferle rütbe (D-S) aç, kalıntı topla, seri bonusu kazan, ağır hamlelere dikkat!\n' +
           '`• /demirci` : Katananızı demircide dövüp gücünüzü katlarsınız.\n' +
           '`• /market` : Ryo ile samuray unvanları ve muskalar satın alır.\n' +
           '`• /envanter` : Katananızı, çantanızı ve savaş sicilinizi gösterir.\n' +
           '`• /gunluk` : Günlük Ryo maaşı ve seri (streak).\n' +
-          '`• /bakiye` : Cüzdan ve bakiye dökümü.',
+          '`• /bakiye` : Cüzdan ve bakiye dökümü.\n' +
+          '`• /liderlik` : En zengin 10 samuray.\n' +
+          '`• /ode @üye [miktar]` : Başka üyeye Ryo gönder.\n' +
+          '`• /hatirlatici [kur|liste|iptal]` : Zamanlı hatırlatıcılar.\n' +
+          '`• /cekilis [baslat|bitir|liste]` : Butonlu çekiliş (yönetici).\n' +
+          '`• /seviye [bak|siralama]` : Sohbet seviyesi; seviye atlayınca Ryo ödülü.\n' +
+          '`• /ekonomi-log [üye] [adet]` : Son Ryo hareketleri (yönetici).\n' +
+          '`• /dojo` : Kendi dojonu kur; sen yokken saat başı Ryo üretir, topla ve yükselt.\n' +
+          '`• /balik` : Gölette olta at, nadir balık yakala, koleksiyon yap ve sat.\n' +
+          '`• /boss` : Sunucu ortak dünya bossuna saatte bir saldır; ganimet hasar payına göre bölünür.\n' +
+          '`• /kule` : Gölge Kulesi: günde 3 hak, kat kat tırman, güçlenme seç, ölmeden ödülü çek.\n' +
+          '`• /karsilama [ayarla|goster|sifirla]` : Karşılama kanalı, mesajı ve rolü (yönetici).\n' +
+          '`• /ticket panel` : Butonlu destek bileti paneli (yönetici).',
         inline: false
       },
       {

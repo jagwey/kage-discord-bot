@@ -32,7 +32,7 @@ export async function execute(interaction) {
       { name: '📌 Durum', value: `\`${secilen.durum || 'Devam Ediyor'}\``, inline: true },
       { name: '👁️ Okunma', value: `\`${secilen.okunmaSayisi || '0'}\``, inline: true }
     ],
-    footer: `Kage 95 Manga Kütüphanesi • Rastgele Seçim`
+    altMetin: `Kage 95 Manga Kütüphanesi • Rastgele Seçim`
   });
 
   const row = new ActionRowBuilder().addComponents(

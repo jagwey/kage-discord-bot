@@ -22,7 +22,7 @@ export async function execute(interaction) {
     baslik: '🏮 KAGE SAMURAY PAZARI',
     renk: TEMA.RENKLER.KAN_KIRMIZISI,
     aciklama,
-    footer: `Satın almak için aşağıdaki butonları kullanın • kage95.com`
+    altMetin: `Satın almak için aşağıdaki butonları kullanın • kage95.com`
   });
 
   const row = new ActionRowBuilder().addComponents(

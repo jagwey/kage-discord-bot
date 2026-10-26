@@ -34,7 +34,7 @@ export async function execute(interaction) {
       `• Günlük Seri (Streak): \`${b.streak}\` gün\n\n` +
       `🎒 **Çanta ve Eşyalar:**\n${envanterMetni}`,
     thumbnail: avatarUrl,
-    footer: `Kage 95 Samuray Kartı • kage95.com`
+    altMetin: `Kage 95 Samuray Kartı • kage95.com`
   });
 
   return interaction.reply({ embeds: [embed] });

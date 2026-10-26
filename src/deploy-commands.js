@@ -1,6 +1,7 @@
 import dns from 'dns';
 dns.setDefaultResultOrder('ipv4first');
 import 'dotenv/config';
+import { ajan } from './ag.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -32,7 +33,7 @@ for (const file of commandFiles) {
   }
 }
 
-const rest = new REST({ version: '10' }).setToken(token);
+const rest = new REST({ version: '10', agent: ajan }).setToken(token);
 
 (async () => {
   try {

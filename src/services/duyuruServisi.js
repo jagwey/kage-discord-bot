@@ -272,11 +272,21 @@ export async function anlikRolGuncelle(client, data) {
     const { discordId, okunanBolumSayisi = 0, puan = 0 } = data;
     if (!discordId) return;
 
+    // Site okuma XP'si -> Ryo (idempotent, yalnızca artış ödenir)
+    let ryoKredi = 0;
+    try {
+      const { siteXpKrediEt } = await import('./ekonomiServisi.js');
+      ryoKredi = siteXpKrediEt(discordId, puan, okunanBolumSayisi).eklenen;
+      if (ryoKredi > 0) console.log(`[RolSync] ${discordId} site XP -> +${ryoKredi} Ryo`);
+    } catch (err) {
+      console.error('[RolSync] Ryo kredisi hatası:', err.message);
+    }
+
     const guild = client.guilds.cache.get(process.env.GUILD_ID) || client.guilds.cache.first();
-    if (!guild) return;
+    if (!guild) return { ryoKredi };
 
     const member = await guild.members.fetch(discordId).catch(() => null);
-    if (!member) return;
+    if (!member) return { ryoKredi };
 
     let hedefRolAdi = 'Shinobi';
     if (okunanBolumSayisi >= 300 || puan >= 3000) hedefRolAdi = 'Kage Efsanesi';
@@ -289,6 +299,7 @@ export async function anlikRolGuncelle(client, data) {
       await member.roles.add(rol);
       console.log(`[RolSync] ${member.user.tag} -> ${hedefRolAdi}`);
     }
+    return { ryoKredi, rol: hedefRolAdi };
   } catch (err) {
     console.error('[RolSync] Hata:', err.message);
   }

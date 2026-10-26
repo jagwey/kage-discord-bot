@@ -35,7 +35,7 @@ export async function execute(interaction) {
       `   • \`╭━━━ 🔊 SAMURAY SES ODALARI ━━━╮\` (Klan meclisleri, manga okuma, müzik)\n` +
       `4. Butonlu kayıt sistemi (\`#kayıt-kapısı\`) anında aktif edilecek ve kurucuya Şogun yetkisi verilecektir.\n\n` +
       `Bu işlemi onaylıyor musunuz? (Bu işlem geri alınamaz!)`,
-    footer: `Kage 95 Sıfırlama Protokolü`
+    altMetin: `Kage 95 Sıfırlama Protokolü`
   });
 
   const row = new ActionRowBuilder().addComponents(

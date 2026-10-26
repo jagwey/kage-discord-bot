@@ -14,7 +14,7 @@ export async function execute(interaction) {
       baslik: '⏳ GÜNLÜK RYO HENÜZ YENİLENMEDİ',
       renk: TEMA.RENKLER.UYARI_SARI,
       aciklama: `Gölge veziri sandığı henüz doldurmadı. Yeni maaşını almak için biraz daha sabretmelisin.\n\n${TEMA.EMOJILER.ZAMAN} **Kalan Süre:** \`${sonuc.kalanSure}\``,
-      footer: `Kage 95 Ekonomi Sistemi • ${interaction.user.username}`
+      altMetin: `Kage 95 Ekonomi Sistemi • ${interaction.user.username}`
     });
     return interaction.reply({ embeds: [embed], ephemeral: true });
   }
@@ -29,7 +29,7 @@ export async function execute(interaction) {
       { name: '🔥 Giriş Serisi (Streak)', value: `\`${sonuc.streak} Gün\``, inline: true },
       { name: '🏦 Güncel Cüzdan', value: `\`${sonuc.yeniBakiye} Ryo\``, inline: true }
     ],
-    footer: `Her gün gelerek seri çarpanını artırabilirsin! (Maks +500 Ryo)`
+    altMetin: `Her gün gelerek seri çarpanını artırabilirsin! (Maks +500 Ryo)`
   });
 
   return interaction.reply({ embeds: [embed] });

@@ -34,7 +34,7 @@ export async function execute(interaction) {
       { name: '⚔️ Düello Sicili', value: `\`${b.duelloZafer}G / ${b.duelloMaglubiyet}M\``, inline: true },
       { name: '🏰 Zindan Keşfi', value: `\`${b.zindanZafer} Zafer\``, inline: true }
     ],
-    footer: `Günlük ödülünüzü almak için /gunluk yazabilirsiniz.`
+    altMetin: `Günlük ödülünüzü almak için /gunluk yazabilirsiniz.`
   });
 
   return interaction.reply({ embeds: [embed] });

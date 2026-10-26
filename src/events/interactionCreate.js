@@ -6,6 +6,21 @@ import { kayitModaliOlustur, kayitIsleminiTamamla, kullaniciKayitBilgileriniGeti
 
 export const name = Events.InteractionCreate;
 
+// Aynı kullanıcının komut seline karşı basit hız sınırı.
+const KOMUT_ARALIK_MS = 1200;
+const sonKomut = new Map();
+
+function hizSiniriAsildiMi(userId) {
+  const simdi = Date.now();
+  const son = sonKomut.get(userId) || 0;
+  if (simdi - son < KOMUT_ARALIK_MS) return true;
+  sonKomut.set(userId, simdi);
+  if (sonKomut.size > 5000) {
+    for (const [k, v] of sonKomut) if (simdi - v > 60_000) sonKomut.delete(k);
+  }
+  return false;
+}
+
 /**
  * Kullanıcı etkileşimlerini (Slash Komutları, Butonlar & Autocomplete) karşılar
  * @param {import('discord.js').Interaction} interaction
@@ -27,6 +42,20 @@ export async function execute(interaction) {
   // 2. Buton Tıklamaları (Kayıt Ol, Profil Güncelleme, Kurallar)
   if (interaction.isButton()) {
     if (onayButonuMu(interaction.customId)) return onayButonunuIsle(interaction);
+
+    // Komut modülleri `butonOnek` ve `buton(interaction)` dışa aktararak kendi kalıcı butonlarını yönetir.
+    for (const komut of interaction.client.commands.values()) {
+      if (komut.butonOnek && komut.buton && interaction.customId.startsWith(komut.butonOnek)) {
+        try {
+          return await komut.buton(interaction);
+        } catch (err) {
+          console.error(`[InteractionCreate] ${komut.butonOnek} buton hatası:`, err.message);
+          const yanit = { content: '❌ Bu işlem şu an yapılamadı.', ephemeral: true };
+          if (interaction.replied || interaction.deferred) return interaction.followUp(yanit).catch(() => null);
+          return interaction.reply(yanit).catch(() => null);
+        }
+      }
+    }
     if (interaction.customId === 'kage_kayit_ol_btn' || interaction.customId === 'kage_profil_guncelle_btn') {
       const varsayilanlar = kullaniciKayitBilgileriniGetir(interaction.user.id, interaction.member);
       const modal = kayitModaliOlustur(varsayilanlar);
@@ -46,7 +75,7 @@ export async function execute(interaction) {
           `4️⃣ **Kanalların Amacı:** Sohbeti ilgili odalarda (Manga, Zindan, Kumar, Bot Komutları) sürdürün.\n` +
           `5️⃣ **Yetkili Kararları:** Şogun ve Daimyo moderatörlerinin uyarılarını dikkate alın.\n\n` +
           `*Onurlu bir samuray veya kunoichi sözünü tutar, kılıcını adaletsizce çekmez.*`,
-        footer: 'Kage Kalesi Onur Yasası'
+        altMetin: 'Kage Kalesi Onur Yasası'
       });
       return interaction.reply({ embeds: [kurallarEmbed], ephemeral: true });
     }
@@ -97,6 +126,10 @@ export async function execute(interaction) {
     if (!komut) {
       console.warn(`[InteractionCreate] Tanımlanmamış komut tetiklendi: ${interaction.commandName}`);
       return;
+    }
+
+    if (hizSiniriAsildiMi(interaction.user.id)) {
+      return interaction.reply({ content: '⏳ Biraz yavaş, samuray. Komutlar arasında bir saniye bekle.', ephemeral: true }).catch(() => null);
     }
 
     try {

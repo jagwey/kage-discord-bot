@@ -1,5 +1,8 @@
 import { aiEylemiCalistir } from '../aiAjanServisi.js';
-import { bakiyeGetir, liderlikListesi } from '../ekonomiServisi.js';
+import { bakiyeGetir, liderlikListesi, ryoDus, ryoEkle } from '../ekonomiServisi.js';
+import { otomodAyarGetir, otomodAyarGuncelle, otomodDurumu } from '../otomodServisi.js';
+import { tumMangalariGetir } from '../mangaServisi.js';
+import { hatirlaticiEkle } from '../hatirlaticiServisi.js';
 
 const S = (aciklama) => ({ type: 'STRING', description: aciklama });
 const N = (aciklama) => ({ type: 'NUMBER', description: aciklama });
@@ -31,8 +34,23 @@ const HERKESE_ACIK = [
   arac('bakiye', 'Konuşan kişinin (ya da belirtilen kullanıcının) Ryo bakiyesi, kılıç seviyesi ve unvanı.', {
     kullanici_id: S('boşsa konuşan kişi')
   }),
-  arac('liderlik', 'En zengin klan üyelerinin sıralaması.', { adet: N('1-10 arası, varsayılan 5') })
+  arac('liderlik', 'En zengin klan üyelerinin sıralaması.', { adet: N('1-10 arası, varsayılan 5') }),
+  arac('manga_oner', 'kage95.com kütüphanesinden isteğe bağlı türe göre manga önerir.', {
+    tur: S('isteğe bağlı tür/kategori, örn. aksiyon'),
+    adet: N('1-5 arası, varsayılan 3')
+  }),
+  arac('hatirlatici_kur', 'Konuşan kişiye belirli dakika sonra bu kanalda hatırlatma yapar.', {
+    dakika: N('kaç dakika sonra (1 - 43200)'),
+    metin: S('hatırlatılacak şey')
+  }, ['dakika', 'metin']),
+  arac('ode', 'Konuşan kişinin cüzdanından başka bir üyeye Ryo gönderir (10-5000, 30 sn bekleme).', {
+    hedef_id: S('Ryo alacak kullanıcının Discord kimliği'),
+    miktar: N('10 ile 5000 arası Ryo')
+  }, ['hedef_id', 'miktar'])
 ];
+
+const ODE_BEKLEME_MS = 30_000;
+const sonAiOdeme = new Map();
 
 // Sadece yönetici kimliğiyle gelen sohbetlerde sunulan araçlar
 const YONETICI = [
@@ -73,7 +91,13 @@ const YONETICI = [
   arac('kullanici_yasakla', 'Üyeyi banlar. YIKICI.', { kullanici: S('isim veya id'), sebep: S('sebep') }, ['kullanici']),
   arac('yavasmod_ayarla', 'Bu kanalın yavaş modunu ayarlar (0 kapatır).', { saniye: N('saniye') }, ['saniye']),
   arac('kilit_ayarla', 'Bu kanalı kilitler/açar.', { durum: S('kilitle | ac') }, ['durum']),
-  arac('ryo_ekle', 'Üyeye Ryo ekler.', { kullanici: S('isim veya id'), miktar: N('miktar') }, ['kullanici', 'miktar'])
+  arac('ryo_ekle', 'Üyeye Ryo ekler.', { kullanici: S('isim veya id'), miktar: N('miktar') }, ['kullanici', 'miktar']),
+  arac('otomod_durum', 'Otomatik küfür moderasyonunun durumunu, özel kelimeleri ve ihlalli üyeleri gösterir.'),
+  arac('otomod_ayarla', 'Otomatik küfür moderasyonunu açar/kapatır ve özel yasaklı kelime ekler/çıkarır.', {
+    acik: { type: 'BOOLEAN', description: 'true açar, false kapatır' },
+    kelime_ekle: S('yasaklı listeye eklenecek kelime'),
+    kelime_cikar: S('listeden çıkarılacak kelime')
+  })
 ];
 
 // Buton onayı gerektiren eylemler
@@ -82,7 +106,6 @@ export const YIKICI_EYLEMLER = new Set([
 ]);
 
 const YONETICI_AD = new Set(YONETICI.map(a => a.name));
-const YEREL = new Set(['bakiye', 'liderlik']);
 
 /** Yetkiye göre Gemini'ye sunulacak fonksiyon listesi. */
 export function aracListesi({ yonetici }) {
@@ -121,6 +144,80 @@ export async function aracCalistir(ad, args = {}, ctx) {
       return `${i + 1}. ${u?.username || k.userId} — ${k.toplam} Ryo (${k.unvan})`;
     }));
     return { basarili: true, detay: satirlar.join('\n') || 'Henüz kimse yok.' };
+  }
+
+  if (ad === 'ode') {
+    const miktar = Math.floor(Number(args.miktar));
+    const hedefId = String(args.hedef_id || '').replace(/\D/g, '');
+    if (!hedefId || !Number.isFinite(miktar) || miktar < 10 || miktar > 5000) {
+      return { basarili: false, hata: 'Geçerli bir hedef ve 10-5000 arası miktar gerekli.' };
+    }
+    if (hedefId === member.id) return { basarili: false, hata: 'Kendine Ryo gönderemezsin.' };
+    const hedef = await client?.users?.fetch(hedefId).catch(() => null);
+    if (!hedef || hedef.bot) return { basarili: false, hata: 'Hedef geçerli bir üye değil.' };
+    const kalan = (sonAiOdeme.get(member.id) || 0) + ODE_BEKLEME_MS - Date.now();
+    if (kalan > 0) return { basarili: false, hata: `Yeni transfer için ${Math.ceil(kalan / 1000)} sn beklemeli.` };
+    if (!ryoDus(member.id, miktar, `Transfer -> ${hedefId}`)) return { basarili: false, hata: 'Cüzdanda yeterli Ryo yok.' };
+    ryoEkle(hedefId, miktar, `Transfer <- ${member.id}`);
+    sonAiOdeme.set(member.id, Date.now());
+    return { basarili: true, detay: `${miktar} Ryo ${hedef.username} kullanıcısına gönderildi.` };
+  }
+
+  if (ad === 'otomod_durum') {
+    const d = otomodDurumu(guild.id);
+    const ihlalliler = d.ihlalliler.slice(0, 10).map(x => `${x.userId}: ${x.puan}`).join(', ') || 'yok';
+    return {
+      basarili: true,
+      detay: `Otomod ${d.acik ? 'açık' : 'kapalı'}, timeout eşiği ${d.timeoutEsik}, özel kelimeler: ${d.ozelKelimeler.join(', ') || 'yok'}, ihlalliler: ${ihlalliler}`
+    };
+  }
+
+  if (ad === 'otomod_ayarla') {
+    const ayar = otomodAyarGetir(guild.id);
+    const degisim = {};
+    if (typeof args.acik === 'boolean') degisim.acik = args.acik;
+    let liste = ayar.ozelKelimeler;
+    const ekle = String(args.kelime_ekle || '').trim().toLocaleLowerCase('tr');
+    const cikar = String(args.kelime_cikar || '').trim().toLocaleLowerCase('tr');
+    if (ekle.length >= 3 && !liste.includes(ekle) && liste.length < 100) liste = [...liste, ekle];
+    if (cikar) liste = liste.filter(k => k !== cikar);
+    degisim.ozelKelimeler = liste;
+    const yeni = otomodAyarGuncelle(guild.id, degisim);
+    return { basarili: true, detay: `Otomod ${yeni.acik ? 'açık' : 'kapalı'}, özel kelimeler: ${yeni.ozelKelimeler.join(', ') || 'yok'}` };
+  }
+
+  if (ad === 'manga_oner') {
+    const tur = String(args.tur || '').trim().toLocaleLowerCase('tr');
+    const adet = Math.min(Math.max(Math.floor(Number(args.adet)) || 3, 1), 5);
+    const mangalar = (await tumMangalariGetir()) || [];
+    let adaylar = mangalar;
+    if (tur) {
+      adaylar = mangalar.filter(m =>
+        (Array.isArray(m.kategoriler) ? m.kategoriler : []).some(k => String(k).toLocaleLowerCase('tr').includes(tur)));
+    }
+    if (!adaylar.length) {
+      return { basarili: false, hata: tur ? `"${tur}" türünde manga bulunamadı.` : 'Kütüphane şu an boş.' };
+    }
+    // Karıştırıp rastgele seç ki her seferinde aynı seriler çıkmasın
+    const secilen = [...adaylar].sort(() => Math.random() - 0.5).slice(0, adet);
+    return {
+      basarili: true,
+      detay: secilen.map(m =>
+        `• ${m.mangaAdi} (Tür: ${(m.kategoriler || []).join(', ') || 'belirtilmemiş'}, Okunma: ${m.okunmaSayisi || 0})`
+      ).join('\n')
+    };
+  }
+
+  if (ad === 'hatirlatici_kur') {
+    const sonuc = hatirlaticiEkle({
+      userId: member?.id,
+      channelId: channel?.id,
+      guildId: guild?.id,
+      metin: args.metin,
+      dakika: args.dakika
+    });
+    if (!sonuc.basarili) return sonuc;
+    return { basarili: true, detay: `Hatırlatıcı kuruldu (${Math.floor(Number(args.dakika))} dk sonra): ${sonuc.hatirlatici.metin}` };
   }
 
   let parametreler = args;

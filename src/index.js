@@ -1,6 +1,7 @@
 import dns from 'dns';
 dns.setDefaultResultOrder('ipv4first');
 import 'dotenv/config';
+import { ajan } from './ag.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -26,7 +27,8 @@ const client = new Client({
     GatewayIntentBits.GuildModeration,          // Yasaklama ve cezalar için gereklidir
     GatewayIntentBits.GuildMessageReactions     // Anketler için gereklidir
   ],
-  partials: [Partials.Message, Partials.Channel, Partials.Reaction]
+  partials: [Partials.Message, Partials.Channel, Partials.Reaction],
+  rest: { agent: ajan }
 });
 
 client.commands = new Collection();
@@ -76,7 +78,36 @@ import http from 'http';
 import { anlikMangaDuyur, anlikBolumDuyur, anlikDuyuruDuyur, anlikRolGuncelle } from './services/duyuruServisi.js';
 
 const PORT = process.env.PORT || 3000;
-const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || 'kage95_secret_key';
+let WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
+if (!WEBHOOK_SECRET) {
+  WEBHOOK_SECRET = (await import('crypto')).randomBytes(24).toString('hex');
+  console.warn('[Webhook] WEBHOOK_SECRET tanımsız; bu oturum için rastgele bir sır üretildi. Site entegrasyonu için .env içine WEBHOOK_SECRET ekleyin.');
+}
+
+import { siteYardimSor } from './services/ai/kageBeyin.js';
+
+// Site yardım API'si: ayrı anahtar yoksa webhook sırrı kullanılır.
+const SITE_API_KEY = process.env.SITE_API_KEY || WEBHOOK_SECRET;
+const YARDIM_MAKS_GOVDE = 4096;
+const YARDIM_MAKS_SORU = 500;
+const YARDIM_PENCERE_MS = 60 * 1000;
+const YARDIM_PENCERE_LIMIT = 10;
+const yardimIstekleri = new Map(); // ip -> zaman damgaları
+
+function yardimHizSiniriGecer(ip) {
+  const simdi = Date.now();
+  const liste = (yardimIstekleri.get(ip) || []).filter(t => simdi - t < YARDIM_PENCERE_MS);
+  if (liste.length >= YARDIM_PENCERE_LIMIT) {
+    yardimIstekleri.set(ip, liste);
+    return false;
+  }
+  liste.push(simdi);
+  yardimIstekleri.set(ip, liste);
+  if (yardimIstekleri.size > 5000) {
+    for (const [k, v] of yardimIstekleri) if (!v.some(t => simdi - t < YARDIM_PENCERE_MS)) yardimIstekleri.delete(k);
+  }
+  return true;
+}
 
 http.createServer(async (req, res) => {
   // CORS Başlıkları
@@ -158,6 +189,47 @@ http.createServer(async (req, res) => {
         console.error('[HTTP API Hatası]', err.message);
         res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify({ error: 'Webhook işlenirken hata oluştu.', detay: err.message }));
+      }
+    });
+    return;
+  }
+
+  // 3. Site Yardım API'si: POST /api/yardim/sor  { soru } -> { cevap }
+  if (req.method === 'POST' && url.pathname === '/api/yardim/sor') {
+    const json = (kod, nesne) => {
+      res.writeHead(kod, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify(nesne));
+    };
+    const gelen = req.headers['x-kage-secret'] || url.searchParams.get('secret') ||
+      String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    if (gelen !== SITE_API_KEY) return json(401, { error: 'Yetkisiz erişim.' });
+
+    const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+    if (!yardimHizSiniriGecer(ip)) return json(429, { error: 'Çok fazla istek. Biraz bekle.' });
+
+    let body = '';
+    let asildi = false;
+    req.on('data', chunk => {
+      body += chunk;
+      if (body.length > YARDIM_MAKS_GOVDE && !asildi) {
+        asildi = true;
+        json(413, { error: 'İstek çok büyük.' });
+        req.destroy();
+      }
+    });
+    req.on('end', async () => {
+      if (asildi) return;
+      try {
+        const soru = String((body ? JSON.parse(body) : {}).soru || '').trim();
+        if (!soru) return json(400, { error: 'soru alanı gerekli.' });
+        if (soru.length > YARDIM_MAKS_SORU) return json(400, { error: `Soru en fazla ${YARDIM_MAKS_SORU} karakter olabilir.` });
+        const sonuc = await siteYardimSor(soru);
+        if (sonuc.kota) return json(429, { error: sonuc.cevap });
+        if (sonuc.hata) return json(503, { error: 'Asistan şu an kullanılamıyor.' });
+        return json(200, { cevap: sonuc.cevap });
+      } catch (err) {
+        console.error('[Yardım API Hatası]', err.message);
+        return json(400, { error: 'Geçersiz istek.' });
       }
     });
     return;

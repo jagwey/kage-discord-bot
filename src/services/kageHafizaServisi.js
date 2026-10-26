@@ -31,6 +31,7 @@ const VARSAYILAN_HAFIZA = {
     sonTaramaTarihi: null
   },
   kullaniciNotlari: {},
+  kullaniciProfilleri: {},
   ogrenilenBilgiler: [
     {
       id: 'kage_vizyon',
@@ -78,7 +79,8 @@ export function hafizaYukle() {
         ...VARSAYILAN_HAFIZA,
         ...parsed,
         siteVerileri: { ...VARSAYILAN_HAFIZA.siteVerileri, ...(parsed.siteVerileri || {}) },
-        sunucuVerileri: { ...VARSAYILAN_HAFIZA.sunucuVerileri, ...(parsed.sunucuVerileri || {}) }
+        sunucuVerileri: { ...VARSAYILAN_HAFIZA.sunucuVerileri, ...(parsed.sunucuVerileri || {}) },
+        kullaniciProfilleri: parsed.kullaniciProfilleri || {}
       };
       return hafizaOnbellegi;
     }
@@ -150,6 +152,68 @@ export function kullaniciHafizasiGetir(userId) {
   if (!userId) return null;
   const hafiza = hafizaYukle();
   return hafiza.kullaniciNotlari[userId] || null;
+}
+
+const PROFIL_LISTE_LIMITI = 12;
+
+function listeBirlestir(eski = [], yeni = []) {
+  const sonuc = [...eski];
+  for (const oge of yeni) {
+    const temiz = String(oge || '').trim().slice(0, 80);
+    if (!temiz) continue;
+    if (sonuc.some(x => x.toLowerCase() === temiz.toLowerCase())) continue;
+    sonuc.push(temiz);
+  }
+  return sonuc.slice(-PROFIL_LISTE_LIMITI);
+}
+
+/**
+ * Kullanıcının yapılandırılmış profilini günceller (yapay zekanın çıkardığı gerçekler)
+ * @param {string} userId
+ * @param {{ ilgiAlanlari?: string[], favoriMangalar?: string[], ton?: string, dil?: string, kisaOzet?: string }} veri
+ */
+export function profilGuncelle(userId, veri = {}) {
+  if (!userId || !veri || typeof veri !== 'object') return null;
+  const hafiza = hafizaYukle();
+  const p = hafiza.kullaniciProfilleri[userId] || {
+    ilgiAlanlari: [], favoriMangalar: [], ton: '', dil: '', kisaOzet: '', sonGuncelleme: null
+  };
+
+  p.ilgiAlanlari = listeBirlestir(p.ilgiAlanlari, Array.isArray(veri.ilgiAlanlari) ? veri.ilgiAlanlari : []);
+  p.favoriMangalar = listeBirlestir(p.favoriMangalar, Array.isArray(veri.favoriMangalar) ? veri.favoriMangalar : []);
+  if (typeof veri.ton === 'string' && veri.ton.trim()) p.ton = veri.ton.trim().slice(0, 60);
+  if (typeof veri.dil === 'string' && veri.dil.trim()) p.dil = veri.dil.trim().slice(0, 30);
+  if (typeof veri.kisaOzet === 'string' && veri.kisaOzet.trim()) p.kisaOzet = veri.kisaOzet.trim().slice(0, 300);
+  p.sonGuncelleme = new Date().toISOString();
+
+  hafiza.kullaniciProfilleri[userId] = p;
+  hafizaKaydet();
+  return p;
+}
+
+/**
+ * @param {string} userId
+ * @returns {Object|null}
+ */
+export function profilGetir(userId) {
+  if (!userId) return null;
+  return hafizaYukle().kullaniciProfilleri[userId] || null;
+}
+
+/**
+ * Kullanıcının profilini ve kişisel notlarını kalıcı olarak siler (/hafiza unut)
+ * @param {string} userId
+ * @returns {{ profil: boolean, not: number }}
+ */
+export function kullaniciUnut(userId) {
+  if (!userId) return { profil: false, not: 0 };
+  const hafiza = hafizaYukle();
+  const profil = Boolean(hafiza.kullaniciProfilleri[userId]);
+  const not = hafiza.kullaniciNotlari[userId]?.notlar?.length || 0;
+  delete hafiza.kullaniciProfilleri[userId];
+  delete hafiza.kullaniciNotlari[userId];
+  hafizaKaydet();
+  return { profil, not };
 }
 
 /**
@@ -305,6 +369,17 @@ export function hafizaBaglamMetniUret(mesaj = '', userId = null, userName = null
     if (uNot.notlar && uNot.notlar.length > 0) {
       satirlar.push(`• [${userName || uNot.kullaniciAdi} Hakkında Kişisel Hafızan]: ${uNot.notlar.join('; ')}`);
     }
+  }
+
+  // Yapılandırılmış kullanıcı profili (Hafıza 2.0)
+  const profil = userId ? hafiza.kullaniciProfilleri?.[userId] : null;
+  if (profil) {
+    const parcalar = [];
+    if (profil.kisaOzet) parcalar.push(profil.kisaOzet);
+    if (profil.ilgiAlanlari?.length) parcalar.push(`İlgi alanları: ${profil.ilgiAlanlari.join(', ')}`);
+    if (profil.favoriMangalar?.length) parcalar.push(`Sevdiği seriler: ${profil.favoriMangalar.join(', ')}`);
+    if (profil.ton) parcalar.push(`Tercih ettiği ton: ${profil.ton}`);
+    if (parcalar.length) satirlar.push(`• [${userName || 'Kullanıcı'} Profili]: ${parcalar.join(' | ')}`);
   }
 
   // Mesajla ilgili arama sonuçları

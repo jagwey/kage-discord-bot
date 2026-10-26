@@ -30,7 +30,7 @@ export async function execute(interaction) {
     baslik: '🔨 KAGE DEMİRCİ OCAĞI • KILIÇ GELİŞTİRME',
     renk: TEMA.RENKLER.KAN_KIRMIZISI,
     aciklama,
-    footer: `Kılıcınız düello ve zindanlarda zafer şansınızı artırır!`
+    altMetin: `Kılıcınız düello ve zindanlarda zafer şansınızı artırır!`
   });
 
   const row = new ActionRowBuilder().addComponents(

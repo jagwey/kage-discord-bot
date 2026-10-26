@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { hareketKaydet } from './ekonomiLogServisi.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -88,21 +89,53 @@ export function bakiyeGetir(userId) {
   };
 }
 
-export function ryoEkle(userId, miktar) {
+export function ryoEkle(userId, miktar, neden = '') {
   const h = kullaniciHesabi(userId);
-  h.ryo = (h.ryo || 0) + Math.max(0, Math.floor(miktar));
+  const eklenen = Math.max(0, Math.floor(miktar));
+  h.ryo = (h.ryo || 0) + eklenen;
   h.guncellemeTarihi = new Date().toISOString();
   veriyiKaydet();
+  hareketKaydet(userId, 'ekle', eklenen, neden, h.ryo);
   return h.ryo;
 }
 
-export function ryoDus(userId, miktar) {
+// Site XP -> Ryo oranları
+const RYO_PER_PUAN = 0.2; // 5 puan = 1 Ryo
+const RYO_PER_BOLUM = 2;
+
+/**
+ * Site okuma ilerlemesini (puan + okunan bölüm) Ryo'ya çevirir.
+ * Idempotent: yalnızca daha önce kredilenmemiş artış (delta) ödenir.
+ * @returns {{eklenen:number, bakiye:number}}
+ */
+export function siteXpKrediEt(userId, puan = 0, bolumSayisi = 0) {
+  const h = kullaniciHesabi(userId);
+  const yeniPuan = Math.max(0, Math.floor(Number(puan) || 0));
+  const yeniBolum = Math.max(0, Math.floor(Number(bolumSayisi) || 0));
+  const eskiPuan = h.siteXpKredi || 0;
+  const eskiBolum = h.siteBolumKredi || 0;
+
+  const puanFark = Math.max(0, yeniPuan - eskiPuan);
+  const bolumFark = Math.max(0, yeniBolum - eskiBolum);
+  const eklenen = Math.floor(puanFark * RYO_PER_PUAN) + bolumFark * RYO_PER_BOLUM;
+
+  // Yüksek değerleri hatırla (site değeri düşerse tekrar ödeme yapılmasın)
+  h.siteXpKredi = Math.max(eskiPuan, yeniPuan);
+  h.siteBolumKredi = Math.max(eskiBolum, yeniBolum);
+  if (eklenen > 0) h.ryo = (h.ryo || 0) + eklenen;
+  h.guncellemeTarihi = new Date().toISOString();
+  veriyiKaydet();
+  return { eklenen, bakiye: h.ryo };
+}
+
+export function ryoDus(userId, miktar, neden = '') {
   const h = kullaniciHesabi(userId);
   const gereken = Math.max(0, Math.floor(miktar));
   if ((h.ryo || 0) < gereken) return false;
   h.ryo -= gereken;
   h.guncellemeTarihi = new Date().toISOString();
   veriyiKaydet();
+  hareketKaydet(userId, 'dus', gereken, neden, h.ryo);
   return true;
 }
 
@@ -148,19 +181,45 @@ export function gunlukAl(userId) {
   };
 }
 
-export function duelloSonucuKaydet(kazananId, kaybedenId, bahis = 0) {
+/**
+ * Düello sonucunu işler. Çağıran, iki tarafın bahsini zaten `ryoDus` ile
+ * çekmiş olmalıdır; `havuz` (toplam bahis) yalnızca kazanana bir kez ödenir.
+ * Kaybedenden ikinci kez kesinti yapılmaz, böylece toplam Ryo korunur.
+ */
+export function duelloSonucuKaydet(kazananId, kaybedenId, havuz = 0) {
   const k = kullaniciHesabi(kazananId);
   const m = kullaniciHesabi(kaybedenId);
 
   k.duelloZafer = (k.duelloZafer || 0) + 1;
   m.duelloMaglubiyet = (m.duelloMaglubiyet || 0) + 1;
 
-  if (bahis > 0) {
-    k.ryo = (k.ryo || 0) + bahis;
-    m.ryo = Math.max(0, (m.ryo || 0) - bahis);
-  }
+  if (havuz > 0) k.ryo = (k.ryo || 0) + Math.floor(havuz);
 
   veriyiKaydet();
+}
+
+/** Oyun komutları için tek yerden bahis üst sınırı. */
+export const MAKS_BAHIS = 5000;
+
+const sohbetSon = new Map();
+/** Sohbet Ryo ödülü için kullanıcı başına bekleme (varsayılan 30 sn). Uygunsa true döner ve süreyi başlatır. */
+export function sohbetOdulUygunMu(userId, beklemeMs = 30_000) {
+  const simdi = Date.now();
+  if (simdi - (sohbetSon.get(userId) || 0) < beklemeMs) return false;
+  sohbetSon.set(userId, simdi);
+  if (sohbetSon.size > 5000) {
+    for (const [k, t] of sohbetSon) if (simdi - t > beklemeMs) sohbetSon.delete(k);
+  }
+  return true;
+}
+
+const zindanSon = new Map();
+/** Zindan girişi için bekleme. Kalan süreyi ms olarak döner (0 = girilebilir). */
+export function zindanBeklemeKalan(userId, beklemeMs = 5 * 60_000) {
+  return Math.max(0, beklemeMs - (Date.now() - (zindanSon.get(userId) || 0)));
+}
+export function zindanBeklemeBaslat(userId) {
+  zindanSon.set(userId, Date.now());
 }
 
 export function zindanZaferiKaydet(userId, kazanilanRyo) {

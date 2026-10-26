@@ -6,44 +6,34 @@ import {
   ComponentType
 } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
-import { bakiyeGetir, ryoEkle, ryoDus } from '../services/ekonomiServisi.js';
+import { bakiyeGetir, ryoEkle, ryoDus, MAKS_BAHIS } from '../services/ekonomiServisi.js';
+import { bekle, ryoYaz, kartlariCiz, skorEtiketi } from '../config/oyunGorsel.js';
 
 export const data = new SlashCommandBuilder()
   .setName('blackjack')
   .setDescription('Kage 21 Blackjack masasında krupiyeye karşı kart oynar ve Ryo kazanırsınız.')
   .addIntegerOption(opt =>
     opt.setName('bahis')
-      .setDescription('Ortaya koymak istediğiniz Ryo miktarı')
+      .setDescription(`Ortaya koymak istediğiniz Ryo miktarı (10 - ${MAKS_BAHIS})`)
       .setRequired(true)
       .setMinValue(10)
+      .setMaxValue(MAKS_BAHIS)
   );
 
-// Kart Deste Sistemi
-const DESTE_TIPLERI = ['♠️', '♥️', '♦️', '♣️'];
-const DESTE_DEGERLERI = [
-  { ad: 'A', deger: 11 },
-  { ad: '2', deger: 2 },
-  { ad: '3', deger: 3 },
-  { ad: '4', deger: 4 },
-  { ad: '5', deger: 5 },
-  { ad: '6', deger: 6 },
-  { ad: '7', deger: 7 },
-  { ad: '8', deger: 8 },
-  { ad: '9', deger: 9 },
-  { ad: '10', deger: 10 },
-  { ad: 'J', deger: 10 },
-  { ad: 'Q', deger: 10 },
+const SEMBOLLER = ['♠', '♥', '♦', '♣'];
+const DEGERLER = [
+  { ad: 'A', deger: 11 }, { ad: '2', deger: 2 }, { ad: '3', deger: 3 }, { ad: '4', deger: 4 },
+  { ad: '5', deger: 5 }, { ad: '6', deger: 6 }, { ad: '7', deger: 7 }, { ad: '8', deger: 8 },
+  { ad: '9', deger: 9 }, { ad: '10', deger: 10 }, { ad: 'J', deger: 10 }, { ad: 'Q', deger: 10 },
   { ad: 'K', deger: 10 }
 ];
 
 function desteOlustur() {
   const deste = [];
-  for (const tip of DESTE_TIPLERI) {
-    for (const d of DESTE_DEGERLERI) {
-      deste.push({ ad: d.ad, tip, deger: d.deger, gosterim: `\`[${d.ad}${tip}]\`` });
-    }
+  for (const sembol of SEMBOLLER) {
+    for (const d of DEGERLER) deste.push({ ad: d.ad, sembol, deger: d.deger });
   }
-  // Karıştır (Fisher-Yates)
+  // Fisher-Yates karıştırma
   for (let i = deste.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [deste[i], deste[j]] = [deste[j], deste[i]];
@@ -54,26 +44,16 @@ function desteOlustur() {
 function elSkoruHesapla(el) {
   let toplam = 0;
   let asSayisi = 0;
-
   for (const kart of el) {
     toplam += kart.deger;
     if (kart.ad === 'A') asSayisi++;
   }
-
-  // A'ları 11'den 1'e düşür gerekirse
+  // As'ları gerekirse 11'den 1'e düşür
   while (toplam > 21 && asSayisi > 0) {
     toplam -= 10;
     asSayisi--;
   }
-
   return toplam;
-}
-
-function elMetni(el, gizli = false) {
-  if (gizli) {
-    return `${el[0].gosterim} \`[🎴 ??]\``;
-  }
-  return el.map(k => k.gosterim).join(' ');
 }
 
 export async function execute(interaction) {
@@ -83,106 +63,92 @@ export async function execute(interaction) {
 
   if (bakiye.ryo < bahis) {
     return interaction.reply({
-      content: `❌ Yetersiz bakiye! Cüzdanınızda \`${bakiye.ryo} Ryo\` var, gereken bahis: \`${bahis} Ryo\`.`,
+      content: `❌ Yetersiz bakiye! Cüzdanında **${ryoYaz(bakiye.ryo)}** var, gereken bahis: **${ryoYaz(bahis)}**.`,
       ephemeral: true
     });
   }
 
-  // İlk bahsi düş
-  ryoDus(userId, bahis);
+  if (!ryoDus(userId, bahis, 'blackjack bahis')) {
+    return interaction.reply({ content: '❌ Bahis düşülemedi, bakiye değişmiş olabilir.', ephemeral: true });
+  }
 
   const deste = desteOlustur();
   const oyuncuEli = [deste.pop(), deste.pop()];
   const krupiyeEli = [deste.pop(), deste.pop()];
 
-  let oyunBitti = false;
-  let ikiyeKatlandi = false;
-
-  const durumEmbedUret = (baslik, renk, durumAciklamasi, gizliKrupiye = true) => {
-    const oyuncuSkor = elSkoruHesapla(oyuncuEli);
-    const krupiyeSkor = gizliKrupiye ? elSkoruHesapla([krupiyeEli[0]]) : elSkoruHesapla(krupiyeEli);
-
+  /**
+   * Masa embed'i. `gizli` true iken krupiyenin ikinci kartı kapalıdır.
+   * `durum` en üstteki kısa açıklama satırıdır.
+   */
+  const masaEmbed = ({ baslik, renk, durum, gizli, altMetin }) => {
+    const krupiyeSkor = gizli
+      ? `${elSkoruHesapla([krupiyeEli[0]])} + ?`
+      : skorEtiketi(elSkoruHesapla(krupiyeEli));
     return kageEmbed({
       baslik,
       renk,
-      aciklama: `${durumAciklamasi}\n\n` +
-        `🤵 **Krupiye Masası:**\n${elMetni(krupiyeEli, gizliKrupiye)}\n` +
-        `Skor: **${gizliKrupiye ? `${krupiyeSkor} + ?` : krupiyeSkor}**\n\n` +
-        `👤 **${interaction.user.username} (Sen):**\n${elMetni(oyuncuEli, false)}\n` +
-        `Skor: **${oyuncuSkor}**\n\n` +
-        `💰 **Aktif Bahis:** \`${bahis} Ryo\``,
-      footer: `Kage 21 Casino • Şansını iyi kullan!`
+      aciklama:
+        `${durum}\n\n` +
+        `🤵 **Krupiye** • Skor: **${krupiyeSkor}**\n${kartlariCiz(krupiyeEli, gizli)}\n` +
+        `👤 **${interaction.user.username}** • Skor: **${skorEtiketi(elSkoruHesapla(oyuncuEli))}**\n${kartlariCiz(oyuncuEli)}\n` +
+        `💰 **Bahis:** ${ryoYaz(bahis)}`,
+      altMetin: altMetin || `Kage 21 Casino • Destede ${deste.length} kart`
     });
   };
 
-  const butonRowOlustur = (canDouble) => {
+  const butonlar = (ikiyeKatlanabilir, kapali = false) => {
     const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId('bj_hit')
-        .setLabel('Kart Çek (Hit)')
-        .setEmoji('🃏')
-        .setStyle(ButtonStyle.Primary),
-      new ButtonBuilder()
-        .setCustomId('bj_stand')
-        .setLabel('Dur (Stand)')
-        .setEmoji('🛑')
-        .setStyle(ButtonStyle.Secondary)
+      new ButtonBuilder().setCustomId('bj_hit').setLabel('Kart Çek').setEmoji('🃏')
+        .setStyle(ButtonStyle.Primary).setDisabled(kapali),
+      new ButtonBuilder().setCustomId('bj_stand').setLabel('Dur').setEmoji('🛑')
+        .setStyle(ButtonStyle.Secondary).setDisabled(kapali)
     );
-
-    if (canDouble) {
+    if (ikiyeKatlanabilir) {
       row.addComponents(
-        new ButtonBuilder()
-          .setCustomId('bj_double')
-          .setLabel('İkiye Katla (2x)')
-          .setEmoji('⚡')
-          .setStyle(ButtonStyle.Success)
+        new ButtonBuilder().setCustomId('bj_double').setLabel('İkiye Katla').setEmoji('⚡')
+          .setStyle(ButtonStyle.Success).setDisabled(kapali)
       );
     }
-    return row;
+    return [row];
   };
 
-  const oyuncuSkor = elSkoruHesapla(oyuncuEli);
-  const krupiyeSkor = elSkoruHesapla(krupiyeEli);
+  const oyuncuIlk = elSkoruHesapla(oyuncuEli);
+  const krupiyeIlk = elSkoruHesapla(krupiyeEli);
 
-  // Doğrudan Blackjack Kontrolü
-  if (oyuncuSkor === 21) {
-    if (krupiyeSkor === 21) {
-      ryoEkle(userId, bahis); // Berabere, bahsi iade et
-      const embed = durumEmbedUret(
-        '🤝 BERABERE! (PUSH)',
-        TEMA.RENKLER.BILGI,
-        'İki taraf da anında 21 yaptı! Bahsiniz cüzdanınıza iade edildi.',
-        false
-      );
-      return interaction.reply({ embeds: [embed] });
-    } else {
-      const kazanc = Math.floor(bahis * 2.5); // Doğal Blackjack 3:2
-      ryoEkle(userId, kazanc);
-      const yeniBakiye = bakiyeGetir(userId).ryo;
-      const embed = durumEmbedUret(
-        '🔥 DOĞAL BLACKJACK! KAZANDINIZ!',
-        TEMA.RENKLER.BASARI,
-        `Mükemmel el! İlk iki kartta 21 vurdun!\n**Ödeme (3:2):** \`+${kazanc - bahis} Ryo\`\n**Yeni Bakiye:** \`${yeniBakiye} Ryo\``,
-        false
-      );
-      return interaction.reply({ embeds: [embed] });
+  // Doğal blackjack
+  if (oyuncuIlk === 21) {
+    if (krupiyeIlk === 21) {
+      ryoEkle(userId, bahis, 'blackjack iade');
+      return interaction.reply({
+        embeds: [masaEmbed({
+          baslik: '🤝 BERABERE • İKİ TARAF DA BLACKJACK',
+          renk: TEMA.RENKLER.BILGI,
+          durum: `Bahsin iade edildi. Bakiye: **${ryoYaz(bakiyeGetir(userId).ryo)}**`,
+          gizli: false
+        })]
+      });
     }
+    const odeme = Math.floor(bahis * 2.5);
+    ryoEkle(userId, odeme, 'blackjack ödeme');
+    return interaction.reply({
+      embeds: [masaEmbed({
+        baslik: '🔥 DOĞAL BLACKJACK!',
+        renk: TEMA.RENKLER.ALTIN,
+        durum: `İlk iki kartta 21! 3:2 ödeme: **+${ryoYaz(odeme - bahis)}**\nBakiye: **${ryoYaz(bakiyeGetir(userId).ryo)}**`,
+        gizli: false
+      })]
+    });
   }
 
-  // Oyuncu bakiyesi 2x için yeterli mi?
-  const guncelBakiye = bakiyeGetir(userId);
-  const canDouble = guncelBakiye.ryo >= bahis;
-
-  const baslangicEmbed = durumEmbedUret(
-    '🎲 KAGE 21 • BLACKJACK MASASI',
-    TEMA.RENKLER.KAN_KIRMIZISI,
-    'Kartlar dağıtıldı! Hamleni seç:',
-    true
-  );
-
+  const ilkEmbed = masaEmbed({
+    baslik: '🎲 KAGE 21 • BLACKJACK MASASI',
+    renk: TEMA.RENKLER.KAN_KIRMIZISI,
+    durum: 'Kartlar dağıtıldı. Hamleni seç.',
+    gizli: true
+  });
   const mesaj = await interaction.reply({
-    embeds: [baslangicEmbed],
-    components: [butonRowOlustur(canDouble)],
+    embeds: [ilkEmbed],
+    components: butonlar(bakiyeGetir(userId).ryo >= bahis),
     fetchReply: true
   });
 
@@ -195,122 +161,100 @@ export async function execute(interaction) {
   collector.on('collect', async bi => {
     await bi.deferUpdate();
 
-    // 1. İkiye Katla
     if (bi.customId === 'bj_double') {
-      ryoDus(userId, bahis);
+      if (!ryoDus(userId, bahis, 'blackjack bahis')) return;
       bahis *= 2;
-      ikiyeKatlandi = true;
       oyuncuEli.push(deste.pop());
-      collector.stop('double');
-      return;
+      return collector.stop(elSkoruHesapla(oyuncuEli) > 21 ? 'bust' : 'double');
     }
 
-    // 2. Kart Çek (Hit)
     if (bi.customId === 'bj_hit') {
       oyuncuEli.push(deste.pop());
-      const guncelSkor = elSkoruHesapla(oyuncuEli);
-
-      if (guncelSkor > 21) {
-        collector.stop('bust');
-        return;
-      }
-
-      if (guncelSkor === 21) {
-        collector.stop('stand');
-        return;
-      }
-
-      // Devam ediyor
-      const guncelEmbed = durumEmbedUret(
-        '🎲 KAGE 21 • BLACKJACK MASASI',
-        TEMA.RENKLER.KAN_KIRMIZISI,
-        'Bir kart çektin. Sıradaki hamlen?',
-        true
-      );
-      return bi.message.edit({ embeds: [guncelEmbed], components: [butonRowOlustur(false)] });
+      const skor = elSkoruHesapla(oyuncuEli);
+      if (skor > 21) return collector.stop('bust');
+      if (skor === 21) return collector.stop('stand');
+      return mesaj.edit({
+        embeds: [masaEmbed({
+          baslik: '🎲 KAGE 21 • BLACKJACK MASASI',
+          renk: TEMA.RENKLER.KAN_KIRMIZISI,
+          durum: 'Kart çektin. Sıradaki hamlen?',
+          gizli: true
+        })],
+        components: butonlar(false)
+      });
     }
 
-    // 3. Dur (Stand)
-    if (bi.customId === 'bj_stand') {
-      collector.stop('stand');
-      return;
-    }
+    if (bi.customId === 'bj_stand') return collector.stop('stand');
   });
 
   collector.on('end', async (_, sebep) => {
-    let oyuncuSkorSon = elSkoruHesapla(oyuncuEli);
+    const oyuncuSkor = elSkoruHesapla(oyuncuEli);
 
-    // Oyuncu Patladıysa (Bust)
-    if (oyuncuSkorSon > 21 || sebep === 'bust') {
-      const kalanBakiye = bakiyeGetir(userId).ryo;
-      const embed = durumEmbedUret(
-        '💥 YANDINIZ! (BUST)',
-        TEMA.RENKLER.HATA,
-        `Skorun 21'i aştı ve eli kaybettin!\n\n💸 **Kaybedilen:** \`-${bahis} Ryo\`\n🪙 **Kalan Bakiye:** \`${kalanBakiye} Ryo\``,
-        false
-      );
-      return mesaj.edit({ embeds: [embed], components: [] });
+    if (oyuncuSkor > 21) {
+      return mesaj.edit({
+        embeds: [masaEmbed({
+          baslik: '💥 YANDIN! (BUST)',
+          renk: TEMA.RENKLER.HATA,
+          durum: `Skorun 21'i aştı.\n💸 **Kayıp:** -${ryoYaz(bahis)} • Bakiye: **${ryoYaz(bakiyeGetir(userId).ryo)}**`,
+          gizli: false
+        })],
+        components: []
+      });
     }
 
-    // Krupiye Sırası: Krupiye 17 veya üstüne kadar kart çeker
+    // Krupiye kartı açar, sonra 17'ye kadar tek tek çeker (animasyonlu)
+    await mesaj.edit({
+      embeds: [masaEmbed({
+        baslik: '🤵 KRUPİYE SIRASI',
+        renk: TEMA.RENKLER.GOLGE_KIRMIZISI,
+        durum: sebep === 'time' ? 'Süre doldu, otomatik DUR. Krupiye kartını açıyor…' : 'Krupiye kartını açıyor…',
+        gizli: false
+      })],
+      components: butonlar(false, true)
+    });
+
     while (elSkoruHesapla(krupiyeEli) < 17) {
+      await bekle(1100);
       krupiyeEli.push(deste.pop());
+      await mesaj.edit({
+        embeds: [masaEmbed({
+          baslik: '🤵 KRUPİYE SIRASI',
+          renk: TEMA.RENKLER.GOLGE_KIRMIZISI,
+          durum: 'Krupiye kart çekti…',
+          gizli: false
+        })]
+      });
     }
+    await bekle(800);
 
-    const krupiyeSkorSon = elSkoruHesapla(krupiyeEli);
+    const krupiyeSkor = elSkoruHesapla(krupiyeEli);
+    let baslik, renk, durum;
 
-    // Krupiye Patladıysa
-    if (krupiyeSkorSon > 21) {
-      const kazanc = bahis * 2;
-      ryoEkle(userId, kazanc);
-      const yeniBakiye = bakiyeGetir(userId).ryo;
-      const embed = durumEmbedUret(
-        '🎉 KRUPİYE PATLADI! KAZANDINIZ!',
-        TEMA.RENKLER.BASARI,
-        `Krupiye 21'i aştı (${krupiyeSkorSon}) ve masayı sen topladın!\n\n` +
-        `💰 **Kazanılan Net:** \`+${bahis} Ryo\` (Toplam: \`${kazanc} Ryo\`)\n` +
-        `🪙 **Yeni Bakiye:** \`${yeniBakiye} Ryo\``,
-        false
-      );
-      return mesaj.edit({ embeds: [embed], components: [] });
-    }
-
-    // Skor Karşılaştırma
-    if (oyuncuSkorSon > krupiyeSkorSon) {
-      const kazanc = bahis * 2;
-      ryoEkle(userId, kazanc);
-      const yeniBakiye = bakiyeGetir(userId).ryo;
-      const embed = durumEmbedUret(
-        '🏆 TEBRİKLER! MASAYI YENDİNİZ!',
-        TEMA.RENKLER.BASARI,
-        `Elin krupiyeden daha yüksek çıktı (${oyuncuSkorSon} vs ${krupiyeSkorSon})!\n\n` +
-        `💰 **Kazanılan Net:** \`+${bahis} Ryo\` (Toplam: \`${kazanc} Ryo\`)\n` +
-        `🪙 **Yeni Bakiye:** \`${yeniBakiye} Ryo\``,
-        false
-      );
-      return mesaj.edit({ embeds: [embed], components: [] });
-    } else if (oyuncuSkorSon === krupiyeSkorSon) {
-      ryoEkle(userId, bahis); // Bahsi iade et
-      const yeniBakiye = bakiyeGetir(userId).ryo;
-      const embed = durumEmbedUret(
-        '🤝 BERABERE (PUSH)',
-        TEMA.RENKLER.BILGI,
-        `İki tarafın da skoru eşit (${oyuncuSkorSon})! Bahsiniz aynen iade edildi.\n\n` +
-        `🪙 **Bakiyeniz:** \`${yeniBakiye} Ryo\``,
-        false
-      );
-      return mesaj.edit({ embeds: [embed], components: [] });
+    if (krupiyeSkor > 21 || oyuncuSkor > krupiyeSkor) {
+      ryoEkle(userId, bahis * 2, 'blackjack ödeme');
+      baslik = krupiyeSkor > 21 ? '🎉 KRUPİYE PATLADI!' : '🏆 MASAYI YENDİN!';
+      renk = TEMA.RENKLER.BASARI;
+      durum = `**+${ryoYaz(bahis)}** kazandın (ödeme: ${ryoYaz(bahis * 2)})`;
+    } else if (oyuncuSkor === krupiyeSkor) {
+      ryoEkle(userId, bahis, 'blackjack iade');
+      baslik = '🤝 BERABERE (PUSH)';
+      renk = TEMA.RENKLER.BILGI;
+      durum = 'Skorlar eşit, bahsin iade edildi.';
     } else {
-      const kalanBakiye = bakiyeGetir(userId).ryo;
-      const embed = durumEmbedUret(
-        '💀 KRUPİYE KAZANDI',
-        TEMA.RENKLER.HATA,
-        `Krupiyenin eli seninkinden yüksek çıktı (${krupiyeSkorSon} vs ${oyuncuSkorSon}).\n\n` +
-        `💸 **Kaybedilen:** \`-${bahis} Ryo\`\n` +
-        `🪙 **Kalan Bakiye:** \`${kalanBakiye} Ryo\``,
-        false
-      );
-      return mesaj.edit({ embeds: [embed], components: [] });
+      baslik = '💀 KRUPİYE KAZANDI';
+      renk = TEMA.RENKLER.HATA;
+      durum = `**-${ryoYaz(bahis)}** kaybettin.`;
     }
+
+    await mesaj.edit({
+      embeds: [masaEmbed({
+        baslik,
+        renk,
+        durum: `${durum}\n🪙 Bakiye: **${ryoYaz(bakiyeGetir(userId).ryo)}**`,
+        gizli: false,
+        altMetin: 'Kage 21 Casino • Tekrar oynamak için /blackjack'
+      })],
+      components: []
+    });
   });
 }

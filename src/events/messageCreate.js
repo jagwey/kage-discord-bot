@@ -4,6 +4,8 @@ import { sunucuAyarGetir } from '../services/veritabaniServisi.js';
 import { yardimKartiOlustur } from '../commands/yardim.js';
 import { kageyeSor } from '../services/ai/kageBeyin.js';
 import { gecmiseEkle } from '../services/ai/konusmaGecmisi.js';
+import { otomodKontrol } from '../services/otomodServisi.js';
+import { mesajXpEkle } from '../services/seviyeServisi.js';
 
 export const name = Events.MessageCreate;
 
@@ -80,6 +82,22 @@ export async function execute(message) {
   // Botları ve DM'leri yoksay
   if (message.author.bot || !message.guild) return;
 
+  // Otomatik moderasyon: yasaklı kelime içeren mesaj silinir ve işlem burada biter.
+  if (await otomodKontrol(message).catch(() => false)) return;
+
+  // Sohbet XP'si: bekleme süresi ve kısa mesaj kontrolü serviste yapılır.
+  try {
+    const xp = mesajXpEkle(message.guild.id, message.author.id, message.content);
+    if (xp?.seviyeAtladi) {
+      await message.channel.send({
+        content: `⬆️ ${message.author} **Seviye ${xp.seviye}** oldu! Ödül: ${xp.odul} Ryo.`,
+        allowedMentions: { users: [message.author.id] }
+      }).catch(() => null);
+    }
+  } catch (err) {
+    console.warn('[Seviye]', err.message);
+  }
+
   const contentLower = message.content.trim().toLowerCase();
 
   // 1. Akıllı Spoiler Koruması (#manga-tartışma kanalı için)
@@ -110,8 +128,9 @@ export async function execute(message) {
   // 3. Sohbet Ryo Kazanımı
   if (Math.random() < 0.25) {
     try {
-      const { ryoEkle } = await import('../services/ekonomiServisi.js');
-      ryoEkle(message.author.id, 1);
+      const { ryoEkle, sohbetOdulUygunMu } = await import('../services/ekonomiServisi.js');
+      // Kullanıcı başına 30 sn bekleme: spam ile Ryo çiftliği yapılamaz.
+      if (sohbetOdulUygunMu(message.author.id)) ryoEkle(message.author.id, 1);
     } catch {}
   }
 

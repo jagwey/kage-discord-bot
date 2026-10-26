@@ -29,9 +29,11 @@ export async function execute(member) {
   }
 
   // 2. Karşılama Mesajı (#yeni-savaşçılar, #hoş-geldin veya ayarlı kanal)
-  const welcomeChannel = guild.channels.cache.find(c => 
-    c.isTextBased() && (c.name.includes('yeni-savaşçılar') || c.name.includes('yeni-savascilar') || c.name.includes('hoş-geldin') || c.name.includes('hos-geldin'))
-  ) || (ayarlar.hosgeldinKanalId ? await guild.channels.fetch(ayarlar.hosgeldinKanalId).catch(() => null) : null);
+  // Açıkça ayarlanmış kanal (/karsilama) isim eşleşmesinden önce gelir.
+  const welcomeChannel = (ayarlar.hosgeldinKanalId ? await guild.channels.fetch(ayarlar.hosgeldinKanalId).catch(() => null) : null)
+    || guild.channels.cache.find(c =>
+      c.isTextBased() && (c.name.includes('yeni-savaşçılar') || c.name.includes('yeni-savascilar') || c.name.includes('hoş-geldin') || c.name.includes('hos-geldin'))
+    );
 
   if (!welcomeChannel || !welcomeChannel.isTextBased()) return;
 
@@ -40,10 +42,18 @@ export async function execute(member) {
     const avatarUrl = member.user.displayAvatarURL({ dynamic: true, size: 256 });
     const kayitKanali = guild.channels.cache.find(c => c.name.includes('kayıt') || c.name.includes('kayit'));
 
+    // Yönetici /karsilama ile şablon verdiyse varsayılan metnin yerine o kullanılır.
+    const ozelMesaj = ayarlar.hosgeldinMesaji
+      ? String(ayarlar.hosgeldinMesaji)
+          .replaceAll('{uye}', `${member}`)
+          .replaceAll('{sunucu}', guild.name)
+          .replaceAll('{sayi}', String(guild.memberCount))
+      : null;
+
     const embed = kageEmbed({
       baslik: `⛩️ GÖLGE DİYARINA HOŞ GELDİN • ${member.user.displayName}`,
       renk: TEMA.RENKLER.KAN_KIRMIZISI,
-      aciklama: `Karanlık koridorları arala, parşömenlerin kadim bilgisine kulak ver.\n\n` +
+      aciklama: ozelMesaj ? `${ozelMesaj}\n\n*${rastgeleSlogan()}*` : `Karanlık koridorları arala, parşömenlerin kadim bilgisine kulak ver.\n\n` +
         `⚔️ **${member}**, Kage kalesine adırını bastı!\n` +
         `🏮 Sunucumuzun **${guild.memberCount}.** savaşçısı oldun.\n\n` +
         (kayitKanali ? `👉 **İlk Görevin:** ${kayitKanali} kanalına gidip mührünü basarak kaleye kayıt olmalısın!\n\n` : '') +

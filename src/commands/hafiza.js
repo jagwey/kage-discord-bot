@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
-import { hafizaYukle, hafizaArama, bilgiOgren, gunlukDerinOgrenme } from '../services/kageHafizaServisi.js';
+import { hafizaYukle, hafizaArama, bilgiOgren, gunlukDerinOgrenme, profilGetir, kullaniciHafizasiGetir, kullaniciUnut } from '../services/kageHafizaServisi.js';
 
 export const data = new SlashCommandBuilder()
   .setName('hafiza')
@@ -53,6 +53,16 @@ export const data = new SlashCommandBuilder()
   )
   .addSubcommand(sub =>
     sub
+      .setName('profil')
+      .setDescription('Kage\'nin senin hakkında hafızasında tuttuğu profili gösterir.')
+  )
+  .addSubcommand(sub =>
+    sub
+      .setName('unut')
+      .setDescription('Kage senin profilini ve kişisel notlarını kalıcı olarak unutur.')
+  )
+  .addSubcommand(sub =>
+    sub
       .setName('yenile')
       .setDescription('(Şogun/Yetkili) Siteden ve sunucudan anında derin öğrenme senkronizasyonu yapar.')
   );
@@ -87,7 +97,7 @@ export async function execute(interaction) {
         `• Kanal / Rol Mimarisi: \`${sunucu.kanalSayisi || 0} Kanal\` / \`${sunucu.rolSayisi || 0} Rol\`\n\n` +
         `📜 **Gölge Günlüğü (Son Düşünce):**\n` +
         `*"${gunluk.ozet}"*`,
-      footer: `Kage AI Kalıcı Bellek • kage95.com`
+      altMetin: `Kage AI Kalıcı Bellek • kage95.com`
     });
 
     return interaction.reply({ embeds: [embed] });
@@ -113,7 +123,7 @@ export async function execute(interaction) {
       baslik: `🔍 HAFIZA ARAMA SONUÇLARI • "${sorgu.toUpperCase()}"`,
       renk: TEMA.RENKLER.BASARI,
       aciklama: `Kage derin hafıza bankasında arandı ve en alakalı kayıtlar bulundu:\n\n${liste}`,
-      footer: `Toplam ${sonuclar.length} kayıt eşleşti`
+      altMetin: `Toplam ${sonuclar.length} kayıt eşleşti`
     });
 
     return interaction.reply({ embeds: [embed] });
@@ -135,10 +145,41 @@ export async function execute(interaction) {
         `📌 **Başlık:** **${baslik}**\n` +
         `📜 **İçerik:**\n*"${bilgi}"*\n\n` +
         `*Artık bana bu konu hakkında soru sorulduğunda veya zorlandığımda bu bilgiyi hatırlayacağım!*`,
-      footer: `Kayıt ID: ${kayit.id} • Ekleyen: ${interaction.user.tag}`
+      altMetin: `Kayıt ID: ${kayit.id} • Ekleyen: ${interaction.user.tag}`
     });
 
     return interaction.reply({ embeds: [embed] });
+  }
+
+  // PROFİL
+  if (sub === 'profil') {
+    const p = profilGetir(interaction.user.id);
+    const notlar = kullaniciHafizasiGetir(interaction.user.id);
+    const liste = a => (a?.length ? a.join(', ') : '—');
+    const embed = kageEmbed({
+      baslik: `🧠 KAGE'NİN SENİN HAKKINDAKİ HAFIZASI • ${interaction.user.displayName}`,
+      renk: TEMA.RENKLER.BILGI,
+      aciklama: p || notlar
+        ? `• **İlgi alanları:** ${liste(p?.ilgiAlanlari)}\n` +
+          `• **Favori seriler:** ${liste(p?.favoriMangalar)}\n` +
+          `• **Ton:** ${p?.ton || '—'} | **Dil:** ${p?.dil || '—'}\n` +
+          `• **Özet:** ${p?.kisaOzet || '—'}\n\n` +
+          `Silmek için \`/hafiza unut\`.`
+        : 'Hakkında henüz bir şey öğrenmedim.',
+      altMetin: 'Sadece sana görünür'
+    });
+    return interaction.reply({ embeds: [embed], ephemeral: true });
+  }
+
+  // UNUT
+  if (sub === 'unut') {
+    const r = kullaniciUnut(interaction.user.id);
+    return interaction.reply({
+      content: r.profil || r.not
+        ? `🌫️ Unuttum. Profil silindi${r.not ? `, ${r.not} kişisel not silindi` : ''}.`
+        : 'Zaten hakkında kayıt yok.',
+      ephemeral: true
+    });
   }
 
   // 4. YENİLE (Şogun / Admin)
@@ -161,7 +202,7 @@ export async function execute(interaction) {
           `• 🌐 **kage95.com:** \`${yeniHafiza.siteVerileri.toplamManga} Manga\` ve son bölümler indekslendi.\n` +
           `• 🏰 **Discord Sunucusu:** \`${yeniHafiza.sunucuVerileri.toplamUye} Samuray\` ve klan hazinesi güncellendi.\n` +
           `• 💾 **Kalıcı Dosya:** \`data/kage_hafiza.json\` diske güvenle mühürlendi.`,
-        footer: `Kage AI Otonom Öğrenme Motoru`
+        altMetin: `Kage AI Otonom Öğrenme Motoru`
       });
       return interaction.editReply({ embeds: [embed] });
     } catch (err) {
