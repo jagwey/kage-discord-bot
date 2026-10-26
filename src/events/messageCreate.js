@@ -6,6 +6,7 @@ import { kageyeSor } from '../services/ai/kageBeyin.js';
 import { gecmiseEkle } from '../services/ai/konusmaGecmisi.js';
 import { otomodKontrol } from '../services/otomodServisi.js';
 import { mesajXpEkle } from '../services/seviyeServisi.js';
+import { duyguEmojisi } from '../services/duyguServisi.js';
 
 export const name = Events.MessageCreate;
 
@@ -19,6 +20,8 @@ const SPOILER_IPUCLARI = [
 const ARAYA_GIRME_ACIK = (process.env.KAGE_ARAYA_GIRME || '').toLowerCase() !== 'kapali';
 const ARAYA_GIRME_BEKLEME_MS = 90 * 1000;
 const sonAraGirme = new Map(); // kanalId -> zaman
+const DUYGU_TEPKI_BEKLEME_MS = 45 * 1000;
+const sonDuyguTepkisi = new Map(); // kullaniciId -> zaman
 
 function sohbetKanaliMi(kanalAdi = '') {
   const ad = kanalAdi.toLowerCase();
@@ -96,6 +99,15 @@ export async function execute(message) {
     }
   } catch (err) {
     console.warn('[Seviye]', err.message);
+  }
+
+  // Duygu tepkisi: belirgin duygulu mesaja emoji birakir; kullanici basina bekleme ile spam onlenir.
+  if (message.content.length >= 4 && Date.now() - (sonDuyguTepkisi.get(message.author.id) || 0) > DUYGU_TEPKI_BEKLEME_MS) {
+    const emoji = duyguEmojisi(message.content);
+    if (emoji && Math.random() < 0.6) {
+      sonDuyguTepkisi.set(message.author.id, Date.now());
+      message.react(emoji).catch(() => null);
+    }
   }
 
   const contentLower = message.content.trim().toLowerCase();

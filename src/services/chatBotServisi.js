@@ -7,6 +7,7 @@ import { TEMA, kageEmbed, rastgeleSlogan } from '../config/tema.js';
 import { bakiyeGetir, liderlikListesi, KILIC_SEVIYELERI } from './ekonomiServisi.js';
 import { tumMangalariGetir, mangaAra } from './mangaServisi.js';
 import { hafizaBaglamMetniUret, kullaniciNotuEkle, hafizaArama } from './kageHafizaServisi.js';
+import { duyguTespit } from './duyguServisi.js';
 import { egitimBaglami, ciktiyiDenetle, stickerKurali, argoModuMu, saygiIhlaliVarMi } from './egitimServisi.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -859,7 +860,11 @@ export async function chatBotYanitla(mesajMetni, user, guild = null, member = nu
   const stickerHaritasi = isFemale ? STICKER_DOSYALARI_KUNOICHI : STICKER_DOSYALARI_ERKEK;
   const stickerDosyaAdi = isFemale ? 'kunoichi_sticker.png' : 'kage_sticker.png';
   const ogretilenDuygu = stickerKurali(guild?.id ?? null, user.id, mesajMetni);
-  const stickerPath = stickerHaritasi[ogretilenDuygu] || stickerHaritasi[duygu] || stickerHaritasi.cay;
+  // Ogretilen sticker her zaman onde; yoksa kullanicinin hissettigi duygu, o da yoksa kural dalinin duygusu.
+  const algilananDuygu = duyguTespit(mesajMetni);
+  const stickerPath = stickerHaritasi[ogretilenDuygu]
+    || (algilananDuygu.yogunluk >= 2 && stickerHaritasi[algilananDuygu.sticker])
+    || stickerHaritasi[duygu] || stickerHaritasi.cay;
   const files = [];
 
   if (fs.existsSync(stickerPath)) {

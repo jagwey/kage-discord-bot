@@ -1,4 +1,5 @@
 import { jsonDepo } from './jsonDepo.js';
+import { duyguIpucuMetni } from './duyguServisi.js';
 
 /**
  * Kage'yi Discord üzerinden eğitme ve kişiye göre üslup (ton) ayarı.
@@ -230,6 +231,9 @@ export function egitimBaglami(guildId, userId, mesaj) {
 
   const stk = kurallar.filter(k => k.tip === 'sticker' && eslesir(k, nm));
   if (stk.length) satirlar.push(`Bu mesaj için öğretilmiş sticker ruh hali: ${stk[0].deger}. Yanıtın bu ruh haline uygun olsun.`);
+
+  const duyguNotu = duyguIpucuMetni(mesaj);
+  if (duyguNotu) satirlar.push(duyguNotu);
 
   const ton = tonMetni(tonGetir(userId));
   return [ton, satirlar.join('\n\n'), SAYGI_KURALI].filter(Boolean).join('\n\n');
