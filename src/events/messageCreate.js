@@ -230,28 +230,52 @@ export async function execute(message) {
 
   await message.channel.sendTyping().catch(() => null);
 
-  try {
-    const sonuc = await kageyeSor({
-      metin, yazarAdi, userId: message.author.id,
-      guild: message.guild, channel: message.channel, member: message.member, client: message.client,
-      yonetici: !!yetkiliMi
-    });
+  // AI Vezir'e mi yoksa Etkileşimli ChatBot'a mı yönlendirilecek?
+  // Kural: "ai / Ai / AI / Aİ" ile başlayanlar veya AI yönetim kanalındakiler -> AI Vezir (kageyeSor)
+  // "kage ..." ile başlayanlar, bot etiketlemeleri veya yanıtlama -> ChatBot (chatBotYanitla)
+  const aiyeYonlendir = !!aiMatch || (aiKanali && !kageMatch);
 
-    if (sonuc.hata === 'anahtar_yok' || (sonuc.hata && !sonuc.cevap)) {
-      // Eski sohbet motoruna düş
+  if (aiyeYonlendir) {
+    // 1. OTONOM YAPAY ZEKA VEZİRİ (Fonksiyon çağırma, sunucu yönetimi, analitik)
+    try {
+      const sonuc = await kageyeSor({
+        metin, yazarAdi, userId: message.author.id,
+        guild: message.guild, channel: message.channel, member: message.member, client: message.client,
+        yonetici: !!yetkiliMi
+      });
+
+      if (sonuc.hata === 'anahtar_yok' || (sonuc.hata && !sonuc.cevap)) {
+        // AI anahtarı yoksa veya hata verirse ChatBot motoruna düş
+        const { embed, files } = await chatBotYanitla(metin, message.author, message.guild, message.member, message);
+        await message.reply({ embeds: [embed], files: files || [], allowedMentions: { repliedUser: false } })
+          .catch((err) => console.error('[MessageCreate ChatBot Hatası]:', err));
+        return TUM_STICKER_ISTEGI.test(metin) ? tumStickerlariGonder(message) : stickerGonder(message, metin, 0);
+      }
+
+      await cevabiGonder(message, sonuc);
+      await stickerGonder(message, metin, 0.3);
+    } catch (err) {
+      console.error('[MessageCreate AI] Hata:', err.message);
+      await message.reply({
+        content: `❌ Kage Veziri şu an cevap veremiyor: ${err.message}`,
+        allowedMentions: { repliedUser: false }
+      }).catch(() => null);
+    }
+  } else {
+    // 2. KAGE ETKİLEŞİMLİ CHAT BOT (Piksel Sticker, Hafıza, Profil, Kunoichi/Samuray Persona)
+    try {
       const { embed, files } = await chatBotYanitla(metin, message.author, message.guild, message.member, message);
       await message.reply({ embeds: [embed], files: files || [], allowedMentions: { repliedUser: false } })
         .catch((err) => console.error('[MessageCreate ChatBot Hatası]:', err));
-      return TUM_STICKER_ISTEGI.test(metin) ? tumStickerlariGonder(message) : stickerGonder(message, metin, 0);
+      if (TUM_STICKER_ISTEGI.test(metin)) {
+        await tumStickerlariGonder(message);
+      }
+    } catch (err) {
+      console.error('[MessageCreate ChatBot Hatası]:', err);
+      await message.reply({
+        content: `⚠️ Kage katanasını kınına sokarken bir aksaklık yaşadı: ${err.message}`,
+        allowedMentions: { repliedUser: false }
+      }).catch(() => null);
     }
-
-    await cevabiGonder(message, sonuc);
-    await stickerGonder(message, metin, 0.3);
-  } catch (err) {
-    console.error('[MessageCreate AI] Hata:', err.message);
-    await message.reply({
-      content: `❌ Kage şu an cevap veremiyor: ${err.message}`,
-      allowedMentions: { repliedUser: false }
-    }).catch(() => null);
   }
 }

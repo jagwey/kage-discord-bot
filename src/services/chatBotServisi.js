@@ -1,4 +1,3 @@
-import axios from 'axios';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -6,7 +5,18 @@ import { AttachmentBuilder } from 'discord.js';
 import { TEMA, kageEmbed, rastgeleSlogan } from '../config/tema.js';
 import { bakiyeGetir, liderlikListesi, KILIC_SEVIYELERI } from './ekonomiServisi.js';
 import { tumMangalariGetir, mangaAra } from './mangaServisi.js';
-import { hafizaBaglamMetniUret, kullaniciNotuEkle, hafizaArama } from './kageHafizaServisi.js';
+import {
+  hafizaBaglamMetniUret,
+  kullaniciNotuEkle,
+  kullaniciHafizasiGetir,
+  profilGuncelle,
+  profilGetir,
+  hafizaArama,
+  hafizaYukle
+} from './kageHafizaServisi.js';
+import { kullaniciKayitBilgileriniGetir } from './kayitServisi.js';
+import { geminiUret, anahtarVarMi } from './ai/geminiClient.js';
+import { gecmiseEkle, gecmisiIcerigeCevir } from './ai/konusmaGecmisi.js';
 import { duyguTespit } from './duyguServisi.js';
 import { sunucuOzetiMetni } from './sunucuBilgiServisi.js';
 import { egitimBaglami, ciktiyiDenetle, stickerKurali, argoModuMu, saygiIhlaliVarMi } from './egitimServisi.js';
@@ -216,47 +226,190 @@ function gunlukFalUret(userId) {
 }
 
 /**
- * Gemini REST API ile açık uçlu sorulara Kage Persona'sıyla canlı yapay zeka yanıtı üretir.
+ * Kullanıcının doğal sohbetinden kişisel bilgileri, tercihleri ve gerçekleri yakalayıp hafızaya kaydeder.
+ * @param {string} userId
+ * @param {string} userName
+ * @param {string} metin
+ * @returns {string|null} Öğrenilen bilgi özeti
+ */
+export function otonomOgrenmeKontrol(userId, userName, metin) {
+  if (!userId || !metin || metin.length < 5) return null;
+  const m = metin.trim();
+  const mKucuk = m.toLowerCase();
+
+  // 1. İsim tespiti
+  const isimMatch = m.match(/(?:benim adım|adım)\s+([a-zA-ZçğıöşüÇĞİÖŞÜ]+)/i)
+    || m.match(/bana\s+([a-zA-ZçğıöşüÇĞİÖŞÜ]+)\s+(?:de|diyebilirsin|dersin|hitap et)/i);
+  if (isimMatch && isimMatch[1] && !['kage', 'bot', 'bir', 'bu', 'ne', 'nasıl'].includes(isimMatch[1].toLowerCase())) {
+    const gercekAd = isimMatch[1].trim();
+    const not = `Gerçek adı / hitap tercihi: ${gercekAd}`;
+    kullaniciNotuEkle(userId, userName, not);
+    profilGuncelle(userId, { kisaOzet: not });
+    return not;
+  }
+
+  // 2. Yaş tespiti
+  const yasMatch = m.match(/(?:ben\s+)?(\d{1,2})\s+yaşındayım/i) || m.match(/yaşım\s+(\d{1,2})/i);
+  if (yasMatch && yasMatch[1]) {
+    const yas = parseInt(yasMatch[1], 10);
+    if (yas >= 7 && yas <= 90) {
+      const not = `Yaşı: ${yas}`;
+      kullaniciNotuEkle(userId, userName, not);
+      profilGuncelle(userId, { kisaOzet: not });
+      return not;
+    }
+  }
+
+  // 3. Favori Seri / Manga / Anime
+  const favMangaMatch = m.match(/(?:en sevdiğim|favori)\s+(?:manga|anime|seri|webtoon)(?:m)?\s+([a-zA-Z0-9çğıöşüÇĞİÖŞÜ\s\-_:]{2,30})/i)
+    || m.match(/([a-zA-Z0-9çğıöşüÇĞİÖŞÜ\s\-_:]{2,30})\s+(?:okumayı|izlemeyi)\s+(?:çok\s+)?seviyorum/i);
+  if (favMangaMatch && favMangaMatch[1]) {
+    const seri = favMangaMatch[1].trim();
+    if (!['bir', 'şey', 'seni', 'kitap', 'bunu', 'manga'].includes(seri.toLowerCase())) {
+      const not = `En sevdiği seri/manga: ${seri}`;
+      kullaniciNotuEkle(userId, userName, not);
+      profilGuncelle(userId, { favoriMangalar: [seri] });
+      return not;
+    }
+  }
+
+  // 4. Meslek / Okul / Alan
+  const meslekMatch = m.match(/(?:ben\s+)?([a-zA-ZçğıöşüÇĞİÖŞÜ\s]{2,25})\s+(?:okuyorum|öğrencisiyim|öğrenciyim)/i)
+    || m.match(/(?:ben\s+)?([a-zA-ZçğıöşüÇĞİÖŞÜ\s]{2,25})\s+(?:olarak çalışıyorum|mühendisiyim|doktoruyum|yazılımcısıyım)/i)
+    || m.match(/mesleğim\s+([a-zA-ZçğıöşüÇĞİÖŞÜ\s]{2,25})/i);
+  if (meslekMatch && meslekMatch[1]) {
+    const meslek = meslekMatch[1].trim();
+    const not = `Meslek / Eğitim: ${meslek}`;
+    kullaniciNotuEkle(userId, userName, not);
+    profilGuncelle(userId, { ilgiAlanlari: [meslek] });
+    return not;
+  }
+
+  // 5. Şehir / Konum
+  const sehirMatch = m.match(/([a-zA-ZçğıöşüÇĞİÖŞÜ]+)'(?:de|da|te|ta)\s+(?:yaşıyorum|oturuyorum|ikamet ediyorum)/i)
+    || m.match(/memleketim\s+([a-zA-ZçğıöşüÇĞİÖŞÜ]+)/i);
+  if (sehirMatch && sehirMatch[1]) {
+    const sehir = sehirMatch[1].trim();
+    const not = `Yaşadığı şehir/konum: ${sehir}`;
+    kullaniciNotuEkle(userId, userName, not);
+    profilGuncelle(userId, { ilgiAlanlari: [sehir] });
+    return not;
+  }
+
+  // 6. İlgi Alanı / Hobiler (Evcil hayvan vb.)
+  if (mKucuk.includes('kedim var') || mKucuk.includes('kedi besliyorum')) {
+    const not = `Evcil hayvan: Kedisi var ve kedileri çok seviyor 🐱`;
+    kullaniciNotuEkle(userId, userName, not);
+    profilGuncelle(userId, { ilgiAlanlari: ['Kedi sever'] });
+    return not;
+  }
+  if (mKucuk.includes('köpeğim var') || mKucuk.includes('köpek besliyorum')) {
+    const not = `Evcil hayvan: Köpeği var ve köpekleri çok seviyor 🐶`;
+    kullaniciNotuEkle(userId, userName, not);
+    profilGuncelle(userId, { ilgiAlanlari: ['Köpek sever'] });
+    return not;
+  }
+
+  return null;
+}
+
+/**
+ * Gemini API ile açık uçlu sorulara Kage Persona'sıyla canlı yapay zeka yanıtı üretir.
+ * Çok turlu konuşma belleği (konusmaGecmisi), otonom öğrenme etiketleri ve duygu çıkartma desteği içerir.
  */
 async function geminiPersonaSohbet(kullaniciMesaji, baglam) {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return null;
-
-  const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  if (!anahtarVarMi()) return null;
 
   const hafizaBaglami = hafizaBaglamMetniUret(kullaniciMesaji, baglam.userId, baglam.userName);
-
   const egitimBlogu = egitimBaglami(baglam.guildId, baglam.userId, kullaniciMesaji);
 
-  const prompt = `Sen Kage-95 (https://kage95.com) manga platformunun ve bu Discord kalesinin bilge, zeki, anime sever, samuray muhafızısın. Kurucumuz ve liderimiz Jagwey'dir.
-Konuştuğun kullanıcı: ${baglam.userName} (Kalenin ${baglam.katilimMetni} bir savaşçısı, elinde ${baglam.kilicAd} var, kesesinde ${baglam.ryo} Ryo taşıyor).
+  // Canlı kayıt bilgileri (ruh karakteri, favori türü, yemini)
+  const kayit = baglam.kayit || {};
+  const kayitOzeti = kayit.karakter
+    ? `Ruh Karakteri: ${kayit.karakter}, Favori Türü: ${kayit.mangaTuru || 'Bilinmiyor'}, Samuray Yemini: "${kayit.yemin || ''}"`
+    : '';
+
+  // Canlı Manga Kataloğu Bilgisi
+  let populerMangalar = '';
+  try {
+    const mangalar = await tumMangalariGetir();
+    if (mangalar && mangalar.length > 0) {
+      populerMangalar = mangalar.slice(0, 8).map(m => m.mangaAdi).join(', ');
+    }
+  } catch {}
+
+  const hitapTipi = baglam.isFemale ? 'zarif kunoichi, tatlı savaşçı' : 'yiğit samuray, kılıç kardeşi';
+
+  const systemInstruction = `Sen Kage-95 (https://kage95.com) manga platformunun ve bu Discord kalesinin bilge, zeki, anime/manga aşığı, sadık samuray muhafızısın. Kurucumuz ve şogunumuz Jagwey'dir.
+Konuştuğun kullanıcı: ${baglam.userName} (${baglam.isFemale ? 'Kız/Kunoichi' : 'Erkek/Samuray'}).
+Kullanıcıya hitap tarzın: ${hitapTipi}.
+Kalenin ${baglam.katilimMetni} bir savaşçısı. Kuşandığı katana: ${baglam.kilicAd}, Kesesindeki servet: ${baglam.ryo} Ryo.
+${kayitOzeti ? `Kayıt Sicili: ${kayitOzeti}` : ''}
+${populerMangalar ? `kage95.com kütüphanesindeki popüler seriler: ${populerMangalar}` : ''}
 
 ${hafizaBaglami}
-
 ${egitimBlogu}
 
-Kullanıcı sana şunu sordu/söyledi:
-"${kullaniciMesaji}"
+GÖREV VE KURALLAR:
+1. Son derece samimi, akıllı, hazırcevap, esprili ve anime kültürüyle yoğrulmuş bilgece Türkçe konuş.
+2. Kullanıcı bir kız/kunoichi ise ona her zaman saygılı, zarif ve tatlı davran (tatlı kunoichi, zarif savaşçı). Erkek ise samuray kardeşliğiyle yaklaş.
+3. Kage95.com mangasından, kaledeki zindanlardan ve kılıç dövüşlerinden esintiler kat.
+4. Asla 'bot olduğum için', 'bir yapay zekayım' gibi soğuk robotik cümleler kurma; kanlı canlı bir gölge savaşçısı gibi konuş.
+5. Kullanıcı kendisiyle ilgili yeni bir kişisel bilgi verirse (adı, hissi, hobisi, favori mangası vb.), yanıtının EN SONUNA şunu ekle (kullanıcıya gösterilmeyecek, sisteme işlenecek):
+[ÖĞRENİLDİ: <kullanıcı hakkında kalıcı 1 cümlelik gerçek>]
+6. Bu konuşmadaki ruh haline en uygun duyguyu seç ve EN SONA şu etiketi ekle:
+[DUYGU: <savas|cay|ofke|zafer|para|sevgi|dusunce>]
+7. Yanıtın 1-3 paragraf arasında akıcı, doğal ve tatmin edici olsun.`;
 
-GÖREVİN:
-1. Son derece samimi, akıllı, hazırcevap, samuray onuru ve anime kültürüyle yoğrulmuş bilgece Türkçe yanıt ver.
-2. Karşındakinin gerçek bir samuray dostun olduğunu hissettir. Gerektiğinde katanasından, Ryo'sundan veya kage95.com mangasından esprili bahset.
-3. Hafıza bankandaki bilgileri doğal bir bilgelikle kullan, karşındakini tanıdığını ve sitedeki yenilikleri bildiğini hissettir.
-4. Asla sunucu yönetimi/komut icra ettiğini iddia etme. 1-3 paragraf arası net, akıcı ve büyüleyici konuş.`;
+  // Konuşma geçmişini yükle
+  let contents = [];
+  if (baglam.channelId) {
+    contents = gecmisiIcerigeCevir(baglam.channelId);
+  }
+  // Mevcut mesajı ekle
+  contents.push({ role: 'user', parts: [{ text: `[${baglam.userName}]: ${kullaniciMesaji}` }] });
 
   try {
-    const yanit = await axios.post(
-      url,
-      {
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: { maxOutputTokens: 600, temperature: 0.75 }
-      },
-      { headers: { 'Content-Type': 'application/json' }, timeout: 8000 }
-    );
+    const { parts } = await geminiUret({
+      systemInstruction,
+      contents,
+      userId: baglam.userId,
+      temperature: 0.78,
+      maxOutputTokens: 800
+    });
 
-    const text = yanit.data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    return text ? ciktiyiDenetle(text.trim()) : null;
+    const hamMetin = parts?.[0]?.text;
+    if (!hamMetin) return null;
+
+    let temizMetin = hamMetin;
+    let secilenDuygu = null;
+    let ogrenilen = null;
+
+    // Duygu etiketini yakala
+    const duyguMatch = hamMetin.match(/\[DUYGU:\s*(savas|cay|ofke|zafer|para|sevgi|dusunce)\]/i);
+    if (duyguMatch) {
+      secilenDuygu = duyguMatch[1].toLowerCase();
+    }
+
+    // Öğrenildi etiketini yakala
+    const ogrenildiMatch = hamMetin.match(/\[ÖĞRENİLDİ:\s*([^\]]+)\]/i);
+    if (ogrenildiMatch) {
+      ogrenilen = ogrenildiMatch[1].trim();
+      kullaniciNotuEkle(baglam.userId, baglam.userName, ogrenilen);
+      profilGuncelle(baglam.userId, { kisaOzet: ogrenilen });
+    }
+
+    // Etiketleri temizle
+    temizMetin = temizMetin
+      .replace(/\[DUYGU:\s*[^\]]+\]/gi, '')
+      .replace(/\[ÖĞRENİLDİ:\s*[^\]]+\]/gi, '')
+      .trim();
+
+    return {
+      metin: ciktiyiDenetle(temizMetin),
+      duygu: secilenDuygu,
+      ogrenilen
+    };
   } catch (err) {
     console.warn('[ChatBot Gemini] Persona yanıtı üretilemedi:', err.message);
     return null;
@@ -280,6 +433,9 @@ export async function chatBotYanitla(mesajMetni, user, guild = null, member = nu
   const memberCount = guild?.memberCount || 'yüzlerce';
   const siteUrl = process.env.SITE_URL || 'https://kage95.com';
   const isFemale = kullaniciKizMi(user, member, metin);
+
+  // Otonom Heuristic Kendi Kendine Öğrenme
+  otonomOgrenmeKontrol(user.id, userName, mesajMetni);
 
   // Canlı Üye Verileri
   const bakiye = bakiyeGetir(user.id);
@@ -426,10 +582,30 @@ export async function chatBotYanitla(mesajMetni, user, guild = null, member = nu
   // =========================================================================
   else if (iceriyorMu(metin, BENI_TANIYOR_MUSUN)) {
     duygu = 'zafer';
-    baslik = `🕵️‍♂️ İSTİHBARAT RAPORU • ${userName.toUpperCase()}`;
-    renk = TEMA.RENKLER.KAN_KIRMIZISI;
+    baslik = isFemale ? `🌸 İSTİHBARAT RAPORU • ${userName.toUpperCase()}` : `🕵️‍♂️ İSTİHBARAT RAPORU • ${userName.toUpperCase()}`;
+    renk = isFemale ? 0xFF66B2 : TEMA.RENKLER.KAN_KIRMIZISI;
     const boosterMi = member?.premiumSince ? '⭐ **KALE BOOSTÇUSU (Nitro Destekçisi)**' : 'Klanın Sadık Neferi';
     const envanterOzet = envanter.length > 0 ? envanter.join(', ') : '*Çantan şu an bomboş, zindandan eşya düşür!*';
+
+    // Canlı Hafıza ve Kayıt Verileri
+    const kHafiza = kullaniciHafizasiGetir(user.id);
+    const kProfil = profilGetir(user.id);
+    const kKayit = kullaniciKayitBilgileriniGetir(user.id, member);
+
+    const hafizaDetaylari = [];
+    if (kKayit.karakter) hafizaDetaylari.push(`• **Ruh Karakteri:** ${kKayit.karakter}`);
+    if (kKayit.mangaTuru) hafizaDetaylari.push(`• **Favori Manga Türü:** ${kKayit.mangaTuru}`);
+    if (kKayit.yemin) hafizaDetaylari.push(`• **Samuray Yemini:** *"${kKayit.yemin}"*`);
+    if (kProfil?.favoriMangalar?.length > 0) hafizaDetaylari.push(`• **Sevdiği Seriler:** ${kProfil.favoriMangalar.join(', ')}`);
+    if (kProfil?.ilgiAlanlari?.length > 0) hafizaDetaylari.push(`• **İlgi Alanları:** ${kProfil.ilgiAlanlari.join(', ')}`);
+    if (kHafiza?.notlar?.length > 0) {
+      const sonNotlar = kHafiza.notlar.slice(-3).map(n => `• *${n}*`).join('\n');
+      hafizaDetaylari.push(`• **Hafızamdaki Gerçekler:**\n${sonNotlar}`);
+    }
+
+    const hafizaMetni = hafizaDetaylari.length > 0
+      ? `\n🧠 **Aklımda Tuttuğum Kişisel Notların:**\n${hafizaDetaylari.join('\n')}\n`
+      : `\n🧠 **Hafıza Notu:** *Henüz seninle ilgili özel bir detay öğrenmedim. Bana adını, sevdiklerini ya da sırlarını fısıldayabilirsin!*\n`;
 
     aciklama = `Seni tanımaz mıyım **${userName}**? Kage İstihbarat Arşivlerini açtım, işte senin samuray sicilin:\n\n` +
       `🏰 **Kaledeki Kıdemin:** ${katilimMetni} (${boosterMi})\n` +
@@ -441,8 +617,9 @@ export async function chatBotYanitla(mesajMetni, user, guild = null, member = nu
       `• Zindan Zaferleri: **${zindanZafer} Fetih**\n` +
       `• Düello Sicili: **${duelloZafer} Zafer** / **${duelloMaglubiyet} Mağlubiyet**\n\n` +
       `💰 **Finansal Durumun:**\n` +
-      `• Cüzdan: \`${ryo} Ryo\` | Banka: \`${banka} Ryo\` | Maaş Serisi: \`${streak} Gün\`\n\n` +
-      `🎒 **Çandaki Eşyalar:**\n${envanterOzet}`;
+      `• Cüzdan: \`${ryo} Ryo\` | Banka: \`${banka} Ryo\` | Maaş Serisi: \`${streak} Gün\`\n` +
+      hafizaMetni +
+      `\n🎒 **Çandaki Eşyalar:**\n${envanterOzet}`;
   }
 
   // =========================================================================
@@ -809,6 +986,7 @@ export async function chatBotYanitla(mesajMetni, user, guild = null, member = nu
     const notIcerik = mesajMetni.replace(/kage|aklında tut|unutma|hafızana yaz|bunu kaydet|lütfen|şunu|bunu/gi, '').trim();
     if (notIcerik.length > 3) {
       kullaniciNotuEkle(user.id, userName, notIcerik);
+      profilGuncelle(user.id, { kisaOzet: notIcerik });
       duygu = 'zafer';
       baslik = isFemale ? '🧠 KUNOICHI HAFIZASI • KALBİME KAZINDI' : '🧠 KAGE HAFIZASI • AKLIMDA TUTTUM';
       renk = TEMA.RENKLER.BASARI;
@@ -819,37 +997,58 @@ export async function chatBotYanitla(mesajMetni, user, guild = null, member = nu
   }
 
   // =========================================================================
-  // 18. AÇIK UÇLU YAPAY ZEKA KATMANI (GEMINI PERSONA FALLBACK!)
+  // 18. AÇIK UÇLU YAPAY ZEKA KATMANI (GEMINI PERSONA & OTONOM ÖĞRENME)
   // =========================================================================
-  if (!aciklama && metin.length > 3) {
+  if (!aciklama && metin.length > 2) {
     try {
-      const aiCevap = await geminiPersonaSohbet(mesajMetni, {
+      const kayitBilgileri = kullaniciKayitBilgileriniGetir(user.id, member);
+      const aiSonuc = await geminiPersonaSohbet(mesajMetni, {
+        channelId: message?.channel?.id || null,
         guildId: guild?.id ?? null,
         userId: user.id,
         userName,
         katilimMetni,
         kilicAd: kilic.ad,
-        ryo
+        ryo,
+        isFemale,
+        kayit: kayitBilgileri
       });
 
-      if (aiCevap) {
-        duygu = 'dusunce';
+      if (aiSonuc?.metin) {
+        if (aiSonuc.duygu) {
+          duygu = aiSonuc.duygu;
+        } else {
+          duygu = 'dusunce';
+        }
         baslik = isFemale ? '🌸 GÖLGE BİLGELİĞİ • Kunoichi Kage' : '⛩️ GÖLGE BİLGELİĞİ • Kage-95';
-        renk = isFemale ? 0xFF66B2 : TEMA.RENKLER.BILGI;
-        aciklama = aiCevap;
+        renk = isFemale
+          ? 0xFF66B2
+          : (duygu === 'savas' ? TEMA.RENKLER.KAN_KIRMIZISI : duygu === 'zafer' ? TEMA.RENKLER.BASARI : TEMA.RENKLER.BILGI);
+        aciklama = aiSonuc.metin;
       }
-    } catch {}
+    } catch (err) {
+      console.warn('[ChatBot Gemini Hata]:', err.message);
+    }
   }
 
-  // Nihai Fallback
+  // Nihai Fallback (AI cevabı veya eşleşen kural yoksa)
   if (!aciklama) {
     duygu = 'cay';
     const soz = SAMURAY_SOZLERI[Math.floor(Math.random() * SAMURAY_SOZLERI.length)];
+    const kayit = kullaniciKayitBilgileriniGetir(user.id, member);
+    const ruhKarakteri = kayit?.karakter ? ` (Ruh Karakterin: **${kayit.karakter}**)` : '';
+
     aciklama = isFemale
       ? `${soz}\n\n` +
-        `*${userName}, elindeki **${kilic.ad}** ve cüzdanındaki **${ryo} Ryo** ile Kage Kalesi'nin en zarif kunoichisisin. Bana soru sorabilir veya \`/yardim\` yazabilirsin! 🌸*`
+        `*Zarif kunoichim **${userName}**${ruhKarakteri}, elindeki **${kilic.ad}** ve cüzdanındaki **${ryo} Ryo** ile Kage Kalesi'nin en gözde savaşçısısın. Bana manga sorabilir, zindana inebilir veya \`/yardim\` yazabilirsin! 🌸*`
       : `${soz}\n\n` +
-        `*${userName}, elindeki **${kilic.ad}** ve cüzdanındaki **${ryo} Ryo** ile Kage Kalesi'nde yolunu bulabilirsin. Bana soru sorabilir veya \`/yardim\` yazabilirsin.*`;
+        `*Yiğit samurayım **${userName}**${ruhKarakteri}, elindeki **${kilic.ad}** ve cüzdanındaki **${ryo} Ryo** ile yolun açık olsun. Bana soru sorabilir veya \`/yardim\` yazabilirsin.*`;
+  }
+
+  // Çok turlu konuşma geçmişine kaydet
+  if (message?.channel?.id) {
+    gecmiseEkle(message.channel.id, 'user', userName, mesajMetni);
+    gecmiseEkle(message.channel.id, 'model', isFemale ? 'Kunoichi Kage' : 'Kage-95', aciklama);
   }
 
   const embed = kageEmbed({
@@ -865,11 +1064,13 @@ export async function chatBotYanitla(mesajMetni, user, guild = null, member = nu
   const stickerHaritasi = isFemale ? STICKER_DOSYALARI_KUNOICHI : STICKER_DOSYALARI_ERKEK;
   const stickerDosyaAdi = isFemale ? 'kunoichi_sticker.png' : 'kage_sticker.png';
   const ogretilenDuygu = stickerKurali(guild?.id ?? null, user.id, mesajMetni);
-  // Ogretilen sticker her zaman onde; yoksa kullanicinin hissettigi duygu, o da yoksa kural dalinin duygusu.
   const algilananDuygu = duyguTespit(mesajMetni);
-  const stickerPath = stickerHaritasi[ogretilenDuygu]
-    || (algilananDuygu.yogunluk >= 2 && stickerHaritasi[algilananDuygu.sticker])
-    || stickerHaritasi[duygu] || stickerHaritasi.cay;
+  const stickerKey = ogretilenDuygu
+    || (algilananDuygu.yogunluk >= 2 && algilananDuygu.sticker)
+    || duygu
+    || 'cay';
+
+  const stickerPath = stickerHaritasi[stickerKey] || stickerHaritasi.cay;
   const files = [];
 
   if (fs.existsSync(stickerPath)) {
