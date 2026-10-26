@@ -4,7 +4,8 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  ComponentType
+  ComponentType,
+  MessageFlags
 } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { kageMimarisiInsaEt } from '../services/sunucuMimarisiServisi.js';
@@ -33,11 +34,12 @@ export async function execute(interaction) {
       `• **Özel Kategoriler & Kanallar (Kage 95 Punk Tasarımı):**\n` +
       `  ╭━━━ ⛩️ GİRİŞ & BİLGİ ━━━╮ (#kayıt-kapısı, #manga-yayınları, #kadim-kurallar, #kage-dev)\n` +
       `  ╭━━━ 💬 GÖLGE TOPLULUĞU ━━━╮ (#meydan-sohbeti, #manga-tartışma, #anime-dünyası)\n` +
-      `  ╭━━━ ⚔️ ARENA & RYO BAHİS ━━━╮ (#samuray-düellosu, #kumar-ve-zar, #zindan-seferleri)\n` +
+      `  ╭━━━ ⚔️ ARENA & RYO BAHİS ━━━╮ (#düello, #kumar, #zindan, #göl, #boss, #kule, #dojo, #çekiliş, #seviye)\n` +
       `  ╭━━━ 🔮 YAPAY ZEKA MABEDİ ━━━╮ (#gölge-veziri-ai)\n` +
-      `  ╭━━━ 🔒 ŞOGUN KALESİ ━━━╮ (#şogun-meclisi, #ceza-sicil-log, #kayıt-mühür-log)\n` +
+      `  ╭━━━ 🔒 ŞOGUN KALESİ ━━━╮ (#şogun-meclisi, #ceza-sicil-log, #ekonomi-log, #bilet-log)\n` +
+      `  ╭━━━ 🎫 DESTEK ━━━╮ (#destek-bileti)\n` +
       `  ╭━━━ 🔊 SAMURAY SES ODALARI ━━━╮\n\n` +
-      `*Mevcut kanallarınız silinmez. Tüm kanalları sıfırlamak istiyorsanız \`/sunucu-sifirla\` komutunu kullanabilirsiniz.*`,
+      `*Mevcut kanallar silinmez, var olan roller ve kanallar yeniden kullanılır (tekrar çalıştırmak güvenli). Tüm kanalları sıfırlamak istiyorsanız \`/sunucu-sifirla\` komutunu kullanabilirsiniz.*`,
     altMetin: `Kurulumu onaylamak için 60 saniyeniz var.`
   });
 
@@ -66,7 +68,7 @@ export async function execute(interaction) {
 
   collector.on('collect', async i => {
     if (i.user.id !== interaction.user.id) {
-      return i.reply({ content: 'Bu kararı sadece kurulumu başlatan yönetici verebilir.', ephemeral: true });
+      return i.reply({ content: 'Bu kararı sadece kurulumu başlatan yönetici verebilir.', flags: MessageFlags.Ephemeral });
     }
 
     if (i.customId === 'kurulum_iptal') {
@@ -95,7 +97,7 @@ export async function execute(interaction) {
           renk: TEMA.RENKLER.BASARI,
           aciklama: `**Tebrikler Şogun!** Kage 95 mimarisi başarıyla kuruldu.\n\n` +
             `🏮 **Neler Yapıldı?**\n` +
-            `• 12 adet samuray hiyerarşi rolü oluşturuldu ve yetkilendirildi.\n` +
+            `• 14 adet samuray hiyerarşi rolü oluşturuldu ve yetkilendirildi.\n` +
             `• ${sonuclar.kayitKapisi} kanalına butonlu otomatik kayıt kapısı kuruldu.\n` +
             `• ${sonuclar.mangaDuyuru} kanalı manga ve bölüm bildirimlerine bağlandı.\n` +
             `• ${sonuclar.aiKanal} yapay zeka asistanı kanalı hazırlandı.\n` +

@@ -212,7 +212,11 @@ export async function execute(interaction) {
   const acikHavuz = ZINDAN_HAVUZU.filter(z => rutbeAcikMi(rutbeHarfi(z.rank), profil.zafer));
   const sonrakiKilit = Object.entries(RUTBE_ESIKLERI).find(([harf, esik]) => profil.zafer < esik);
   const karistirilmis = [...acikHavuz].sort(() => 0.5 - Math.random());
-  const secenekler = karistirilmis.slice(0, 3);
+  let secenekler = karistirilmis.slice(0, 3);
+  if (!secenekler.length) {
+    secenekler = ZINDAN_HAVUZU.filter(z => rutbeHarfi(z.rank) === 'D').slice(0, 3);
+  }
+  if (!secenekler.length) secenekler = ZINDAN_HAVUZU.slice(0, 3);
 
   // 1. AŞAMA: ZİNDAN PORTALI & KAPI SEÇİMİ
   const kapiSecimEmbed = kageEmbed({
@@ -234,22 +238,15 @@ export async function execute(interaction) {
     altMetin: `Kuşandığın Katana: ${kilic.ad} (+%${kilic.bonus} Hasar)`
   });
 
+  const kapiStilleri = [ButtonStyle.Primary, ButtonStyle.Success, ButtonStyle.Danger];
   const kapiRow = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId('kapi_0')
-      .setLabel(`Kapı 1: ${secenekler[0].ad.split(' ')[1] || 'Zindan 1'}`)
-      .setStyle(ButtonStyle.Primary)
-      .setEmoji('🚪'),
-    new ButtonBuilder()
-      .setCustomId('kapi_1')
-      .setLabel(`Kapı 2: ${secenekler[1].ad.split(' ')[1] || 'Zindan 2'}`)
-      .setStyle(ButtonStyle.Success)
-      .setEmoji('🚪'),
-    new ButtonBuilder()
-      .setCustomId('kapi_2')
-      .setLabel(`Kapı 3: ${secenekler[2].ad.split(' ')[1] || 'Zindan 3'}`)
-      .setStyle(ButtonStyle.Danger)
-      .setEmoji('🚪')
+    secenekler.map((z, i) =>
+      new ButtonBuilder()
+        .setCustomId(`kapi_${i}`)
+        .setLabel(`Kapı ${i + 1}: ${z.ad.split(' ')[1] || `Zindan ${i + 1}`}`.slice(0, 80))
+        .setStyle(kapiStilleri[i])
+        .setEmoji('🚪')
+    )
   );
 
   const portalMesaji = await interaction.reply({

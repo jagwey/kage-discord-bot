@@ -121,7 +121,7 @@ export function guncellemeKartiOlustur(changelog, client) {
 async function kageDevKanaliniBulVeyaOlustur(guild) {
   // 1. Önce mevcut kanalı ara
   let kanal = guild.channels.cache.find(c => 
-    c.isTextBased() && (c.name === 'kage-dev' || c.name === 'kage-geliştirici')
+    c.isTextBased() && (c.name.includes('kage-dev') || c.name.includes('kage-geliştirici'))
   );
 
   if (kanal) return kanal;
