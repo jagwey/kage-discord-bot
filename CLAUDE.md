@@ -29,14 +29,16 @@ Tüm AI yönlendirmesi `src/services/aiRouterServisi.js` ve erişim denetimi `sr
 - **Canlı Admin AI İzleme:** Başka biri konuşurken bile admin kanalına (`aiYonetimKanalId`) hangi kullanıcının hangi soruya hangi motorla yanıt aldığı canlı düşer. Yetkililere mesaj altında motor etiketi (`-# [Motor: ...]`) gösterilir.
 
 ## 📁 Dizin Yapısı
-- `src/commands/`: 66 adet Slash komutu (`export const data`, `export async function execute`).
+- `src/commands/`: 68 adet Slash komutu (`export const data`, `export async function execute`).
 - `src/services/`: 32 adet modüler servis (`aiRouterServisi`, `aiErisimServisi`, `chatBotServisi`, `ekonomiServisi`, `klanServisi`, `yoldasServisi`, `sunucuMimarisiServisi`, `zindanServisi`, `bossServisi` vb.).
 - `src/events/`: Discord olay dinleyicileri (`interactionCreate`, `messageCreate`, `ready`, `guildMemberAdd`).
 - `data/`: JSON veri depoları (`klanlar.json`, `yoldaslar.json`, `zindan.json`, `ekonomi.json`, `kullanicilar.json`, `dojo.json` vb.).
 - `assets/`: Stickerlar (`assets/stickers/`), profil avatarları (`assets/avatars/`), SVG bannerlar (`assets/banner.svg`).
 
 ## ⚔️ Önemli Komutlar & Sistemler
-- `/model`: Tüm aktif AI modellerini listeleme (`/model liste`) ve istenen modelle anlık konuşma (`/model sor`).
+- `/hafizam`: Kullanıcının Kage hafızasındaki parşömen profili ve tek tıkla sıfırlama butonu.
+- `/ozet`: Kanaldaki son konuşulanları tarayıp esprili samuray bülteni olarak özetleme.
+- `/model`: Tüm aktif AI modellerini listeleme (`/model liste`), kalıcı seçme (`/model sec`) ve anlık konuşma (`/model sor`).
 - `/ciz`: Pollinations AI ile manga/anime/siberpunk görsel üretimi (15 sn bekleme korumalı).
 - `/klan`: Samuray klanı kurma (2500 Ryo), bağış yapma, klan seviyesi, sunucu sıralaması.
 - `/yoldas`: Gölge Kurdu, Alev Tilkisi, Mistik Kuzgun, Yeşim Ejderi evcil hayvanları ve zindan savaş buffları.

@@ -69,6 +69,12 @@ Hedefler: docs/PROJE_HEDEFLERI.md. Kullanıcı istemeden commit atılmaz.
   - **Doğal Dille Model Seçimi:** Kullanıcı sohbette `kage groq'a geç`, `kage deepseek kullan`, `kage gemini'ye geç`, `kage otomatik moda geç` yazdığında veya `kage [groq]: ...` şeklinde başladığında tercihi kalıcı olarak kaydedilir ve model o anda değişir.
   - **Komutsuz Doğal Eylem Yönlendirmesi (Action Intent Routing):** Komut yazma zorunluluğu ortadan kaldırıldı. Kullanıcı "kage şu üyeyi sustur", "kage mesajları temizle", "kage kurallara şunu ekle", "kage bana ryo ver", "kage rol ver" dediğinde doğrudan Otonom Vezir (`kageyeSor`) devreye girer. Kullanıcının ve botun yetkisi varsa eylem direkt gerçekleştirilir/onay mekanizması sunulur; yetkisi yoksa Kage samuray tarzıyla yetkinin yetersiz olduğunu belirtir.
   - **/model sec [secim]:** Kullanıcıların varsayılan AI motorunu slash komutuyla da kalıcı olarak seçebilmesi sağlandı.
+- [x] 41. Kullanıcı Dostu AI Yetenekleri: Multimodal Görsel Zekası, Hızlı Etkileşim Butonları, /hafizam ve /ozet Komutları:
+  - **Görsel Okuma & Manga Paneli Tanıma (Multimodal Vision):** Kullanıcı sohbete resim eklediğinde (`gorselAnalizEt`), Gemini Vision devreye girer. Manga panelleri, sahneler, çizimler ve karakterler samuray bakış açısıyla incelenip Türkçe yanıtlanır.
+  - **Mesaj Altı Hızlı Butonlar:** Kage'nin verdiği cevapların altına `[🔄 Farklı Modele Sor]`, `[🧠 Ne Öğrendin?]` ve `[🗑️ Sıfırla]` butonları eklendi. Kullanıcı tek tıkla aynı soruyu alternatif modele sorabilir veya hafıza notlarını ephemeral görebilir.
+  - **/hafizam Komutu:** Kullanıcının Kage'nin aklında tuttuğu tüm hatıraları, takma adını, yaşını, ilgi alanlarını, favori mangalarını, elindeki katanayı ve Ryo servetini şık bir samuray parşömeni kartı olarak döker. Altında tek tıkla hafıza sıfırlama butonu bulunur.
+  - **/ozet Komutu:** Kanaldaki son mesajları (10-100 adet) toplayıp bot mesajlarını ayıklayarak esprili, samimi 3-5 maddelik samuray kanal bülteni çıkarır.
+  - deploy-commands ile komut sayısı 66'dan **68'e** yükseldi ve yerel sunucuya yüklendi.
 
 ## Sürüyor
 

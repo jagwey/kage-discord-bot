@@ -34,6 +34,65 @@ export function saglayiciDurumu() {
 }
 
 /**
+ * Görsel Okuma & Analiz Motoru (Gemini Multimodal Vision)
+ * Manga panelleri, ekran görüntüleri, çizimler ve fotoğrafları analiz eder.
+ * 
+ * @param {Object} secenekler
+ * @param {string} secenekler.resimUrl
+ * @param {string} [secenekler.mimeType]
+ * @param {string} [secenekler.soru]
+ * @param {string} [secenekler.userId]
+ * @param {string} [secenekler.userName]
+ * @returns {Promise<{ metin: string, saglayici: string }>}
+ */
+export async function gorselAnalizEt({ resimUrl, mimeType = 'image/jpeg', soru = 'Bu görseli analiz et ve samuray tarzında açıkla.', userId = 'anon', userName = 'Samuray' }) {
+  if (!geminiVarMi()) {
+    throw new Error('Görsel analizi için GEMINI_API_KEY gereklidir.');
+  }
+
+  // 1. Resmi Buffer olarak indir ve base64'e çevir
+  const res = await fetch(resimUrl);
+  if (!res.ok) throw new Error(`Görsel indirilemedi (HTTP ${res.status})`);
+  const arrayBuffer = await res.arrayBuffer();
+  const base64Data = Buffer.from(arrayBuffer).toString('base64');
+  const algilananMime = mimeType || res.headers.get('content-type') || 'image/jpeg';
+
+  const ortakBaglam = ortakHafizaBaglamiGetir({ userId, userName, prompt: soru });
+  const sistemTalimati = `${ortakBaglam}\n\nSen görseli inceleyen bilge bir gölge samurayısın. Resimdeki detayları, anime/manga karakterlerini, sahneleri, metinleri veya çizimleri dikkatle tanı ve samimi, net Türkçe açıkla.`;
+
+  const contents = [
+    {
+      role: 'user',
+      parts: [
+        { text: `[${userName}]: ${soru}` },
+        {
+          inlineData: {
+            mimeType: algilananMime.split(';')[0].trim(),
+            data: base64Data
+          }
+        }
+      ]
+    }
+  ];
+
+  const { parts } = await geminiUret({
+    systemInstruction: sistemTalimati,
+    contents,
+    userId,
+    maxOutputTokens: 1200
+  });
+
+  const hamMetin = parts?.filter(p => p.text && !p.thought).map(p => p.text).join('').trim();
+  if (!hamMetin) throw new Error('Görselden anlamlı bir yanıt üretilemedi.');
+
+  const { temizMetin } = ogrenilenleriAyiklaVeKaydet(userId, userName, hamMetin);
+  return {
+    metin: ciktiyiDenetle(temizMetin),
+    saglayici: 'Gemini Vision (Görsel Zeka)'
+  };
+}
+
+/**
  * Pollinations AI metin üretimi (%100 Ücretsiz, key istemez)
  */
 async function pollinationsMetinUret(prompt, systemInstruction = '') {

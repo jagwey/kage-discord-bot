@@ -9,7 +9,7 @@
   <a href="https://discord.js.org"><img src="https://img.shields.io/badge/discord.js-v14.18-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord.js"></a>
   <a href="https://aistudio.google.com"><img src="https://img.shields.io/badge/AI%20Engine-Gemini%20Flash%20%2B%20Memory-4285F4?style=for-the-badge&logo=google&logoColor=white" alt="Gemini"></a>
   <a href="https://kage95.com"><img src="https://img.shields.io/badge/Platform-kage95.com-e53935?style=for-the-badge&logo=torii-gate&logoColor=white" alt="Kage Platform"></a>
-  <a href="#"><img src="https://img.shields.io/badge/Commands-66%20Slash-blueviolet?style=for-the-badge" alt="Commands"></a>
+  <a href="#"><img src="https://img.shields.io/badge/Commands-68%20Slash-blueviolet?style=for-the-badge" alt="Commands"></a>
   <a href="#"><img src="https://img.shields.io/badge/Stickers-28%20Twin%20Pack-ff69b4?style=for-the-badge" alt="Stickers"></a>
   <a href="#"><img src="https://img.shields.io/badge/Enterprise-JagTech-FF4655?style=for-the-badge&logo=shield&logoColor=white" alt="JagTech"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-d4af37?style=for-the-badge" alt="License"></a>
@@ -71,8 +71,16 @@ Sunucunuz tamamen boş veya dağınık olsa dahi, tek bir komutla tüm sunucuyu 
   - `/ayarlar ai-rol [rol]`: Yapay zekayı kötüye kullanımlara karşı korumak için sadece belirlediğiniz role açabilirsiniz.
   - `/ayarlar ai-mod [sadece_rol | sadece_yonetici | herkese_acik]`: Sunucu bazlı güvenlik seviyesi.
   - **Anti-Abuse Rate Limiting**: Kullanıcı başına 8 sn metin, 15 sn görsel cooldown. Aralıksız spam yapanlar engellenir.
+- **Görsel Okuma & Manga Paneli Tanıma (Multimodal Vision)**:
+  - Kullanıcı sohbete manga paneli, anime görseli, çizim veya ekran görüntüsü eklediğinde Kage görseli inceler. Sahneyi, karakterleri veya çizim tekniğini samuray bilgeliğiyle analiz edip Türkçe açıklar.
+- **Mesaj Altı Hızlı Etkileşim Butonları (1 Tıkla AI Yönetimi)**:
+  - Kage yanıt verdiğinde mesaj altına `[🔄 Farklı Modele Sor]`, `[🧠 Ne Öğrendin?]` ve `[🗑️ Sıfırla]` butonları iliştirilir. Kullanıcı tek tıkla farklı yapay zekaların bakış açısını karşılaştırabilir veya aklındaki notları kontrol edebilir.
+- **İnteraktif Savaşçı Hafıza Parşömeni (`/hafizam`)**:
+  - Kage'nin senin hakkında bildiği her şeyi (hitap tarzı, ilgi alanları, favori serileri, kılıcı, Ryo bakiyesi, klanı ve kişisel anılarını) epik bir samuray parşömeni kartı olarak döker.
+- **Kanal & Sohbet Özeti Çıkarma (`/ozet`)**:
+  - `/ozet [adet]`: Odada son konuşulan 10-100 mesajı tarar, bot mesajlarını ayıklar ve 3-5 maddelik esprili samuray bülteni olarak özetler.
 - **Canlı Admin AI İzleme & Motor Etiketleme**:
-  - Bir üye Kage ile konuştuğunda admin kanalına (`aiYonetimKanalId`) anlık izleme bildirimi düşer: Hangi üye, hangi kanalda, hangi soruyu sordu ve hangi yapay zeka motoru (`Gemini`, `Groq`, `OpenRouter`, `Kural Tabanlı ChatBot`) cevap verdi canlı takip edilir.
+  - Bir üye Kage ile konuştuğunda admin kanalına (`aiYonetimKanalId`) anlık izleme bildirimi düşer: Hangi üye, hangi kanalda, hangi soruyu sordu ve hangi yapay zeka motoru (`Gemini`, `Groq`, `OpenRouter`, `Pollinations`) cevap verdi canlı takip edilir.
   - Yöneticiler konuştuğunda mesajın veya embed'in altına ince bir motor etiketi iliştirilir.
 - **Sıfır Kesinti Fallback Kalkanı**: Gemini kota sınırına takılırsa bot anında sessizce Groq, OpenRouter veya Pollinations'a geçer; sohbet tek bir saniye dahi aksamaz.
 

@@ -1,4 +1,4 @@
-import { Events, PermissionFlagsBits } from 'discord.js';
+import { Events, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { chatBotYanitla, kullaniciKizMi } from '../services/chatBotServisi.js';
 import { sunucuAyarGetir } from '../services/veritabaniServisi.js';
 import { yardimKartiOlustur } from '../commands/yardim.js';
@@ -11,7 +11,7 @@ import { duyguEmojisi } from '../services/duyguServisi.js';
 import { stickerDuygusuSec, stickerMesajSecenegi } from '../services/stickerServisi.js';
 import { aiErisimKontrol, aiSpamKontrol } from '../services/aiErisimServisi.js';
 import { kullaniciModelSec, kullaniciModelGetir } from '../services/kageHafizaServisi.js';
-import { modelKoduCozumle, DESTEKLENEN_MODELLER } from '../services/aiRouterServisi.js';
+import { modelKoduCozumle, DESTEKLENEN_MODELLER, gorselAnalizEt } from '../services/aiRouterServisi.js';
 
 export const name = Events.MessageCreate;
 
@@ -87,15 +87,48 @@ function parcala(metin, limit = 1900) {
   return parcalar;
 }
 
+function aiHizliButonlar(userId) {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`ai_baska_${userId}`)
+      .setLabel('Farklı Modele Sor')
+      .setEmoji('🔄')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId(`ai_ogren_${userId}`)
+      .setLabel('Ne Öğrendin?')
+      .setEmoji('🧠')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId(`ai_sil_${userId}`)
+      .setLabel('Sıfırla')
+      .setEmoji('🗑️')
+      .setStyle(ButtonStyle.Secondary)
+  );
+}
+
 async function cevabiGonder(message, sonuc, yanitla = true) {
   const parcalar = parcala(sonuc.cevap);
-  let ilk = true;
-  for (const p of parcalar) {
-    const secenek = { content: p, allowedMentions: { parse: [], repliedUser: false } };
-    if (ilk && yanitla) await message.reply(secenek).catch(() => message.channel.send(secenek).catch(() => null));
-    else await message.channel.send(secenek).catch(() => null);
-    ilk = false;
+  const toplamParca = parcalar.length;
+
+  for (let i = 0; i < toplamParca; i++) {
+    const sonParcaMi = i === toplamParca - 1;
+    const onayVarMi = (sonuc.onaylar || []).length > 0;
+    const butonlar = (sonParcaMi && !onayVarMi) ? [aiHizliButonlar(message.author.id)] : [];
+
+    const secenek = {
+      content: parcalar[i],
+      components: butonlar,
+      allowedMentions: { parse: [], repliedUser: false }
+    };
+
+    if (i === 0 && yanitla) {
+      await message.reply(secenek).catch(() => message.channel.send(secenek).catch(() => null));
+    } else {
+      await message.channel.send(secenek).catch(() => null);
+    }
   }
+
   for (const o of sonuc.onaylar || []) {
     await message.channel.send({
       content: o.metin,
@@ -302,6 +335,39 @@ export async function execute(message) {
   const EYLEM_NIYETI = /\b(sustur|mutele|banla|engelle|at\b|kickle|temizle|sil\b|rol ver|rol al|rol aç|kanal aç|kanal sil|kanal kapat|kural ekle|duyuru yap|bakiye|bakiyem|ryo ver|ryo gönder|yavaş mod|kilit|şunu yap|bunu yap)\b/iu;
   const eylemIstegi = EYLEM_NIYETI.test(metin);
 
+  // 6. Görsel Analizi (Multimodal Vision): Kullanıcı resim atıp soru sorduysa
+  const resimEki = message.attachments?.find(a => a.contentType?.startsWith('image/'));
+  if (resimEki) {
+    try {
+      const vizyonSonuc = await gorselAnalizEt({
+        resimUrl: resimEki.url,
+        mimeType: resimEki.contentType,
+        soru: metin && metin !== '(Seni çağırdı ama bir şey yazmadı)' ? metin : 'Bu görseli analiz et ve samuray tarzında açıkla.',
+        userId: message.author.id,
+        userName: yazarAdi
+      });
+
+      const { kageEmbed, TEMA } = await import('../config/tema.js');
+      const vizyonEmbed = kageEmbed({
+        baslik: '👁️ GÖLGE GÖZÜ • GÖRSEL ANALİZİ',
+        renk: TEMA.RENKLER.BILGI,
+        aciklama: vizyonSonuc.metin,
+        altMetin: `Motor: ${vizyonSonuc.saglayici} • İsteyen: ${message.author.username}`
+      });
+
+      await message.reply({
+        embeds: [vizyonEmbed],
+        components: [aiHizliButonlar(message.author.id)],
+        allowedMentions: { repliedUser: false }
+      });
+      adminAiLog(message, vizyonSonuc.saglayici, true, metin);
+      return;
+    } catch (err) {
+      console.warn('[GorselAnaliz Hatası]:', err.message);
+      // Görsel analizi başarısızsa normal akışa devam et
+    }
+  }
+
   // Eylem istekleri, doğrudan "ai ..." çağrıları veya AI yönetim kanalındakiler -> Otonom Vezir (kageyeSor)
   const aiyeYonlendir = !!aiMatch || (aiKanali && !kageMatch) || eylemIstegi;
 
@@ -324,8 +390,12 @@ export async function execute(message) {
           embed.setFooter({ text: `${mevcutFooter} • ⚙️ Motor: ${saglayici}` });
         }
 
-        await message.reply({ embeds: [embed], files: files || [], allowedMentions: { repliedUser: false } })
-          .catch((err) => console.error('[MessageCreate ChatBot Hatası]:', err));
+        await message.reply({
+          embeds: [embed],
+          files: files || [],
+          components: [aiHizliButonlar(message.author.id)],
+          allowedMentions: { repliedUser: false }
+        }).catch((err) => console.error('[MessageCreate ChatBot Hatası]:', err));
 
         adminAiLog(message, saglayici, isAi, metin);
         return TUM_STICKER_ISTEGI.test(metin) ? tumStickerlariGonder(message) : stickerGonder(message, metin, 0);
@@ -359,8 +429,12 @@ export async function execute(message) {
         embed.setFooter({ text: `${mevcutFooter} • ⚙️ Motor: ${saglayici}` });
       }
 
-      await message.reply({ embeds: [embed], files: files || [], allowedMentions: { repliedUser: false } })
-        .catch((err) => console.error('[MessageCreate ChatBot Hatası]:', err));
+      await message.reply({
+        embeds: [embed],
+        files: files || [],
+        components: [aiHizliButonlar(message.author.id)],
+        allowedMentions: { repliedUser: false }
+      }).catch((err) => console.error('[MessageCreate ChatBot Hatası]:', err));
 
       adminAiLog(message, saglayici, isAi, metin);
 

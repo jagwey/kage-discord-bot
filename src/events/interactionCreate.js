@@ -79,6 +79,70 @@ export async function execute(interaction) {
       });
       return interaction.reply({ embeds: [kurallarEmbed], flags: MessageFlags.Ephemeral });
     }
+
+    // 4. AI Hızlı Eylem Butonları (ai_sil_, ai_ogren_, ai_baska_)
+    if (interaction.customId.startsWith('ai_sil_')) {
+      const hedefId = interaction.customId.replace('ai_sil_', '');
+      if (interaction.user.id !== hedefId) {
+        return interaction.reply({ content: '❌ Yalnızca kendi hafıza kaydını sıfırlayabilirsin samuray.', flags: MessageFlags.Ephemeral });
+      }
+
+      const { kullaniciUnut } = await import('../services/kageHafizaServisi.js');
+      kullaniciUnut(hedefId);
+      return interaction.reply({
+        content: '🗑️ **Hafızan başarıyla sıfırlandı samurayım!**\nKage\'nin senin hakkında tuttuğu tüm notlar ve profil kayıtları silindi. Temiz bir parşömenle baştan başlıyoruz.',
+        flags: MessageFlags.Ephemeral
+      });
+    }
+
+    if (interaction.customId.startsWith('ai_ogren_')) {
+      const hedefId = interaction.customId.replace('ai_ogren_', '');
+      const { kullaniciHafizasiGetir, profilGetir } = await import('../services/kageHafizaServisi.js');
+      const uNot = kullaniciHafizasiGetir(hedefId);
+      const profil = profilGetir(hedefId);
+
+      const notMetni = uNot?.notlar?.length ? uNot.notlar.map(n => `• ${n}`).join('\n') : 'Henüz özel bir anı kaydedilmedi.';
+      const kisaOzet = profil?.kisaOzet || 'Sadık Kage Kalesi savaşçısı.';
+
+      const embed = kageEmbed({
+        baslik: '🧠 KAGE DERİN HAFIZA BİLGİSİ',
+        renk: TEMA.RENKLER.BILGI,
+        aciklama: `Kage-95'in senin hakkında aklında tuttuğu kayıtlar:\n\n` +
+          `📝 **Kısa Özet:** *"${kisaOzet}"*\n\n` +
+          `📜 **Notlar:**\n${notMetni}`,
+        altMetin: 'Kage Merkezi Hafıza Bankası'
+      });
+
+      return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+    }
+
+    if (interaction.customId.startsWith('ai_baska_')) {
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+      try {
+        const { belirliModelUret } = await import('../services/aiRouterServisi.js');
+        // Mesajın içeriğini al
+        const orijinalMesaj = interaction.message.embeds?.[0]?.description || interaction.message.content || 'Sohbet';
+        const temizSoru = orijinalMesaj.slice(0, 300);
+
+        const sonuc = await belirliModelUret({
+          prompt: `Aşağıdaki konuyu diğer yapay zekalardan farklı olarak ultra hızlı ve özgün bir samuray perspektifinden yorumla:\n"${temizSoru}"`,
+          modelKodu: 'groq_120b',
+          userId: interaction.user.id,
+          userName: interaction.user.username
+        });
+
+        const embed = kageEmbed({
+          baslik: `⚡ FARKLI BAKIŞ AÇISI • ${sonuc.model}`,
+          renk: TEMA.RENKLER.ALTIN,
+          aciklama: sonuc.metin,
+          altMetin: `Karşılaştırmalı Yapay Zeka • Yanıt: ${sonuc.sureMs} ms`
+        });
+
+        return interaction.editReply({ embeds: [embed] });
+      } catch (err) {
+        return interaction.editReply({ content: `❌ Alternatif modele danışılırken hata oluştu: ${err.message}` });
+      }
+    }
   }
 
   // 3. Modal Form Gönderimleri (Detaylı Kayıt İşlemi)
