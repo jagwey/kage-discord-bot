@@ -8,6 +8,7 @@ import { bakiyeGetir, liderlikListesi, KILIC_SEVIYELERI } from './ekonomiServisi
 import { tumMangalariGetir, mangaAra } from './mangaServisi.js';
 import { hafizaBaglamMetniUret, kullaniciNotuEkle, hafizaArama } from './kageHafizaServisi.js';
 import { duyguTespit } from './duyguServisi.js';
+import { sunucuOzetiMetni } from './sunucuBilgiServisi.js';
 import { egitimBaglami, ciktiyiDenetle, stickerKurali, argoModuMu, saygiIhlaliVarMi } from './egitimServisi.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -125,7 +126,7 @@ const STICKER_ISTEGI = ['sticker at', 'çıkartma at', 'sticker ver', 'bana stic
 const KUMAR_REHBER = ['kumar nasıl', 'blackjack nasıl', 'slot nasıl', 'kumar taktiği', 'kazanma taktiği', 'kumar', 'blackjack', 'slot', 'yazitura', 'yazı tura', 'bahis'];
 const RYO_EKONOMI = ['ryo nasıl kazanılır', 'para nasıl kasılır', 'para kazan', 'nasıl zengin olurum', 'ryo ne', 'ryo kasma', 'para kasmak', 'para kasma', 'ryo kas'];
 const BAKIYE_PARAM = ['param ne kadar', 'param kaç', 'bakiyem ne', 'kaç ryo var', 'cüzdanım', 'fakir miyim', 'zengin miyim', 'param'];
-const SUNUCU_DURUMU = ['sunucu nasıl', 'kalede durumlar ne', 'sunucu durumu', 'kaç kişiyiz', 'sunucu kimin', 'klan ne', 'kage kalesi', 'üye sayısı', 'sunucu bilgisi'];
+const SUNUCU_DURUMU = ['sunucu nasıl', 'kalede durumlar ne', 'sunucu durumu', 'kaç kişiyiz', 'sunucu kimin', 'klan ne', 'kage kalesi', 'üye sayısı', 'sunucu bilgisi', 'yeni gelen', 'yeni üye', 'kimler geldi', 'hangi kanal', 'kanalları', 'roller', 'hangi sticker', 'emojiler'];
 const KURALLAR = ['kurallar', 'kural ne', 'ceza var mı', 'yasak ne', 'spoiler kuralı', 'kurallar neler'];
 const KAYIT_OLMA = ['nasıl kayıt olunur', 'kayıt ol', 'kayıt nasıl', 'kayıt kapısı'];
 const ROLLER_UNVAN = ['rol nasıl', 'roller ne', 'hangi roller var', 'unvan', 'nasıl rol alırım', 'seviye rolü', 'unvanlar'];
@@ -682,12 +683,16 @@ export async function chatBotYanitla(mesajMetni, user, guild = null, member = nu
     const kanalSayisi = guild?.channels?.cache?.size || 15;
     const boostSayisi = guild?.premiumSubscriptionCount || 0;
     const kurucuEtiket = guild?.ownerId ? `<@${guild.ownerId}>` : 'Jagwey';
+    // Yapay zekayla aynı canlı sunucu bilgisi (yeni gelenler, kanallar, roller, stickerlar).
+    let ayrinti = '';
+    try { if (guild) ayrinti = sunucuOzetiMetni(guild, { ayrintili: true }); } catch { /* özet yoksa sade rapor */ }
 
     aciklama = `Kaledeki nöbet kulesinden tüm sunucuyu taradım **${userName}**:\n\n` +
       `👥 **Nöbetteki Samuray Sayısı:** **${memberCount} klan üyesi**\n` +
       `🏮 **Kale Odaları & Kanallar:** \`${kanalSayisi} aktif kanal\`\n` +
       `💎 **Klan Gücü (Boost):** \`${boostSayisi} Takviye\`\n` +
       `👑 **Kalenin Yüce Şogun'u:** ${kurucuEtiket}\n\n` +
+      (ayrinti ? `${ayrinti}\n\n` : '') +
       `Kalede asayiş berkemal, gölge veziri nöbette ve manga kütüphanemiz 7/24 hizmetinizde!`;
   }
 

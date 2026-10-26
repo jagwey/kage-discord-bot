@@ -91,6 +91,17 @@ async function stickerGonder(message, metin, rastgele = 0.25) {
   }
 }
 
+// "stickerleri at", "eklediğin tüm çıkartmaları ver" gibi toplu istekler (yapay zeka kapalıyken de çalışır).
+const TUM_STICKER_ISTEGI = /(sticker|çıkartma|cikartma)\p{L}*.*\b(at|ver|göster|gonder|gönder)|\b(tüm|hepsini|eklediğin)\b.*(sticker|çıkartma)/iu;
+
+async function tumStickerlariGonder(message) {
+  const tur = kullaniciKizMi(message.author, message.member, '') ? 'kunoichi' : 'erkek';
+  for (const duygu of ['savas', 'cay', 'ofke', 'zafer', 'para', 'sevgi', 'dusunce']) {
+    const secenek = stickerMesajSecenegi(message.guild.id, tur, duygu);
+    if (secenek) await message.channel.send({ ...secenek, allowedMentions: { parse: [], repliedUser: false } }).catch(() => null);
+  }
+}
+
 /**
  * Mesaj oluşturulduğunda tetiklenir (metin komutları, birleşik Kage yapay zekası)
  * @param {import('discord.js').Message} message
@@ -231,7 +242,7 @@ export async function execute(message) {
       const { embed, files } = await chatBotYanitla(metin, message.author, message.guild, message.member, message);
       await message.reply({ embeds: [embed], files: files || [], allowedMentions: { repliedUser: false } })
         .catch((err) => console.error('[MessageCreate ChatBot Hatası]:', err));
-      return stickerGonder(message, metin, 0);
+      return TUM_STICKER_ISTEGI.test(metin) ? tumStickerlariGonder(message) : stickerGonder(message, metin, 0);
     }
 
     await cevabiGonder(message, sonuc);

@@ -3,6 +3,9 @@ import { bakiyeGetir, liderlikListesi, ryoDus, ryoEkle } from '../ekonomiServisi
 import { otomodAyarGetir, otomodAyarGuncelle, otomodDurumu } from '../otomodServisi.js';
 import { tumMangalariGetir } from '../mangaServisi.js';
 import { hatirlaticiEkle } from '../hatirlaticiServisi.js';
+import { sunucuOzetiMetni } from '../sunucuBilgiServisi.js';
+import { stickerMesajSecenegi } from '../stickerServisi.js';
+import { kullaniciKizMi } from '../chatBotServisi.js';
 
 const S = (aciklama) => ({ type: 'STRING', description: aciklama });
 const N = (aciklama) => ({ type: 'NUMBER', description: aciklama });
@@ -26,6 +29,11 @@ const HERKESE_ACIK = [
     kullanici: S('isim veya id')
   }, ['kullanici']),
   arac('sunucu_durum_getir', 'Sunucu üye sayısı, kanallar, roller, boost ve zenginlik sıralaması.'),
+  arac('sunucu_ozeti', 'Sunucunun anlık ayrıntılı bilgisi: üye sayısı, yeni gelenler, yöneticiler, tüm kanal ve roller, emojiler, atabileceğin stickerlar. Sunucu hakkında her soruda önce bunu kullan.'),
+  arac('sticker_gonder', 'Bu kanala GERÇEK sticker gönderir. Biri sticker/çıkartma atmanı isterse bunu çağır, asla "atamıyorum" deme. duygu=hepsi tüm stickerları sırayla atar.', {
+    duygu: S('savas | cay | ofke | zafer | para | sevgi | dusunce | hepsi'),
+    tur: S('erkek | kunoichi; boşsa konuşan kişiye göre')
+  }, ['duygu']),
   arac('hafiza_ara', 'Kage\'nin kalıcı hafızasında arama yapar.', { sorgu: S('aranacak kelime') }, ['sorgu']),
   arac('hafiza_kaydet', 'Konuşan kişi hakkında hatırlanması gereken bir bilgiyi kalıcı hafızaya yazar.', {
     baslik: S('kısa başlık'),
@@ -218,6 +226,35 @@ export async function aracCalistir(ad, args = {}, ctx) {
     });
     if (!sonuc.basarili) return sonuc;
     return { basarili: true, detay: `Hatırlatıcı kuruldu (${Math.floor(Number(args.dakika))} dk sonra): ${sonuc.hatirlatici.metin}` };
+  }
+
+  if (ad === 'sunucu_ozeti') {
+    return { basarili: true, detay: sunucuOzetiMetni(guild, { ayrintili: true }) };
+  }
+
+  if (ad === 'sticker_gonder') {
+    if (!channel) return { basarili: false, hata: 'Kanal yok.' };
+    const gecerli = ['savas', 'cay', 'ofke', 'zafer', 'para', 'sevgi', 'dusunce'];
+    const duygu = String(args.duygu || '').toLowerCase();
+    const duygular = duygu === 'hepsi' ? gecerli : gecerli.includes(duygu) ? [duygu] : null;
+    if (!duygular) return { basarili: false, hata: `Geçersiz duygu. Seçenekler: ${gecerli.join(', ')}, hepsi.` };
+    const tur = ['erkek', 'kunoichi'].includes(args.tur)
+      ? args.tur
+      : (member?.user && kullaniciKizMi(member.user, member) ? 'kunoichi' : 'erkek');
+    let gonderilen = 0;
+    for (const d of duygular) {
+      const secenek = stickerMesajSecenegi(guild.id, tur, d);
+      if (!secenek) continue;
+      try {
+        await channel.send({ ...secenek, allowedMentions: { parse: [], repliedUser: false } });
+        gonderilen++;
+      } catch (err) {
+        if (!gonderilen) return { basarili: false, hata: `Sticker gönderilemedi: ${err.message}` };
+        break;
+      }
+    }
+    if (!gonderilen) return { basarili: false, hata: 'Gönderilecek sticker bulunamadı.' };
+    return { basarili: true, detay: `${gonderilen} sticker kanala gönderildi (${tur}). Kullanıcıya kısaca söyle.` };
   }
 
   let parametreler = args;
