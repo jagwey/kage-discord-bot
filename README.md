@@ -161,7 +161,7 @@ Sunucunuza tek tıkla (`/sticker-yukle`) yüklenebilen ve doğrudan sohbete gön
 
 ---
 
-## 📜 Tüm 63 Adet Eğik Çizgi (Slash) Komutu
+## 📜 Tüm 69 Adet Eğik Çizgi (Slash) Komutu
 
 | Komut | Kategori | Yetki | Açıklama |
 | :--- | :--- | :--- | :--- |
@@ -169,6 +169,8 @@ Sunucunuza tek tıkla (`/sticker-yukle`) yüklenebilen ve doğrudan sohbete gön
 | `/sunucu-sifirla` | Yönetim | `Yönetici` | Kage tarafından kurulan mimariyi sıfırlar. |
 | `/ayarlar` | Yönetim | `Yönetici` | Mod-log, oto-rol, karşılama ve AI kanallarını yapılandırır. |
 | `/karsilama` | Yönetim | `Yönetici` | Hoş geldin kanalını ve mesajını belirler. |
+| `/ai-durum` | Yönetim | `Yönetici` | Yapay zeka sağlayıcılarının (Gemini, Groq, OpenRouter) anlık kota ve durumunu gösterir. |
+| `/golge-goz` | Güvenlik & AI | `Yönetici` | Kage-95 Gölge Gözü otonom gözetim durumu, istihbarat raporu ve geçmiş taraması. |
 | `/duyuru` | Topluluk | `Kitleyi Etiketle` | Kage kan kırmızısı resmi duyuru fermanı basar. |
 | `/anket` | Topluluk | `Mesajları Yönet` | Reaksiyonlu ve oylamalı anket düzenler. |
 | `/sunucu-bilgi` | Bilgi | `Herkes` | Sunucunun detaylı istatistiklerini gösterir. |
@@ -177,6 +179,9 @@ Sunucunuza tek tıkla (`/sticker-yukle`) yüklenebilen ve doğrudan sohbete gön
 | `/guncelleme` | Bilgi | `Herkes` | Botun son sürüm notlarını ve yeniliklerini sergiler. |
 | `/oneri` | Topluluk | `Herkes` | Sunucu için öneri fermanı sunar ve oylamaya açar. |
 | `/ai` | Yapay Zeka | `Sunucuyu Yönet` | Yapay zeka veziriyle sunucu idaresine dair sohbet eder. |
+| `/model` | Yapay Zeka | `Herkes` | Aktif modelleri listeler (`liste`), varsayılan seçer (`sec`) veya doğrudan sorar (`sor`). |
+| `/hafizam` | Yapay Zeka | `Herkes` | Kage'nin senin hakkında öğrendiği kişisel bilgileri, profili ve parşömeni gösterir. |
+| `/ozet` | Yapay Zeka | `Herkes` | Bulunulan odada son konuşulan 10-100 mesajı esprili samuray bülteni olarak özetler. |
 | `/ciz` | Yapay Zeka | `Herkes` | Ücretsiz yapay zeka ile hayalindeki anime/samuray sahnesini çizer. |
 | `/egit` | Yapay Zeka | `Yönetici` | Kage'ye sunucuya özel yeni bilgi ve kurallar öğretir. |
 | `/hafiza` | Yapay Zeka | `Yönetici` | Kage'nin öğrenilmiş hafıza kayıtlarını listeler/yönetir. |
@@ -207,6 +212,7 @@ Sunucunuza tek tıkla (`/sticker-yukle`) yüklenebilen ve doğrudan sohbete gön
 | `/bakiye` | RPG / Ekonomi | `Herkes` | Mevcut Ryo ve cüzdan miktarını görüntüler. |
 | `/ode` | RPG / Ekonomi | `Herkes` | Bir başka üyeye Ryo transfer eder. |
 | `/gunluk` | RPG / Ekonomi | `Herkes` | 24 saatte bir günlük Ryo ve XP ödülü toplar. |
+| `/gorev` | RPG / Görev | `Herkes` | Günlük 3 dinamik samuray görevini ve tamamlama bonusunu listeler. |
 | `/liderlik` | RPG / Ekonomi | `Herkes` | En zengin ve en güçlü savaşçıları sıralar. |
 | `/ekonomi-log` | RPG / Ekonomi | `Yönetici` | Sunucudaki Ryo transferlerinin geçmişini belgeler. |
 | `/blackjack` | Kumarhane | `Herkes` | Krupiyeye karşı 21 oynar (ASCII kart çizimli). |
@@ -230,25 +236,54 @@ Sunucunuza tek tıkla (`/sticker-yukle`) yüklenebilen ve doğrudan sohbete gön
 
 ---
 
+## 🧠 Kage-95 Gölge Gözü & Çoklu Yapay Zeka Ağı Mimarisi
+
+```mermaid
+graph TD
+    UserMsg[Discord Sohbet Mesajı] --> Filter0ms{0ms Sezgisel Süzgeç}
+    
+    Filter0ms -->|Reklam / Davet Linki| Block1[0ms İhlal Tespiti & Gölge Odası Logu]
+    Filter0ms -->|Ağır Küfür / Hakaret| Block2[0ms Toksisite Tespiti & Admin Bildirimi]
+    Filter0ms -->|Caps / Tekrar Spamı| Block3[0ms Spam Önleme & Ceza Sayacı]
+    Filter0ms -->|Kısa / Önemsiz Mesaj| Drop[0 API Maliyeti - Sessiz Geçiş]
+    
+    Filter0ms -->|Anlamlı Sohbet >= 15 Karakter| Buffer[(Mikro-Tampon Havuzu)]
+    
+    Buffer -->|8 Mesaj Dolunca ANINDA| TriggerAI[Otonom AI Toplu Analiz]
+    Buffer -->|60 Saniye Zamanlayıcı >= 2 Mesaj| TriggerAI
+    
+    TriggerAI --> Router[aiRouterServisi - Akıllı Model Seçimi]
+    Router -->|Ultra Hızlı / Free| Groq[Groq GPT-OSS-120B / Qwen 27B]
+    Router -->|Felsefe / Vezir| Gemini[Google Gemini 3.5 Flash Lite]
+    Router -->|Açık Kaynak| OpenRouter[OpenRouter DeepSeek / Llama 3.3]
+    Router -->|Yedek / Çizim| Pollinations[Pollinations AI /ciz]
+    
+    Router --> Extractor[İstihbarat & Hafıza Ayrıştırıcı]
+    Extractor -->|Kullanıcı Gerçekleri| SharedMem[(data/kage_hafiza.json)]
+    Extractor -->|Sunucu Kararları / Kurallar| SharedMem
+    
+    SharedMem -->|Anında Ortak Bellek| AllModels[Tüm Modeller & Kage ChatBot]
+```
+
+---
+
 ## 📁 Proje Mimarisi
 
 ```text
 ├── assets/                       # Görseller, Banner'lar ve Sticker Kütüphanesi
 │   ├── stickers/
 │   │   ├── boy/                  # 14 Adet Beyaz Saçlı Erkek Ninja Sticker'ı
-│   │   │   ├── kage_zafer.png, kage_para.png, kage_aglama.png...
 │   │   └── kunoichi/             # 14 Adet Beyaz Saçlı Kız Kunoichi Sticker'ı
-│   │       ├── kage_zafer.png, kage_para.png, kage_aglama.png...
 │   ├── kage-banner.svg, kage-afis-1.jpg, kage-afis-2.jpg
 │   └── kage-tam-sigan-afis.png
 ├── data/                         # Kalıcı JSON Depoları (.gitignore korumalı)
 ├── src/
-│   ├── commands/                 # 63 Adet Eğik Çizgi (Slash) Komutu
-│   │   ├── ai.js, ciz.js, egit.js, hafiza.js, ton.js
+│   ├── commands/                 # 69 Adet Eğik Çizgi (Slash) Komutu
+│   │   ├── model.js, golge-goz.js, hafizam.js, ozet.js, ai-durum.js, ai.js, ciz.js, egit.js, hafiza.js, ton.js
 │   │   ├── sunucuKur.js, sunucuSifirla.js, ayarlar.js, karsilama.js
 │   │   ├── ban.js, unban.js, kick.js, timeout.js, untimeout.js, sil.js, kilit.js, uyari.js, rol.js
 │   │   ├── otomod.js, ticket.js, cekilis.js, hatirlatici.js, seviye.js
-│   │   ├── duello.js, demirci.js, zindan.js, dojo.js, boss.js, kule.js, balik.js
+│   │   ├── duello.js, demirci.js, zindan.js, dojo.js, boss.js, kule.js, balik.js, gorev.js
 │   │   ├── klan.js, yoldas.js, kehanet.js
 │   │   ├── market.js, envanter.js, bakiye.js, ode.js, gunluk.js, liderlik.js, ekonomiLog.js
 │   │   ├── blackjack.js, slot.js, yazitura.js
@@ -259,23 +294,18 @@ Sunucunuza tek tıkla (`/sticker-yukle`) yüklenebilen ve doğrudan sohbete gön
 │   ├── events/                   # Discord Gateway Olay Yakalayıcıları
 │   │   ├── ready.js              # Bot açılışı, Slash eşitleme ve servis başlatma
 │   │   ├── interactionCreate.js  # Komut, Modal, Buton ve Autocomplete yönlendirici
-│   │   ├── messageCreate.js      # 'kage'/'ai' chat bot ve otomod kontrolü
+│   │   ├── messageCreate.js      # 'kage'/'ai' chat bot, otomod ve Gölge Gözü kancası
 │   │   ├── messageDelete.js      # Denetim kaydı (Mod-Log silinen mesaj)
 │   │   ├── guildMemberAdd.js     # Karşılama, oto-rol ve kayıt karşılama
 │   │   ├── guildMemberRemove.js  # Ayrılan üye audit takibi
 │   │   └── guildCreate.js        # Yeni sunucuya katılım kurulumu
-│   ├── services/                 # 31 Adet Bağımsız Modüler Servis Motoru
-│   │   ├── ai/                   # Gelişmiş Yapay Zeka Çekirdeği
-│   │   │   ├── kageBeyin.js      # Düşünce motoru & Akıl yürütme
-│   │   │   ├── geminiClient.js   # Google Gemini API istemcisi
-│   │   │   ├── araclar.js        # AI Tool calling (Moderasyon & Sunucu Araçları)
-│   │   │   ├── konusmaGecmisi.js # Oturum & Sohbet belleği
-│   │   │   ├── onayServisi.js    # Kritik yetkili eylemleri için teyit mekanizması
-│   │   │   └── denetim.js        # Güvenlik ve yetki denetleyicisi
-│   │   ├── aiRouterServisi.js    # Akıllı Çoklu Model Yönlendiricisi & Fallback (Gemini, Groq, Pollinations)
-│   │   ├── aiServisi.js          # Temel AI ve Fallback yönlendiricisi
-│   │   ├── chatBotServisi.js     # Doğal dilde 'kage' ve 'ai' sohbet motoru
-│   │   ├── kageHafizaServisi.js  # Kendi kendine öğrenen hafıza veritabanı
+│   ├── services/                 # 33 Adet Bağımsız Modüler Servis Motoru
+│   │   ├── golgeGozServisi.js    # Kage-95 Gölge Gözü otonom gözetim & mikro-tamponlu toplu analiz
+│   │   ├── aiRouterServisi.js    # Akıllı Çoklu Model Yönlendiricisi & Fallback (Gemini, Groq, OpenRouter, Pollinations)
+│   │   ├── aiErisimServisi.js    # Sunucu bazlı AI rol yetkilendirme & anti-abuse hız sınırlayıcı
+│   │   ├── kageHafizaServisi.js  # Tüm modellerin paylaştığı ortak merkezi hafıza veritabanı
+│   │   ├── chatBotServisi.js     # Doğal dille konuşma, model değiştirme ve komutsuz eylem icrası
+│   │   ├── gorevServisi.js       # Günlük dinamik RPG görev motoru
 │   │   ├── duyguServisi.js       # Kişilik & ton adaptasyon motoru
 │   │   ├── ekonomiServisi.js     # Ryo, Demirci seviyeleri ve Market motoru
 │   │   ├── klanServisi.js        # Samuray klanı & lonca yönetim motoru

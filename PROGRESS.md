@@ -88,6 +88,12 @@ Hedefler: docs/PROJE_HEDEFLERI.md. Kullanıcı istemeden commit atılmaz.
   - Manga duyurusu: rastgele kanala düşme kaldırıldı, Manga Okuru rolü etiketlenir, kapak için `kapakResmiURL` okunur, bölüm başlığı `bolumBaslik` de okunur.
   - Site linkleri: `/manga/{id}`, `manga.html` ve `/manga/{id}/bolum/{id}` 404 veriyordu. Tüm linkler `mangaSayfaUrl` (`/#/manga/{id}`) ve `bolumOkumaUrl` (`read.html?chapter={id}`) üzerinden üretilir.
 
+- [x] 44. Tam Otonom Gölge Gözü, 0ms Küfür/Spam Kalkanı ve README Mimarisi Güncellemesi:
+  - Anında 0ms yerel kalkan: reklam davet linkleri, ağır küfür/hakaret ve aşırı büyük harf / karakter tekrarı spamı anında yakalanıp `#gölge-odası` admin kanalına düşüyor.
+  - Otonom hızlı aktarım: havuz 8 mesaja ulaştığı an 60s beklemeden anında AI analizi tetikleniyor; yavaş kanallarda ise 2 mesaj yeterli oluyor.
+  - `/model sor` komutuna merkezi hafıza enjeksiyonu yapıldı; Gemini, Groq, OpenRouter, Pollinations tüm modeller kullanıcının hafızadaki profilini doğrudan tanıyor.
+  - README.md güncellendi: 69 Slash komutunun tamamı kategorize edildi, Proje Mimarisi şeması ve Mermaid Gölge Gözü iş akışı diyagramı eklendi.
+
 ## Sürüyor
 
 - Kullanıcı isteği: indie oyunlar. Sıra: /balik, /boss, /kule, /zindan yükseltmesi hepsi tamam. Sonraki fikirler (başlanmadı): evcil hayvan, zanaat, klan savaşı.
