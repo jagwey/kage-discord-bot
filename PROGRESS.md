@@ -42,6 +42,19 @@ Hedefler: docs/PROJE_HEDEFLERI.md. Kullanıcı istemeden commit atılmaz.
 - [x] 28. Sticker gönderimi: stickerServisi.js (duygu/öğretilen kurala göre sticker seçimi, kayıtlı sunucu stickerı varsa `stickers:[id]`, yoksa dosya), /sticker-yukle (ManageGuildExpressions; sticker yuvası yoksa emoji, hatalar raporlanır), messageCreate'te Veziri, araya girme ve chatbot yedeği cevabından sonra sticker gider. 512x512 dosyalar Discord'da reddedilebilir (yeniden boyutlandırma yok). node --check geçti; canlı test yok.
 - [x] 29. Sunucu bilgisi ve bilgi alışverişi: sunucuBilgiServisi.js (üyeler, yeni gelenler, kanallar, roller, emoji, sticker) hem Veziri'ye (sistem istemine canlı özet, `sunucu_ozeti` ve `sticker_gonder` araçları, "sticker atamıyorum" yasağı) hem kural tabanlı chatbot'a (sunucu durumu cevabı ayrıntılı, tetik kelimeler genişledi) bağlandı. "stickerleri at" gibi toplu istek yapay zeka kapalıyken de tüm kayıtlı stickerları gönderir. node --check ve import testi geçti; mock/canlı test yok.
 
+
+- [x] 30. Çoklu Yapay Zeka Ağı (Multi-AI Mesh) & aiRouterServisi:
+  - Groq entegrasyonu tamamlandı (openai/gpt-oss-120b, qwen/qwen3.8-27b modelleri ~0.4s-1.5s hız).
+  - OpenRouter ücretsiz model havuzu bağlandı (openrouter/free, nemotron-3.5-lightning:free, dots-3 fallback zinciri).
+  - Pollinations AI entegre edildi (/ciz görsel motoru ve sınırsız metin yedeği).
+  - Gemini 2.5 Flash ile hibrit çalışan sıfır kesintili (zero-downtime) fallback mimarisi kuruldu.
+- [x] 31. /ciz komutu eklendi: Pollinations AI ile manga, samuray, piksel ve anime tarzlarında ücretsiz görsel üretimi (1:1, 9:16, 16:9).
+- [x] 32. /klan sistemi (klanServisi.js, data/klanlar.json): Klan kurma (2500 Ryo), hazineye bağış yapma, klan seviyesi ve sunucu klan liderlik tablosu.
+- [x] 33. /yoldas sistemi (yoldasServisi.js, data/yoldaslar.json): Gölge Kurdu (+%15 kritik), Alev Tilkisi (+%20 Ryo), Mistik Kuzgun (+%15 kaçınma), Yeşim Ejderi (+%20 kalkan) evcil hayvanları ve zindan entegrasyonu.
+- [x] 34. /kehanet komutu: Günlük samuray şans falı, uğurlu element ve sürpriz Ryo hediyesi.
+- [x] 35. /sunucu-kur mimarisi zenginleştirildi: kage95.com canlı manga platformu, #kage95-canlı-platform, #spoiler-odası, #ai-görsel-atölyesi, #samuray-kehaneti, #klan-sancakları ve #yoldaş-barınağı kategorileriyle donatıldı.
+- [x] 36. Claude Code ve harici AI asistanları için CLAUDE.md oluşturuldu; mimari, kurallar ve JagTech standartları belgelendi.
+
 ## Sürüyor
 - Kullanıcı isteği: indie oyunlar. Sıra: /balik, /boss, /kule, /zindan yükseltmesi hepsi tamam. Sonraki fikirler (başlanmadı): evcil hayvan, günlük/haftalık görev, zanaat, klan savaşı.
 
