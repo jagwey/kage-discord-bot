@@ -37,6 +37,29 @@ function aiKanaliMi(kanal, aiKanalId) {
   return ['gölge-veziri', 'golge-veziri', 'kage-ai', 'ai-gölge-veziri', 'yapay-zeka'].some(k => ad.includes(k));
 }
 
+// Canlı Admin AI İzleme Bildirimi (Admin başka biri konuşurken de hangi motorun çalıştığını görür)
+function adminAiLog(message, saglayici, isAi, soru) {
+  try {
+    const ayarlar = sunucuAyarGetir(message.guild.id);
+    const hedefKanalId = ayarlar.aiYonetimKanalId || process.env.AI_ADMIN_CHANNEL_ID;
+    if (!hedefKanalId) return;
+    if (message.channel.id === hedefKanalId) return;
+
+    const adminKanal = message.guild.channels.cache.get(hedefKanalId);
+    if (adminKanal && adminKanal.isTextBased()) {
+      const kisaSoru = soru.length > 90 ? soru.slice(0, 87) + '...' : soru;
+      adminKanal.send({
+        content: `📡 **[AI İZLEME]** <#${message.channel.id}> kanalında **${message.author.username}** konuştu.\n` +
+          `↳ **Soru:** *"${kisaSoru}"*\n` +
+          `↳ **Cevaplayan:** \`${saglayici}\` ${isAi ? '🤖 (Yapay Zeka)' : '📜 (Kural Tabanlı Bot)'}`,
+        allowedMentions: { parse: [] }
+      }).catch(() => null);
+    }
+  } catch (err) {
+    console.warn('[AdminAiLog]', err.message);
+  }
+}
+
 function arayaGirsinMi(message, metin) {
   if (!ARAYA_GIRME_ACIK || metin.length < 4) return false;
   if (!sohbetKanaliMi(message.channel.name)) return false;
@@ -263,14 +286,30 @@ export async function execute(message) {
 
       if (sonuc.hata === 'anahtar_yok' || (sonuc.hata && !sonuc.cevap)) {
         // AI anahtarı yoksa veya hata verirse ChatBot motoruna düş
-        const { embed, files } = await chatBotYanitla(metin, message.author, message.guild, message.member, message);
+        const yanit = await chatBotYanitla(metin, message.author, message.guild, message.member, message);
+        const { embed, files, saglayici = 'Kural Tabanlı ChatBot', isAi = false } = yanit;
+
+        if (yetkiliMi) {
+          const mevcutFooter = embed.data?.footer?.text || 'Kage-95';
+          embed.setFooter({ text: `${mevcutFooter} • ⚙️ Motor: ${saglayici}` });
+        }
+
         await message.reply({ embeds: [embed], files: files || [], allowedMentions: { repliedUser: false } })
           .catch((err) => console.error('[MessageCreate ChatBot Hatası]:', err));
+
+        adminAiLog(message, saglayici, isAi, metin);
         return TUM_STICKER_ISTEGI.test(metin) ? tumStickerlariGonder(message) : stickerGonder(message, metin, 0);
+      }
+
+      // Yetkili/Admin ise yanıtın sonuna ince motor etiketini ekle
+      if (yetkiliMi && sonuc.cevap) {
+        sonuc.cevap += `\n\n-# ⛩️ [Motor: Gemini Otonom Vezir • Yapay Zeka]`;
       }
 
       await cevabiGonder(message, sonuc);
       await stickerGonder(message, metin, 0.3);
+
+      adminAiLog(message, 'Gemini Otonom Vezir', true, metin);
     } catch (err) {
       console.error('[MessageCreate AI] Hata:', err.message);
       await message.reply({
@@ -281,9 +320,20 @@ export async function execute(message) {
   } else {
     // 2. KAGE ETKİLEŞİMLİ CHAT BOT (Piksel Sticker, Hafıza, Profil, Kunoichi/Samuray Persona)
     try {
-      const { embed, files } = await chatBotYanitla(metin, message.author, message.guild, message.member, message);
+      const yanit = await chatBotYanitla(metin, message.author, message.guild, message.member, message);
+      const { embed, files, saglayici = 'Kural Tabanlı ChatBot', isAi = false } = yanit;
+
+      // Yetkili/Admin ise embed alt bilgisine motor etiketini iliştir
+      if (yetkiliMi) {
+        const mevcutFooter = embed.data?.footer?.text || 'Kage-95';
+        embed.setFooter({ text: `${mevcutFooter} • ⚙️ Motor: ${saglayici}` });
+      }
+
       await message.reply({ embeds: [embed], files: files || [], allowedMentions: { repliedUser: false } })
         .catch((err) => console.error('[MessageCreate ChatBot Hatası]:', err));
+
+      adminAiLog(message, saglayici, isAi, metin);
+
       if (TUM_STICKER_ISTEGI.test(metin)) {
         await tumStickerlariGonder(message);
       }

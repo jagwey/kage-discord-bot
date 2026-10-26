@@ -244,3 +244,118 @@ export function gorselUrlUret({ prompt, genislik = 1024, yukseklik = 1024, seed 
   const cleanPrompt = encodeURIComponent(prompt.trim());
   return `https://image.pollinations.ai/prompt/${cleanPrompt}?width=${genislik}&height=${yukseklik}&seed=${rnd}&nologo=true&enhance=true`;
 }
+
+/**
+ * Belirli bir Groq modelini doğrudan çağırır
+ */
+async function groqTekModelUret(prompt, systemInstruction = '', model = 'openai/gpt-oss-120b') {
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) throw new Error('GROQ_API_KEY yok');
+
+  const messages = [];
+  if (systemInstruction) messages.push({ role: 'system', content: systemInstruction });
+  messages.push({ role: 'user', content: prompt });
+
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      model,
+      messages,
+      temperature: 0.7,
+      max_tokens: 4096,
+      ...(model.startsWith('openai/gpt-oss') ? { reasoning_effort: 'low' } : {})
+    })
+  });
+
+  if (!res.ok) {
+    const errJson = await res.json().catch(() => ({}));
+    throw new Error(errJson.error?.message || `Groq HTTP ${res.status}`);
+  }
+
+  const data = await res.json();
+  const icerik = data.choices?.[0]?.message?.content?.trim();
+  if (!icerik) throw new Error('Groq modelinden yanıt alınamadı');
+  return icerik;
+}
+
+/**
+ * Kullanılabilir tüm AI modellerinin listesi ve detayları
+ */
+export const DESTEKLENEN_MODELLER = [
+  { id: 'auto', ad: 'Otomatik (Kage Akıllı Yönlendirme)', aciklama: 'Soru tipine göre en uygun motoru seçer.', saglayici: 'Hibrit Mesh', emoji: '🤖' },
+  { id: 'gemini', ad: 'Google Gemini 3.5 Flash', aciklama: 'Derin analiz, samuray hafızası ve zeka.', saglayici: 'Google AI', emoji: '💎' },
+  { id: 'groq_120b', ad: 'Groq GPT-OSS-120B', aciklama: 'Devasa parametre ve ışık hızında yanıt (~0.4s).', saglayici: 'Groq Cloud', emoji: '⚡' },
+  { id: 'groq_qwen', ad: 'Groq Qwen 27B', aciklama: 'Akıcı, çok dilli hızlı sohbet modeli.', saglayici: 'Groq Cloud', emoji: '⚡' },
+  { id: 'openrouter_free', ad: 'OpenRouter (DeepSeek / Llama)', aciklama: 'Açık kaynaklı en popüler modeller havuzu.', saglayici: 'OpenRouter', emoji: '🌀' },
+  { id: 'pollinations', ad: 'Pollinations AI (%100 Ücretsiz)', aciklama: 'Limitsiz, anahtarsız açık yapay zeka.', saglayici: 'Pollinations', emoji: '🌸' }
+];
+
+/**
+ * İstenen belirli bir yapay zeka modeliyle doğrudan tek seferlik konuşma sağlar.
+ * 
+ * @param {Object} secenekler
+ * @param {string} secenekler.prompt
+ * @param {string} [secenekler.system]
+ * @param {string} [secenekler.modelKodu] 'auto' | 'gemini' | 'groq_120b' | 'groq_qwen' | 'openrouter_free' | 'pollinations'
+ * @param {string} [secenekler.userId]
+ * @returns {Promise<{ metin: string, model: string, sureMs: number }>}
+ */
+export async function belirliModelUret({ prompt, system = '', modelKodu = 'auto', userId = 'anon' }) {
+  const baslangic = Date.now();
+  let sonucMetin = '';
+  let modelAdi = '';
+
+  if (modelKodu === 'auto' || !modelKodu) {
+    const res = await akilliAiUret({ prompt, system, userId });
+    return {
+      metin: res.metin,
+      model: `${res.saglayici} (Otomatik)`,
+      sureMs: Date.now() - baslangic
+    };
+  }
+
+  if (modelKodu === 'gemini') {
+    const { parts, model } = await geminiUret({
+      systemInstruction: system ? `${system}\n\n${egitimBaglami(null, userId, prompt)}` : undefined,
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      userId,
+      maxOutputTokens: 1500
+    });
+    sonucMetin = parts?.filter(p => p.text && !p.thought).map(p => p.text).join('').trim();
+    modelAdi = `Gemini (${model})`;
+    say('gemini', true);
+  } else if (modelKodu === 'groq_120b') {
+    sonucMetin = await groqTekModelUret(prompt, system, 'openai/gpt-oss-120b');
+    modelAdi = 'Groq (GPT-OSS-120B)';
+    say('groq', true);
+  } else if (modelKodu === 'groq_qwen') {
+    sonucMetin = await groqTekModelUret(prompt, system, 'qwen/qwen3.8-27b');
+    modelAdi = 'Groq (Qwen 27B)';
+    say('groq', true);
+  } else if (modelKodu === 'openrouter_free') {
+    sonucMetin = await openRouterMetinUret(prompt, system, 'openrouter/free');
+    modelAdi = 'OpenRouter (DeepSeek / Llama Free)';
+    say('openrouter', true);
+  } else if (modelKodu === 'pollinations') {
+    sonucMetin = await pollinationsMetinUret(prompt, system);
+    modelAdi = 'Pollinations AI (%100 Ücretsiz)';
+    say('pollinations', true);
+  } else {
+    const res = await akilliAiUret({ prompt, system, userId });
+    return {
+      metin: res.metin,
+      model: `${res.saglayici} (Otomatik)`,
+      sureMs: Date.now() - baslangic
+    };
+  }
+
+  return {
+    metin: ciktiyiDenetle(sonucMetin),
+    model: modelAdi,
+    sureMs: Date.now() - baslangic
+  };
+}

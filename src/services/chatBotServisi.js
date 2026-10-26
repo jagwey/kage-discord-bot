@@ -424,7 +424,8 @@ GÖREV VE KURALLAR:
     return {
       metin: ciktiyiDenetle(temizMetin),
       duygu: secilenDuygu,
-      ogrenilen
+      ogrenilen,
+      saglayici: 'Gemini 3.5 Flash'
     };
   } catch (err) {
     console.warn('[ChatBot Gemini] Gemini yanıtı başarısız, yedek yapay zekaya (Groq/Pollinations) geçiliyor:', err.message);
@@ -439,7 +440,8 @@ GÖREV VE KURALLAR:
         return {
           metin: yedek.metin,
           duygu: 'cay',
-          ogrenilen: null
+          ogrenilen: null,
+          saglayici: yedek.saglayici || 'Akıllı AI Router'
         };
       }
     } catch (yedekErr) {
@@ -1065,6 +1067,8 @@ export async function chatBotYanitla(mesajMetni, user, guild = null, member = nu
     }
   }
 
+  let kullanilanMotor = 'Kural Tabanlı ChatBot';
+
   // =========================================================================
   // 18. AÇIK UÇLU YAPAY ZEKA KATMANI (GEMINI PERSONA & OTONOM ÖĞRENME)
   // =========================================================================
@@ -1094,6 +1098,7 @@ export async function chatBotYanitla(mesajMetni, user, guild = null, member = nu
           ? 0xFF66B2
           : (duygu === 'savas' ? TEMA.RENKLER.KAN_KIRMIZISI : duygu === 'zafer' ? TEMA.RENKLER.BASARI : TEMA.RENKLER.BILGI);
         aciklama = aiSonuc.metin;
+        kullanilanMotor = aiSonuc.saglayici || 'Gemini 3.5 Flash';
       }
     } catch (err) {
       console.warn('[ChatBot Gemini Hata]:', err.message);
@@ -1154,5 +1159,10 @@ export async function chatBotYanitla(mesajMetni, user, guild = null, member = nu
     }
   }
 
-  return { embed, files };
+  return {
+    embed,
+    files,
+    saglayici: kullanilanMotor,
+    isAi: kullanilanMotor !== 'Kural Tabanlı ChatBot'
+  };
 }

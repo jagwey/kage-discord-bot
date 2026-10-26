@@ -9,7 +9,7 @@
   <a href="https://discord.js.org"><img src="https://img.shields.io/badge/discord.js-v14.18-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord.js"></a>
   <a href="https://aistudio.google.com"><img src="https://img.shields.io/badge/AI%20Engine-Gemini%20Flash%20%2B%20Memory-4285F4?style=for-the-badge&logo=google&logoColor=white" alt="Gemini"></a>
   <a href="https://kage95.com"><img src="https://img.shields.io/badge/Platform-kage95.com-e53935?style=for-the-badge&logo=torii-gate&logoColor=white" alt="Kage Platform"></a>
-  <a href="#"><img src="https://img.shields.io/badge/Commands-63%20Slash-blueviolet?style=for-the-badge" alt="Commands"></a>
+  <a href="#"><img src="https://img.shields.io/badge/Commands-66%20Slash-blueviolet?style=for-the-badge" alt="Commands"></a>
   <a href="#"><img src="https://img.shields.io/badge/Stickers-28%20Twin%20Pack-ff69b4?style=for-the-badge" alt="Stickers"></a>
   <a href="#"><img src="https://img.shields.io/badge/Enterprise-JagTech-FF4655?style=for-the-badge&logo=shield&logoColor=white" alt="JagTech"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-d4af37?style=for-the-badge" alt="License"></a>
@@ -27,7 +27,7 @@
        ⛩️  K  A  G  E  •  B O T  ⛩️
 ```
 
-**Kage**, **[kage95.com](https://kage95.com)** canlı modern manga okuma platformu ve ana teknoloji şirketi **JagTech** çatısı altında kurucusu **Jagwey** tarafından geliştirilen bağımsız indie oyunu için sıfırdan tasarlanmış; **MEE6, Carl-bot veya harici botlara ihtiyaç bırakmayan**, bünyesinde **Google Gemini Flash yapay zekasını, kendi kendine öğrenen hafıza motorunu, tam teşekküllü RPG ekonomi ve dövüş mekaniklerini, interaktif kayıt panelini ve 28 parçalık ikiz piksel sticker setini** barındıran hepsi bir arada Discord botudur.
+**Kage**, **[kage95.com](https://kage95.com)** canlı modern manga okuma platformu ve ana teknoloji şirketi **JagTech** çatısı altında kurucusu **Jagwey** tarafından geliştirilen bağımsız indie oyunu için sıfırdan tasarlanmış; **MEE6, Carl-bot veya harici botlara ihtiyaç bırakmayan**, bünyesinde **Google Gemini Flash yapay zekasını, Groq Cloud & OpenRouter hibrit ağını, kendi kendine öğrenen hafıza motorunu, tam teşekküllü RPG ekonomi ve dövüş mekaniklerini, interaktif kayıt panelini ve 28 parçalık ikiz piksel sticker setini** barındıran hepsi bir arada Discord botudur.
 
 ---
 
@@ -46,16 +46,24 @@ Sunucunuz tamamen boş veya dağınık olsa dahi, tek bir komutla tüm sunucuyu 
 
 ---
 
-### 2. 🧠 Akıllı Çoklu Yapay Zeka Ağı (Multi-AI Mesh) & Kendi Kendine Öğrenen Hafıza
+### 2. 🧠 Akıllı Çoklu Yapay Zeka Ağı (Multi-AI Mesh) & Model Kontrolü
 - **Çoklu Model Yönlendiricisi (`aiRouterServisi.js`)**: Tek bir sağlayıcıya bağımlı kalmaz. Göreve göre en uygun yapay zekayı dinamik seçer:
-  - **Google Gemini 2.5 Flash**: Derin muhakeme, sunucu yönetimi, hafıza ve araç çağırma (Tool Calling) çekirdeği.
-  - **Groq Cloud (Llama 3.3 70B)**: Saniyede 500+ token jet hızında ultra akıcı sohbet.
-  - **Pollinations AI**: %100 ücretsiz, API anahtarsız metin ve görsel üretim motoru.
-  - **OpenRouter**: DeepSeek-R1 ve açık kaynak modeller.
-- **Sıfır Kesinti Fallback Kalkanı**: Gemini kota sınırına takılırsa bot anında sessizce Groq veya Pollinations'a geçer; sohbet tek bir saniye dahi aksamaz.
-- **"Kage" / "AI" Sohbet Tetikleyicisi**: Belirlenen kanalda ya da mesajında `kage`, `ai`, `Ai`, `Aİ` geçen cümlelerde akıllı yanıt verme yeteneği.
+  - **Google Gemini 3.5 Flash Lite**: Derin muhakeme, sunucu yönetimi, bağlamsal hafıza ve otonom araç çağırma (Tool Calling) çekirdeği.
+  - **Groq Cloud (GPT-OSS-120B / Qwen 27B)**: Saniyede 500+ token jet hızında ultra akıcı sohbet (~0.4s yanıt süresi).
+  - **OpenRouter (DeepSeek / Llama 3.3 / Gemma)**: DeepSeek-R1 ve açık kaynak modeller (Düşünce blokları `<think>` otomatik temizlenir).
+  - **Pollinations AI**: %100 ücretsiz, API anahtarsız metin ve görsel üretim motoru (`/ciz`).
+- **Anlık Model Seçimi & Listesi (`/model`)**:
+  - `/model liste`: Tüm aktif yapay zeka modellerini, sağlayıcılarını ve canlı durumlarını listeler.
+  - `/model sor mesaj: <soru> secim: <model>`: İstediğiniz modeli (Gemini, Groq GPT-OSS-120B, Groq Qwen, OpenRouter DeepSeek, Pollinations) bizzat seçerek anlık doğrudan danışabilirsiniz.
+- **Yapay Zeka Erişim Kısıtlaması & Anti-Spam Koruması (`aiErisimServisi.js`)**:
+  - `/ayarlar ai-rol [rol]`: Yapay zekayı kötüye kullanımlara karşı korumak için sadece belirlediğiniz role açabilirsiniz.
+  - `/ayarlar ai-mod [sadece_rol | sadece_yonetici | herkese_acik]`: Sunucu bazlı güvenlik seviyesi.
+  - **Anti-Abuse Rate Limiting**: Kullanıcı başına 8 sn metin, 15 sn görsel cooldown. Aralıksız spam yapanlar engellenir.
+- **Canlı Admin AI İzleme & Motor Etiketleme**:
+  - Bir üye Kage ile konuştuğunda admin kanalına (`aiYonetimKanalId`) anlık izleme bildirimi düşer: Hangi üye, hangi kanalda, hangi soruyu sordu ve hangi yapay zeka motoru (`Gemini`, `Groq`, `OpenRouter`, `Kural Tabanlı ChatBot`) cevap verdi canlı takip edilir.
+  - Yöneticiler konuştuğunda mesajın veya embed'in altına ince bir motor etiketi iliştirilir.
+- **Sıfır Kesinti Fallback Kalkanı**: Gemini kota sınırına takılırsa bot anında sessizce Groq, OpenRouter veya Pollinations'a geçer; sohbet tek bir saniye dahi aksamaz.
 - **Kendi Kendine Öğrenen Kalıcı Hafıza (`/egit` & `/hafiza`)**: Sunucuya ait kuralları, klan bilgilerini ve özel bilgileri öğrenir, konuşmalarında bu hafızayı kullanarak bağlamsal yanıtlar üretir.
-- **Dinamik Ton & Ruh Hali (`/ton`)**: Kage'nin kişiliği tek komutla değiştirilebilir (*Sakin Samuray*, *Tsundere Kunoichi*, *Bilge Usta*, *Karanlık Gölge*, *Neşeli Yoldaş*).
 
 ---
 

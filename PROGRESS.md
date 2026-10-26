@@ -56,8 +56,16 @@ Hedefler: docs/PROJE_HEDEFLERI.md. Kullanıcı istemeden commit atılmaz.
 - [x] 36. Claude Code ve harici AI asistanları için CLAUDE.md oluşturuldu; mimari, kurallar ve JagTech standartları belgelendi.
 - [x] 37. Groq gpt-oss düzeltmesi (max_tokens 4096, reasoning_effort low), /gorev (günlük 3 görev, gorevServisi), /ai-durum (sağlayıcı sayaçları), package.json engines node>=20, CLAUDE.md düzeltmeleri.
 - [x] 38. /sunucu-kur baştan yazıldı: aksansız/emojisiz ad anahtarıyla eşleştirme (kopya üretmez), mevcut kanal taşıma + konu + izin senkronu, tanıtım mesajı yalnız botun yazmadığı kanala, kopyalar raporlanır (kopya-sil ile silinir), önizle modu, ai-tema ile yapay zeka kural/karşılama metni, gerçek sayılı rapor, zaman aşımı temizliği. Rol izinleri komut gereksinimlerine göre bölündü (Hatamoto moderatör, Daimyo yönetim, Kage sahip) ve şogun-meclisi'ne yetki rehberi eklendi. Mock testte 2. çalıştırma 0 yeni rol/kanal/mesaj; canlı Discord testi yok. Deploy gerekli (npm run deploy).
+- [x] 39. Çoklu Yapay Zeka Ağı Genişletildi, Erişim Güvenliği & /model Komutları Eklendi:
+  - aiRouterServisi.js güncellendi: OpenRouter ücretsiz model havuzuna DeepSeek (deepseek-chat, deepseek-r1), Meta Llama (llama-3.3-70b), Gemma ve openrouter/free dinamik yönlendirici eklendi; DeepSeek-R1 <think> blokları otomatik temizleniyor.
+  - Groq Cloud aktif modelleri bağlandı (openai/gpt-oss-120b, qwen/qwen3.8-27b, openai/gpt-oss-20b).
+  - aiErisimServisi.js yazıldı: Rol tabanlı yapay zeka erişim denetimi (`/ayarlar ai-rol [rol]`, `/ayarlar ai-mod`), kötüye kullanım & anti-spam rate limiting (kullanıcı başına 8 sn metin, 15 sn görsel cooldown).
+  - Canlı Admin AI İzleme Sistemi eklendi: Herhangi bir üye Kage ile konuştuğunda admin kanalına anlık izleme bildirimi gönderilir; yetkililere yanıt altında hangi motorun (`Gemini`, `Groq`, `OpenRouter`, `Pollinations`, `Kural Tabanlı ChatBot`) çalıştığı gösterilir.
+  - /model komutu eklendi: /model liste (tüm aktif motorları ve durumlarını gösterir) ve /model sor (istenen spesifik modelle anlık doğrudan konuşma).
+  - deploy-commands ile 66 komut Discord'a başarıyla yüklendi.
 
 ## Sürüyor
+
 - Kullanıcı isteği: indie oyunlar. Sıra: /balik, /boss, /kule, /zindan yükseltmesi hepsi tamam. Sonraki fikirler (başlanmadı): evcil hayvan, zanaat, klan savaşı.
 
 ## Bekliyor
