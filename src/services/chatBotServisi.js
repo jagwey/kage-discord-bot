@@ -16,6 +16,7 @@ import {
 } from './kageHafizaServisi.js';
 import { kullaniciKayitBilgileriniGetir } from './kayitServisi.js';
 import { geminiUret, anahtarVarMi } from './ai/geminiClient.js';
+import { akilliAiUret } from './aiRouterServisi.js';
 import { gecmiseEkle, gecmisiIcerigeCevir } from './ai/konusmaGecmisi.js';
 import { duyguTespit } from './duyguServisi.js';
 import { sunucuOzetiMetni } from './sunucuBilgiServisi.js';
@@ -426,7 +427,24 @@ GÖREV VE KURALLAR:
       ogrenilen
     };
   } catch (err) {
-    console.warn('[ChatBot Gemini] Persona yanıtı üretilemedi:', err.message);
+    console.warn('[ChatBot Gemini] Gemini yanıtı başarısız, yedek yapay zekaya (Groq/Pollinations) geçiliyor:', err.message);
+    try {
+      const yedek = await akilliAiUret({
+        prompt: `[${baglam.userName}]: ${kullaniciMesaji}`,
+        system: systemInstruction,
+        gorevTipi: 'hizli_sohbet',
+        userId: baglam.userId
+      });
+      if (yedek?.metin) {
+        return {
+          metin: yedek.metin,
+          duygu: 'cay',
+          ogrenilen: null
+        };
+      }
+    } catch (yedekErr) {
+      console.warn('[ChatBot Yedek] Yedek yapay zeka da başarısız:', yedekErr.message);
+    }
     return null;
   }
 }

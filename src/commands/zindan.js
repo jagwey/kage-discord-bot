@@ -6,6 +6,7 @@ import {
   ComponentType, MessageFlags } from 'discord.js';
 import { TEMA, kageEmbed, rastgeleSlogan } from '../config/tema.js';
 import { oyunStickerEkini } from '../config/oyunGorsel.js';
+import { kullaniciYoldasGetir, YOLDAS_TURLERI } from '../services/yoldasServisi.js';
 import {
   bakiyeGetir,
   zindanZaferiDetayli,
@@ -479,9 +480,20 @@ export async function execute(interaction) {
         dusenItem = secilenZindan.lootTablosu[Math.floor(Math.random() * secilenZindan.lootTablosu.length)];
       }
 
+      const aktifYoldas = kullaniciYoldasGetir(userId);
+      let yoldasBonusu = 0;
+      if (aktifYoldas) {
+        const tur = YOLDAS_TURLERI[aktifYoldas.turId];
+        if (tur?.bonusTip === 'ryo') {
+          yoldasBonusu = Math.round(kazanilanRyo * ((tur.bonusDeger + (aktifYoldas.seviye - 1) * 3) / 100));
+          kazanilanRyo += yoldasBonusu;
+        }
+      }
+
       zindanZaferiDetayli(userId, kazanilanRyo, dusenItem);
       const bonus = zaferIsle(userId, secilenZindan, kazanilanRyo);
       const bonusSatirlari = [];
+      if (aktifYoldas && yoldasBonusu > 0) bonusSatirlari.push(`🐾 ${aktifYoldas.ad}: +${yoldasBonusu} Ryo`);
       if (bonus.relikBonusu) bonusSatirlari.push(`🐸 Kalıntı: +${bonus.relikBonusu}`);
       if (bonus.seriBonusu) bonusSatirlari.push(`🔥 Seri: +${bonus.seriBonusu}`);
       if (bonus.gunlukBonus) bonusSatirlari.push(`🌅 Günün ilk zaferi: +${bonus.gunlukBonus}`);

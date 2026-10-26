@@ -9,7 +9,7 @@
   <a href="https://discord.js.org"><img src="https://img.shields.io/badge/discord.js-v14.18-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord.js"></a>
   <a href="https://aistudio.google.com"><img src="https://img.shields.io/badge/AI%20Engine-Gemini%20Flash%20%2B%20Memory-4285F4?style=for-the-badge&logo=google&logoColor=white" alt="Gemini"></a>
   <a href="https://kage95.com"><img src="https://img.shields.io/badge/Platform-kage95.com-e53935?style=for-the-badge&logo=torii-gate&logoColor=white" alt="Kage Platform"></a>
-  <a href="#"><img src="https://img.shields.io/badge/Commands-59%20Slash-blueviolet?style=for-the-badge" alt="Commands"></a>
+  <a href="#"><img src="https://img.shields.io/badge/Commands-63%20Slash-blueviolet?style=for-the-badge" alt="Commands"></a>
   <a href="#"><img src="https://img.shields.io/badge/Stickers-28%20Twin%20Pack-ff69b4?style=for-the-badge" alt="Stickers"></a>
   <a href="#"><img src="https://img.shields.io/badge/Enterprise-JagTech-FF4655?style=for-the-badge&logo=shield&logoColor=white" alt="JagTech"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-d4af37?style=for-the-badge" alt="License"></a>
@@ -115,7 +115,7 @@ Sunucunuza tek tıkla (`/sticker-yukle`) yüklenebilen ve doğrudan sohbete gön
 
 ---
 
-## 📜 Tüm 59 Adet Eğik Çizgi (Slash) Komutu
+## 📜 Tüm 63 Adet Eğik Çizgi (Slash) Komutu
 
 | Komut | Kategori | Yetki | Açıklama |
 | :--- | :--- | :--- | :--- |
@@ -131,6 +131,7 @@ Sunucunuza tek tıkla (`/sticker-yukle`) yüklenebilen ve doğrudan sohbete gön
 | `/guncelleme` | Bilgi | `Herkes` | Botun son sürüm notlarını ve yeniliklerini sergiler. |
 | `/oneri` | Topluluk | `Herkes` | Sunucu için öneri fermanı sunar ve oylamaya açar. |
 | `/ai` | Yapay Zeka | `Sunucuyu Yönet` | Yapay zeka veziriyle sunucu idaresine dair sohbet eder. |
+| `/ciz` | Yapay Zeka | `Herkes` | Ücretsiz yapay zeka ile hayalindeki anime/samuray sahnesini çizer. |
 | `/egit` | Yapay Zeka | `Yönetici` | Kage'ye sunucuya özel yeni bilgi ve kurallar öğretir. |
 | `/hafiza` | Yapay Zeka | `Yönetici` | Kage'nin öğrenilmiş hafıza kayıtlarını listeler/yönetir. |
 | `/ton` | Yapay Zeka | `Yönetici` | Kage'nin konuşma tarzını ve ruh halini değiştirir. |
@@ -148,6 +149,9 @@ Sunucunuza tek tıkla (`/sticker-yukle`) yüklenebilen ve doğrudan sohbete gön
 | `/duello` | RPG / Dövüş | `Herkes` | Bir üyeye veya `@Kage-95` yapay zeka boss'una meydan okur. |
 | `/demirci` | RPG / Ekonomi | `Herkes` | Katanayı 7 kademeye kadar biler ve güçlendirir. |
 | `/zindan` | RPG / Macera | `Herkes` | Canavarlarla dolu tehlikeli zindanlara iner. |
+| `/yoldas` | RPG / Yoldaş | `Herkes` | Zindanlarda kritik, Ryo veya kalkan veren gölge petini yönetir. |
+| `/klan` | RPG / Lonca | `Herkes` | Samuray klanı kurar, üye toplar, kasaya bağış yapar. |
+| `/kehanet` | RPG / Fal | `Herkes` | Günlük samuray şansı, elementi, bilge sözü ve kader bahşişi verir. |
 | `/dojo` | RPG / Macera | `Herkes` | Antrenman yaparak seviye ve güç kazanır. |
 | `/boss` | RPG / Macera | `Herkes` | Ortak sunucu dünya boss'u akınına katılır. |
 | `/kule` | RPG / Macera | `Herkes` | Kat kat yükselen gölge kulesine meydan okur. |
