@@ -12,6 +12,7 @@ import { stickerDuygusuSec, stickerMesajSecenegi } from '../services/stickerServ
 import { aiErisimKontrol, aiSpamKontrol } from '../services/aiErisimServisi.js';
 import { kullaniciModelSec, kullaniciModelGetir } from '../services/kageHafizaServisi.js';
 import { modelKoduCozumle, DESTEKLENEN_MODELLER, gorselAnalizEt } from '../services/aiRouterServisi.js';
+import { golgeGozMesajIsle } from '../services/golgeGozServisi.js';
 
 export const name = Events.MessageCreate;
 
@@ -169,6 +170,9 @@ async function tumStickerlariGonder(message) {
 export async function execute(message) {
   // Botları ve DM'leri yoksay
   if (message.author.bot || !message.guild) return;
+
+  // Gölge Gözü: Tüm sunucu mesajlarını 0 ms'de izler, reklam/şüphe tarar ve otonom öğrenme havuzuna iletir.
+  golgeGozMesajIsle(message).catch(() => null);
 
   // Otomatik moderasyon: yasaklı kelime içeren mesaj silinir ve işlem burada biter.
   if (await otomodKontrol(message).catch(() => false)) return;

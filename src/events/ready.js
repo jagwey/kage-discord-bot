@@ -4,6 +4,7 @@ import { kageDevKontrolEtVeDuyur } from '../services/kageDevServisi.js';
 import { hafizaServisiniBaslat } from '../services/kageHafizaServisi.js';
 import { hatirlaticiServisiniBaslat } from '../services/hatirlaticiServisi.js';
 import { cekilisServisiniBaslat } from '../services/cekilisServisi.js';
+import { golgeGozServisiniBaslat } from '../services/golgeGozServisi.js';
 
 export const name = Events.ClientReady;
 export const once = true;
@@ -71,6 +72,9 @@ export async function execute(client) {
 
   // Süresi dolan çekilişleri bitirip kazananları duyurur (yeniden başlatmada da devam eder)
   cekilisServisiniBaslat(client);
+
+  // Kage-95 Gölge Gözü: Tüm sunucuyu arka planda izleyen ve otonom öğrenen nöbetçi
+  golgeGozServisiniBaslat(client);
 
   // #kage-dev kanalı ve otomatik sürüm güncelleme duyurusu kontrolü
   setTimeout(() => {

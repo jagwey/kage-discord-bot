@@ -9,7 +9,7 @@
   <a href="https://discord.js.org"><img src="https://img.shields.io/badge/discord.js-v14.18-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord.js"></a>
   <a href="https://aistudio.google.com"><img src="https://img.shields.io/badge/AI%20Engine-Gemini%20Flash%20%2B%20Memory-4285F4?style=for-the-badge&logo=google&logoColor=white" alt="Gemini"></a>
   <a href="https://kage95.com"><img src="https://img.shields.io/badge/Platform-kage95.com-e53935?style=for-the-badge&logo=torii-gate&logoColor=white" alt="Kage Platform"></a>
-  <a href="#"><img src="https://img.shields.io/badge/Commands-68%20Slash-blueviolet?style=for-the-badge" alt="Commands"></a>
+  <a href="#"><img src="https://img.shields.io/badge/Commands-69%20Slash-blueviolet?style=for-the-badge" alt="Commands"></a>
   <a href="#"><img src="https://img.shields.io/badge/Stickers-28%20Twin%20Pack-ff69b4?style=for-the-badge" alt="Stickers"></a>
   <a href="#"><img src="https://img.shields.io/badge/Enterprise-JagTech-FF4655?style=for-the-badge&logo=shield&logoColor=white" alt="JagTech"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-d4af37?style=for-the-badge" alt="License"></a>
@@ -83,6 +83,11 @@ Sunucunuz tamamen boş veya dağınık olsa dahi, tek bir komutla tüm sunucuyu 
   - Bir üye Kage ile konuştuğunda admin kanalına (`aiYonetimKanalId`) anlık izleme bildirimi düşer: Hangi üye, hangi kanalda, hangi soruyu sordu ve hangi yapay zeka motoru (`Gemini`, `Groq`, `OpenRouter`, `Pollinations`) cevap verdi canlı takip edilir.
   - Yöneticiler konuştuğunda mesajın veya embed'in altına ince bir motor etiketi iliştirilir.
 - **Sıfır Kesinti Fallback Kalkanı**: Gemini kota sınırına takılırsa bot anında sessizce Groq, OpenRouter veya Pollinations'a geçer; sohbet tek bir saniye dahi aksamaz.
+- **👁️ Kage-95 Gölge Gözü (Shadow Eye Sentinel) & Otonom Sohbet Gözetimi (`/golge-goz`)**:
+  - Tıpkı Kage-95 indie oyunundaki her şeyi izleyen tapınak gözü gibi tüm sunucuyu arka planda sessizce izler.
+  - **Sıfır Model Yorulması & 0ms Sezgisel Kalkan**: Her mesaja yapay zeka çağrısı yaparak kotaları tüketmez! Kısa mesajları eler, zararlı davet linklerini ve reklamları 0 milisaniyede yerel Regex ile anında yakalayıp uyarır.
+  - **Mikro-Havuzlu Toplu Öğrenme (Micro-Batch Learning)**: Anlamlı sohbetleri küçük bir tampon havuzunda biriktirir ve her 60 saniyede (veya 15 mesajda) tek bir toplu analizle kullanıcılar hakkında önemli detayları (favori anime/manga, ilgi alanları, kişisel bilgiler) süzüp merkezi hafızaya (`kage_hafiza.json`) ve genel sunucu bilgisine kaydeder.
+  - **/golge-goz durum | rapor | tara**: Sunucu yöneticileri gölge gözünün kaç mesaj izlediğini, ne kadar bellek öğrendiğini ve yakalanan ihlalleri anlık görebilir.
 
 ---
 
