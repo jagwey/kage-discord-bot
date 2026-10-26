@@ -31,11 +31,11 @@ export async function execute(interaction) {
       `  🏆 Seviye Rolleri: \`Kage Efsanesi\`, \`Jonin Komutanı\`, \`Chunin Kıdemlisi\`, \`Genin Savaşçısı\`\n\n` +
       `• **Kayıt Sistemi & Güvenlik:**\n` +
       `  Yeni gelenler sadece \`#kayıt-kapısı\` ve \`#kadim-kurallar\`ı görür. Mührü basınca diğer tüm kanallar anında açılır!\n\n` +
-      `• **Özel Kategoriler & Kanallar (Kage 95 Punk Tasarımı):**\n` +
-      `  ╭━━━ ⛩️ GİRİŞ & BİLGİ ━━━╮ (#kayıt-kapısı, #manga-yayınları, #kadim-kurallar, #kage-dev)\n` +
-      `  ╭━━━ 💬 GÖLGE TOPLULUĞU ━━━╮ (#meydan-sohbeti, #manga-tartışma, #anime-dünyası)\n` +
-      `  ╭━━━ ⚔️ ARENA & RYO BAHİS ━━━╮ (#düello, #kumar, #zindan, #göl, #boss, #kule, #dojo, #çekiliş, #seviye)\n` +
-      `  ╭━━━ 🔮 YAPAY ZEKA MABEDİ ━━━╮ (#gölge-veziri-ai)\n` +
+      `• **Özel Kategoriler & Kanallar (Kage 95 & JagTech Punk Tasarımı):**\n` +
+      `  ╭━━━ ⛩️ GİRİŞ & BİLGİ ━━━╮ (#kayıt-kapısı, #kage95-canlı-platform, #manga-yayınları, #kadim-kurallar, #kage-dev)\n` +
+      `  ╭━━━ 💬 GÖLGE TOPLULUĞU ━━━╮ (#meydan-sohbeti, #manga-tartışma, #spoiler-odası, #anime-dünyası, #manga-panelleri)\n` +
+      `  ╭━━━ 🔮 YAPAY ZEKA MABEDİ ━━━╮ (#gölge-veziri-ai, #ai-görsel-atölyesi, #samuray-kehaneti)\n` +
+      `  ╭━━━ ⚔️ ARENA & RYO BAHİS ━━━╮ (#düello, #klan-sancakları, #yoldaş-barınağı, #zindan, #kumar, #boss, #kule, #dojo, #çekiliş)\n` +
       `  ╭━━━ 🔒 ŞOGUN KALESİ ━━━╮ (#şogun-meclisi, #ceza-sicil-log, #ekonomi-log, #bilet-log)\n` +
       `  ╭━━━ 🎫 DESTEK ━━━╮ (#destek-bileti)\n` +
       `  ╭━━━ 🔊 SAMURAY SES ODALARI ━━━╮\n\n` +

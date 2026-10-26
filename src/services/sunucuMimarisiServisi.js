@@ -194,6 +194,8 @@ export async function kageMimarisiInsaEt(guild, interaction = null) {
     });
   const { kanal: mangaDuyuru, yeni: mangaYeni } = await metin('manga-yayınları', '📖・manga-yayınları', katGiris,
     'Yeni manga ve bölüm bildirimleri otomatik burada. Bildirim için Manga Okuru rolünü al.', girisIzin);
+  const { kanal: kagePlatform, yeni: platformYeni } = await metin('kage95-canlı-platform', '🌐・kage95-canlı-platform', katGiris,
+    'kage95.com modern manga okuma platformu, hızlı okuma motoru ve klan özellikleri.', girisIzin);
   const { kanal: hosgeldiniz, yeni: hosYeni } = await metin('yeni-savaşçılar', '🌸・yeni-savaşçılar', katGiris,
     'Kaleye yeni katılan savaşçılar karşılanır.', girisIzin);
   const { kanal: kageDev, yeni: devYeni } = await metin('kage-dev', '🛠️・kage-dev', katGiris,
@@ -205,6 +207,8 @@ export async function kageMimarisiInsaEt(guild, interaction = null) {
     'Genel sohbet. Konuştukça XP kazanır, seviye atladıkça Ryo alırsın.');
   const { kanal: tartisma, yeni: tartismaYeni } = await metin('manga-tartışma', '🗡️・manga-tartışma', katTopluluk,
     'Manga tartışması. Yeni bölümlerde spoiler etiketini (||metin||) kullan.');
+  const { kanal: spoilerKanal, yeni: spoilerYeni } = await metin('spoiler-odası', '⚠️・spoiler-odası', katTopluluk,
+    'En son çıkan bölümler, teoriler ve serbest spoiler tartışma alanı.');
   await metin('anime-dünyası', '🎌・anime-dünyası', katTopluluk, 'Anime önerileri ve sezon sohbeti.');
   await metin('manga-panelleri', '🎨・manga-panelleri', katTopluluk, 'Favori panelleri, fan art ve çizimleri paylaş.');
   const { kanal: botKomut, yeni: botKomutYeni } = await metin('bot-komut', '🤖・bot-komut', katTopluluk,
@@ -213,8 +217,12 @@ export async function kageMimarisiInsaEt(guild, interaction = null) {
   // 4. ARENA & RYO OYUNLARI
   const katArena = await kategori('⚔️ ARENA & RYO BAHİS', uyeIzni);
   const oyunlar = [
-    ['samuray-düellosu', '⚔️・samuray-düellosu', 'Düello: /duello @rakip [bahis]. Katana seviyen hasarını artırır.',
-      '⚔️ **SAMURAY DÜELLOSU**\n`/duello @rakip [bahis]` ile meydan oku. Kazanan bahsi alır, katana bonusu avantaj sağlar.\nGücünü `/demirci` ile artır.'],
+    ['samuray-düellosu', '⚔️・samuray-düellosu', 'Düello: /duello @rakip [bahis] veya /duello @Kage-95 mini-boss.',
+      '⚔️ **SAMURAY DÜELLOSU**\n`/duello @rakip [bahis]` ile meydan oku. Bota meydan okumak için `/duello rakip:@Kage-95` yaz!\nKatana seviyen hasarını artırır, gücünü `/demirci` ile yükselt.'],
+    ['klan-sancakları', '🚩・klan-sancakları', 'Klan kur, katıl, kasaya bağış yap ve klan liderliğinde yarış.',
+      '🚩 **SAMURAY KLAN VE LONCA MECLİSİ**\nKendi klanını kurmak için: `/klan kur <isim>` (2.500 Ryo)\nBir klana katılmak için: `/klan katil <isim>`\nKlan kasasına bağışlayıp seviye atlatmak için: `/klan bagis <miktar>`\nSıralamayı görmek için: `/klan liderlik`'],
+    ['yoldaş-barınağı', '🐾・yoldaş-barınağı', 'Zindanlarda sana eşlik eden kutsal gölge yoldaşını seç ve besle.',
+      '🐾 **KUTSAL GÖLGE YOLDAŞI BARINAĞI**\n`/yoldas sec` ile yoldaşını seç:\n• 🐺 **Gölge Kurdu**: +%15 Kritik Hasar şansı\n• 🦊 **Alev Tilkisi**: +%20 Ek Ryo kazanımı\n• 🦅 **Mistik Kuzgun**: %15 Kaçınma Manevrası\n• 🐉 **Yeşim Ejderi**: %20 Zırh Kalkanı\nYoldaşını `/yoldas besle` ile besleyerek seviye atlatabilirsin!'],
     ['kumar-ve-zar', '🎲・kumar-ve-zar', 'Blackjack, slot ve yazı tura. Bahsini bil, şansını dene.',
       '🎲 **KUMAR VE ZAR**\n`/blackjack` • `/slot` • `/yazitura`\nUnutma: kasa uzun vadede kazanır. Cüzdanını `/bakiye` ile kontrol et.'],
     ['zindan-seferleri', '🏰・zindan-seferleri', 'Zindan: /zindan sefer. Rütbe aç, kalıntı topla, seri bonusu kazan.',
@@ -244,7 +252,11 @@ export async function kageMimarisiInsaEt(guild, interaction = null) {
   // 5. YAPAY ZEKA MABEDİ
   const katAi = await kategori('🔮 YAPAY ZEKA MABEDİ', uyeIzni);
   const { kanal: aiKanal, yeni: aiYeni } = await metin('gölge-veziri', '🔮・gölge-veziri-ai', katAi,
-    'Gölge Veziri ile sohbet et. Etiketlemeye gerek yok.');
+    'Gölge Veziri ile sohbet et. Gemini & Groq motorları devrede; etiketlemeye gerek yok.');
+  const { kanal: aiCizimKanal, yeni: cizimYeni } = await metin('ai-görsel-atölyesi', '🎨・ai-görsel-atölyesi', katAi,
+    'Yapay zeka ile dilediğin sahneyi veya anime karakterini çizdir: /ciz <tarif>.');
+  const { kanal: kehanetKanal, yeni: kehanetYeni } = await metin('samuray-kehaneti', '📜・samuray-kehaneti', katAi,
+    'Kutsal tapınak sunağından günlük samuray falını ve şansını öğren: /kehanet.');
 
   // 6. ŞOGUN KALESİ (gizli yetkili alanı)
   const katYonetim = await kategori('🔒 ŞOGUN KALESİ', [
@@ -351,6 +363,24 @@ export async function kageMimarisiInsaEt(guild, interaction = null) {
     await mangaDuyuru.send(tanitim('📖 MANGA YAYINLARI',
       'Yeni seriler ve bölümler kage95.com\'dan otomatik buraya düşer. Anında haber için **Manga Okuru** rolünü al.'));
   }
+  if (platformYeni) {
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setLabel('kage95.com Platformunu Aç').setURL(process.env.SITE_URL || 'https://kage95.com').setStyle(ButtonStyle.Link).setEmoji('🌐'),
+      new ButtonBuilder().setLabel('Kage Indie Oyun Devlog').setURL('https://kage95.com').setStyle(ButtonStyle.Link).setEmoji('🎮')
+    );
+    await kagePlatform.send({
+      embeds: [kageEmbed({
+        baslik: '🌐 KAGE 95 CANLI MANGA PLATFORMU • JAGTECH',
+        renk: TEMA.RENKLER.KAN_KIRMIZISI,
+        aciklama: `**[kage95.com](https://kage95.com)** platformuna hoş geldiniz!\n\n` +
+          `• **Şimşek Hızında Okuma:** Sıfır bekleme, modern okuyucu deneyimi ve otomatik bölüm senkronizasyonu.\n` +
+          `• **Otomatik Bölüm Takipçisi:** Sitede çıkan her yeni manga anında Discord sunucumuza düşer.\n` +
+          `• **Topluluk ve Klanlar:** Sitede okudukça Discord'da XP kazanabilir, rütbe atlayabilirsin!\n\n` +
+          `*Manga aramak için \`/manga <isim>\`, rastgele keşfetmek için \`/rastgele-manga\` yazabilirsin.*`
+      })],
+      components: [row]
+    }).catch(() => {});
+  }
   if (hosYeni) {
     await hosgeldiniz.send(tanitim('🌸 YENİ SAVAŞÇILAR', 'Kaydını tamamlayan her savaşçı burada karşılanır. Hoş geldin demeyi unutma.'));
   }
@@ -364,8 +394,26 @@ export async function kageMimarisiInsaEt(guild, interaction = null) {
   if (tartismaYeni) {
     await tartisma.send(tanitim('🗡️ MANGA TARTIŞMA', 'Seriler, teoriler ve bölüm yorumları burada. Spoiler için ||metin|| kullan.', TEMA.RENKLER.BILGI));
   }
+  if (spoilerYeni) {
+    await spoilerKanal.send(tanitim('⚠️ SPOILER VE TEORİ ODASI',
+      'Güncel manga bölümleri, sızıntılar ve gelecek bölüm teorileri bu kanalda serbestçe konuşulabilir. Spoiler yemek istemeyenlerin dikkatine!', TEMA.RENKLER.UYARI_SARI)).catch(() => {});
+  }
   if (botKomutYeni) {
     await botKomut.send(tanitim('🤖 BOT KOMUTLARI', 'Tüm komutlar için `/yardim` yaz. Oyun ve ekonomi komutlarını sohbeti kalabalıklaştırmadan burada dene.', TEMA.RENKLER.BILGI));
+  }
+  if (cizimYeni) {
+    await aiCizimKanal.send(tanitim('🎨 YAPAY ZEKA ÇİZİM ATÖLYESİ',
+      `Bu kanalda dilediğin sahneyi veya anime karakterini ücretsiz yapay zekaya çizdirebilirsin!\n\n` +
+      `**Nasıl Çizdirilir?**\n` +
+      `\`/ciz tarif:beyaz saçlı katanalı samuray stil:anime oran:kare\`\n\n` +
+      `🌸 **Stiller:** Anime, Feodal Samuray, Piksel Sanat, Siberpunk, Gerçekçi, Fantastik\n` +
+      `📱 **Formatlar:** 1:1 Kare, 9:16 Dikey, 16:9 Yatay`, TEMA.RENKLER.ALTIN)).catch(() => {});
+  }
+  if (kehanetYeni) {
+    await kehanetKanal.send(tanitim('🔮 KADİM SAMURAY KEHANETİ',
+      `Kage tapınağındaki kutsal kaseden günlük kaderini, şans oranını ve bilge tavsiyeni öğrenmek için:\n\n` +
+      `\`/kehanet\`\n\n` +
+      `Her gün yenilenir; şanslı günlerde tapınak sunağından cüzdanına sürpriz Ryo bahşişi düşebilir!`, TEMA.RENKLER.MOR)).catch(() => {});
   }
   if (meclisYeni) {
     await meclis.send(tanitim('🔒 ŞOGUN MECLİSİ', 'Yetkili alanı. Moderasyon kararları, bilet takibi ve ekonomi kayıtları bu kategoride toplanır.'));
