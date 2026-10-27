@@ -3,6 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { tumMangalariGetir, sonEklenenBolumleriGetir, onbellektekiMangalar } from './mangaServisi.js';
 import { liderlikListesi } from './ekonomiServisi.js';
+import { KISA_KOMUT_OZETI } from './komutNiyetServisi.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -488,6 +489,8 @@ export function hafizaBaglamMetniUret(mesaj = '', userId = null, userName = null
     satirlar.push(`• kage95.com (son tarama ${hafiza.siteVerileri.sonTaramaTarihi || '?'}): ${hafiza.siteVerileri.toplamManga} manga. Güncel id/bölüm için site_veri_getir kullan.`);
   }
 
+  // Komut sorulursa ya da kullanıcı komut adını karıştırırsa model bu özetten kısa hali önerir.
+  satirlar.push(`• ${KISA_KOMUT_OZETI}`);
   satirlar.push(`• Kaledeki Samuraylar: ${hafiza.sunucuVerileri.toplamUye} üye, ${hafiza.sunucuVerileri.rolSayisi} rol, ${hafiza.sunucuVerileri.kanalSayisi} kanal.`);
   if (hafiza.sunucuVerileri.enZenginler.length > 0) {
     const zenginOzet = hafiza.sunucuVerileri.enZenginler.slice(0, 3).map(z => `${z.unvan}: ${z.toplam} Ryo`).join(' | ');

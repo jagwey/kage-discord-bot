@@ -16,6 +16,7 @@ import {
   hafizaYukle
 } from './kageHafizaServisi.js';
 import { kullaniciKayitBilgileriniGetir } from './kayitServisi.js';
+import { kisaKomutKilavuzu } from './komutNiyetServisi.js';
 import { geminiUret, anahtarVarMi } from './ai/geminiClient.js';
 import { akilliAiUret, belirliModelUret } from './aiRouterServisi.js';
 import { gecmiseEkle, gecmisiIcerigeCevir } from './ai/konusmaGecmisi.js';
@@ -1023,7 +1024,7 @@ export async function chatBotYanitla(mesajMetni, user, guild = null, member = nu
     duygu = 'cay';
     baslik = '📜 KAGE YARDIM PARŞÖMENİ';
     renk = TEMA.RENKLER.BILGI;
-    aciklama = `Tüm sistemlerimi, RPG komutlarımı, manga kütüphanesini ve moderasyon araçlarını görmek için **/yardim** yazman yeterli!`;
+    aciklama = `${kisaKomutKilavuzu()}\n\nTüm sistemlerin uzun listesi için **/yardim** yaz.`;
   }
   else if (!aciklama && iceriyorMu(metin, HAL_HATIR)) {
     duygu = 'cay';

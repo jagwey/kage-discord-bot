@@ -1,5 +1,6 @@
 import { Events, MessageFlags } from 'discord.js';
 import { onayButonuMu, onayButonunuIsle } from '../services/ai/onayServisi.js';
+import { komutNiyetButonuMu, komutNiyetButonunuIsle } from '../services/komutNiyetServisi.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { ryoEkle } from '../services/ekonomiServisi.js';
 import { kayitModaliOlustur, kayitModalVerileriniOku, kayitIsleminiTamamla, kullaniciKayitBilgileriniGetir } from '../services/kayitServisi.js';
@@ -42,6 +43,7 @@ export async function execute(interaction) {
   // 2. Buton Tıklamaları (Kayıt Ol, Profil Güncelleme, Kurallar)
   if (interaction.isButton()) {
     if (onayButonuMu(interaction.customId)) return onayButonunuIsle(interaction);
+    if (komutNiyetButonuMu(interaction.customId)) return komutNiyetButonunuIsle(interaction);
 
     // Komut modülleri `butonOnek` ve `buton(interaction)` dışa aktararak kendi kalıcı butonlarını yönetir.
     for (const komut of interaction.client.commands.values()) {

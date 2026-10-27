@@ -36,6 +36,7 @@ Tüm AI yönlendirmesi `src/services/aiRouterServisi.js` ve erişim denetimi `sr
 - `assets/`: Stickerlar (`assets/stickers/`), profil avatarları (`assets/avatars/`), SVG bannerlar (`assets/banner.svg`).
 
 ## ⚔️ Önemli Komutlar & Sistemler
+- **Kısa komutlar (`komutNiyetServisi.js`):** OwO tarzı `k cf 100`, `k s 50`, `k d` onaysız çalışır; yanlış yazımda "mı demek istedin" sorar. "kage yoldaşımı besle" gibi düz cümleler onay butonuyla slash komutunu çalıştırır. Yeni oyun komutu eklerken `KISA_KOMUTLAR` ve `NIYETLER` listelerine de ekle.
 - `/golge-goz`: Kage-95 Gölge Gözü (Shadow Eye Sentinel) - Sunucu chatini 0ms sezgisel filtreler ve mikro-tamponlu AI analizi ile gözetleme (`durum`, `rapor`, `tara`).
 - `/hafizam`: Kullanıcının Kage hafızasındaki parşömen profili ve tek tıkla sıfırlama butonu.
 - `/ozet`: Kanaldaki son konuşulanları tarayıp esprili samuray bülteni olarak özetleme.

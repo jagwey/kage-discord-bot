@@ -14,6 +14,7 @@ import { kullaniciModelSec, kullaniciModelGetir } from '../services/kageHafizaSe
 import { modelKoduCozumle, DESTEKLENEN_MODELLER, gorselAnalizEt, motorEtiketi } from '../services/aiRouterServisi.js';
 import { golgeGozMesajIsle } from '../services/golgeGozServisi.js';
 import { mesajSay } from '../services/toplulukServisi.js';
+import { kisaKomutuIsle, komutNiyetiniIsle } from '../services/komutNiyetServisi.js';
 
 export const name = Events.MessageCreate;
 
@@ -256,6 +257,20 @@ export async function execute(message) {
 
   const cagrildi = !!kageMatch || !!aiMatch || botEtiketlendi || botaYanit || aiKanali;
   const yazarAdi = message.member?.displayName || message.author.username;
+
+  // OwO tarzı kısa komut: "k cf 100". Kısa sohbet ("k tmm") yanlış yazım sayılmasın diye
+  // tahmin sadece 3+ harfli ilk kelimede gösterilir.
+  const kisaMatch = message.content.match(/^k\s+(\S.*)$/is);
+  if (kisaMatch) {
+    const ilkKelime = kisaMatch[1].split(/\s+/)[0];
+    if (await kisaKomutuIsle(message, kisaMatch[1], { tahminGoster: ilkKelime.length >= 3 })) return;
+  }
+
+  // "kage ..." ile gelen kısa komut ya da düz cümle komutu yapay zekaya gitmeden çalışır.
+  if (kageMatch && metin) {
+    if (await kisaKomutuIsle(message, metin, { tahminGoster: false })) return;
+    if (await komutNiyetiniIsle(message, metin)) return;
+  }
 
   if (!cagrildi) {
     // Çağrılmadı: sohbet kanallarında geçmişe not et, belki araya gir

@@ -131,6 +131,12 @@ Hedefler: docs/PROJE_HEDEFLERI.md. Kullanıcı istemeden commit atılmaz.
   - Tanıştırma: ilk kayıtta, anonstan sonra aynı türleri seven kayıtlı bir üye hoş geldin kanalında etiketlenir; eski üye en sık 3 günde bir.
   - Kayıt hatırlatma: Ronin rolündeki, 24 saat ile 7 gün önce katılan üyeye tek seferlik DM. Üye listesi 6 saatte bir çekilir.
   - `/golge-goz ayar haftalik-rapor|kayit-hatirlat|tanistir` ile her biri kapatılır.
+51. **Kısa komutlar ve düz cümle komutları (2026-10-27):**
+  - `src/services/komutNiyetServisi.js`. Yapay zeka API'si kullanmaz.
+  - OwO tarzı: `k cf 100 t`, `k s 50`, `k d`, `k h`, `k z`, `k give @üye 500` vb. (`k help` liste). `k` ya da `kage` öneki; onaysız hemen çalışır. Komut, mesajı slash etkileşimi gibi gösteren bir shim ile çalışır; gizli cevaplar kanalda 20 sn sonra silinir.
+  - Yanlış yazımda (Levenshtein, harf kayması dahil) "`k cf` mı demek istedin?" + onay butonu. `k` önekinde sadece 3+ harfli kelimede önerir ("k tmm" sohbeti yakalanmaz).
+  - Düz cümle: "kage yoldaşımı besle", "kage günlük ödülümü al" gibi cümleler onay butonu (60 sn) ile komutu çalıştırır. Soru cümleleri ("nasıl", "nedir") yapay zekaya gider.
+  - Chatbot yardım cevabı ve yapay zeka bağlamı (`KISA_KOMUT_OZETI`) kısa komutları anlatır.
 
 ## Sürüyor
 
