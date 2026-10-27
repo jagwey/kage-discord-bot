@@ -11,6 +11,7 @@ import {
   klanaBagisYap,
   klanLiderlikSiralamasi
 } from '../services/klanServisi.js';
+import { savasDurumu, SAVAS_PUANLARI, KASA_PAYI } from '../services/klanSavasServisi.js';
 
 const KLAN_KURMA_UCRETI = 2500;
 
@@ -77,6 +78,11 @@ export const data = new SlashCommandBuilder()
       sub
         .setName('liderlik')
         .setDescription('Sunucudaki en güçlü ve zengin samuray klanlarını listeler.')
+    )
+    .addSubcommand(sub =>
+      sub
+        .setName('savas')
+        .setDescription('Haftalık klan savaşı: puan tablosu, ödül havuzu ve son şampiyon.')
     );
 
 export async function execute(interaction) {
@@ -108,6 +114,7 @@ export async function execute(interaction) {
           { name: '👥 Üye Sayısı', value: `**${klan.uyeler.length} / ${klan.maksUye}**`, inline: true },
           { name: '💰 Klan Kasası', value: `**${ryoYaz(klan.kasa)}**`, inline: true },
           { name: '📈 Seviye İlerlemesi', value: `\`${klan.xp} / ${gerekenXp} XP\``, inline: true },
+          { name: '🏆 Savaş Şampiyonluğu', value: `**${klan.sampiyonluk || 0}** hafta`, inline: true },
           {
             name: '🗡️ Savaşçılar',
             value: klan.uyeler.map(u => `• ${u.rol === 'Lider' ? '👑' : '⚔️'} ${u.ad}`).slice(0, 10).join('\n') + (klan.uyeler.length > 10 ? `\n*...ve ${klan.uyeler.length - 10} üye daha*` : '')
@@ -201,6 +208,46 @@ export async function execute(interaction) {
       } catch (err) {
         return interaction.reply({ content: `❌ ${err.message}`, ephemeral: true });
       }
+    }
+
+    if (sub === 'savas') {
+      const d = savasDurumu();
+      const benimKlan = kullaniciKlaniniBul(userId);
+      const liste = d.siralama.slice(0, 10).map((k, i) => {
+        const madalya = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`;
+        return `${madalya} **${k.ad}** — **${k.toplam}** puan`;
+      }).join('\n') || 'Bu hafta henüz hiçbir klan puan almadı. İlk kanı sen dök!';
+
+      const alanlar = [
+        { name: '💰 Ödül Havuzu', value: `**${ryoYaz(d.havuz)}**\n%${Math.round(KASA_PAYI * 100)} kasaya, kalanı üyelere puanla`, inline: true },
+        { name: '⏳ Bitiş', value: `<t:${Math.floor(d.bitis / 1000)}:R>`, inline: true },
+        {
+          name: '🎯 Puan Kaynakları',
+          value: `🎣 Balık +${SAVAS_PUANLARI.balik} • 🏯 Zindan +${SAVAS_PUANLARI.zindan} (kat çarpanı)\n👹 Boss vuruşu +${SAVAS_PUANLARI.boss} • Boss öldürme +${SAVAS_PUANLARI.bossOldur}`,
+          inline: false
+        }
+      ];
+      if (benimKlan) {
+        const kayit = d.siralama.find(k => k.id === benimKlan.id);
+        const sira = kayit ? d.siralama.indexOf(kayit) + 1 : '-';
+        alanlar.push({
+          name: `⛩️ ${benimKlan.ad}`,
+          value: `Sıra: **${sira}** • Klan puanı: **${kayit?.toplam || 0}** • Senin katkın: **${kayit?.uyeler?.[userId] || 0}**`,
+          inline: false
+        });
+      }
+      if (d.sonKazanan) {
+        alanlar.push({ name: '👑 Geçen Haftanın Şampiyonu', value: `**${d.sonKazanan.ad}** (${d.sonKazanan.puan} puan)`, inline: false });
+      }
+
+      const embed = new EmbedBuilder()
+        .setColor(TEMA.KIRMIZI || 0xe53935)
+        .setTitle(`⚔️ Klan Savaşı • ${d.hafta} haftası`)
+        .setDescription(liste)
+        .addFields(alanlar)
+        .setFooter({ text: 'Balık tut, zindana in, bossa vur: her hamle klanına puan yazar.' });
+
+      return interaction.reply({ embeds: [embed] });
     }
 
     if (sub === 'liderlik') {

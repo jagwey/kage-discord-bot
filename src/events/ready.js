@@ -6,6 +6,7 @@ import { hatirlaticiServisiniBaslat } from '../services/hatirlaticiServisi.js';
 import { cekilisServisiniBaslat } from '../services/cekilisServisi.js';
 import { golgeGozServisiniBaslat } from '../services/golgeGozServisi.js';
 import { toplulukServisiniBaslat } from '../services/toplulukServisi.js';
+import { etkinlikServisiniBaslat } from '../services/etkinlikServisi.js';
 
 export const name = Events.ClientReady;
 export const once = true;
@@ -79,6 +80,7 @@ export async function execute(client) {
 
   // Doğum günü kutlaması, haftalık sahip raporu ve kayıtsız hatırlatma
   toplulukServisiniBaslat(client);
+  etkinlikServisiniBaslat(client);
 
   // #kage-dev kanalı ve otomatik sürüm güncelleme duyurusu kontrolü
   setTimeout(() => {

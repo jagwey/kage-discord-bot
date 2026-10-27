@@ -6,7 +6,8 @@ import { kageyeSor } from '../services/ai/kageBeyin.js';
 import { gecmiseEkle } from '../services/ai/konusmaGecmisi.js';
 import { otomodKontrol } from '../services/otomodServisi.js';
 import { mesajXpEkle } from '../services/seviyeServisi.js';
-import { gorevIlerlet } from '../services/gorevServisi.js';
+import { oyunOlayi } from '../services/oyunOlayServisi.js';
+import { otomatikBaskinDene } from '../services/baskinServisi.js';
 import { duyguEmojisi } from '../services/duyguServisi.js';
 import { stickerDuygusuSec, stickerMesajSecenegi } from '../services/stickerServisi.js';
 import { aiErisimKontrol, aiSpamKontrol } from '../services/aiErisimServisi.js';
@@ -178,7 +179,11 @@ export async function execute(message) {
   // Sohbet XP'si: bekleme süresi ve kısa mesaj kontrolü serviste yapılır.
   try {
     const xp = mesajXpEkle(message.guild.id, message.author.id, message.content);
-    if (xp) gorevIlerlet(message.author.id, 'mesaj');
+    if (xp) {
+      oyunOlayi(message.author.id, 'mesaj');
+      // XP bekleme süresi spam'i süzdüğü için otomatik baskın yalnızca XP alan mesajlarda denenir.
+      otomatikBaskinDene(message).catch(err => console.warn('[Baskın]', err.message));
+    }
     if (xp?.seviyeAtladi) {
       await message.channel.send({
         content: `⬆️ ${message.author} **Seviye ${xp.seviye}** oldu! Ödül: ${xp.odul} Ryo.`,

@@ -60,6 +60,7 @@ export async function buton(interaction) {
       if (s.yeniTur) not += `\n🆕 Yeni tür keşfi: +${ryoYaz(s.bonus)}`;
       if (s.yeniRekor) not += '\n🏆 Kişisel rekor!';
     }
+    if (s.notlar?.length) not += `\n${s.notlar.join('\n')}`;
   } else if (eylem === 'sat') {
     const s = cantayiSat(sahip);
     not = s.basarili ? `💰 ${s.adet} av satıldı: **${ryoYaz(s.miktar)}**.` : 'Satılacak av yok.';

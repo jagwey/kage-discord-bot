@@ -43,6 +43,14 @@ const YOLDAS_TURU = [
   [/\b(ejder\w*|yesim ejderi)\b/, 'ejder']
 ];
 
+const MALZEME_ADLARI = [
+  [/\bdemir\w*\b/, 'demir'],
+  [/\b(golge ?ozu|oz)\w*\b/, 'golge_ozu'],
+  [/\bpul\w*\b/, 'pul'],
+  [/\bmercan\w*\b/, 'mercan'],
+  [/\bruh\w*\b/, 'ruh_tasi']
+];
+
 // Sıra önemli: daha özel desenler üstte.
 const NIYETLER = [
   {
@@ -154,6 +162,7 @@ const NIYETLER = [
     desen: /\bklan\w*\b/,
     kur: (t, ctx) => {
       const isim = ctx.hamMetin.replace(/^.*?\bklan\w*\s+\S+\s*/iu, '').trim().slice(0, 32);
+      if (/\bsavas\w*\b/.test(t)) return { komut: 'klan', alt: 'savas', etiket: '⚔️ Klan savaşı tablosunu açayım mı?' };
       if (/\b(bagis|bagisla|yatir)\w*\b/.test(t)) {
         const miktar = sayiBul(t);
         if (!miktar) return null;
@@ -195,6 +204,32 @@ const NIYETLER = [
       const kullanici = ctx.etiketlenenler[0];
       return { komut: 'envanter', secenekler: kullanici ? { kullanici } : {}, etiket: '🎒 Envanteri açayım mı?' };
     }
+  },
+  {
+    desen: /\bkara ?borsa\w*\b/,
+    kur: () => ({ komut: 'karaborsa', alt: 'bak', etiket: '🏮 Kara borsayı açayım mı?' })
+  },
+  {
+    desen: /\bpiyango\w*\b/,
+    kur: t => {
+      const adet = Math.min(50, sayiBul(t) || 0);
+      if (adet && /\bbilet\w*\b/.test(t)) return { komut: 'piyango', alt: 'bilet', secenekler: { adet }, etiket: `🎟️ **${adet}** piyango bileti alayım mı?` };
+      return { komut: 'piyango', alt: 'durum', etiket: '🎟️ Piyango durumunu göstereyim mi?' };
+    }
+  },
+  {
+    desen: /\b(basarim\w*|rozet\w*)\b/,
+    kur: () => ({ komut: 'basarim', etiket: '🏅 Başarımlarını göstereyim mi?' })
+  },
+  {
+    desen: /\bbaskin\w*\b/,
+    kur: () => ({ komut: 'baskin', alt: 'bilgi', etiket: '🛡️ Baskın bilgisini açayım mı?' })
+  },
+  {
+    desen: /\b(zanaat\w*|craft\w*)\b/,
+    kur: t => (/\btarif\w*\b/.test(t)
+      ? { komut: 'zanaat', alt: 'tarifler', etiket: '⚒️ Tarifleri göstereyim mi?' }
+      : { komut: 'zanaat', alt: 'canta', etiket: '🧰 Zanaat çantanı açayım mı?' })
   },
   {
     desen: /\b(market\w*|dukkan\w*|magaza\w*)\b/,
@@ -300,9 +335,31 @@ const KISA_KOMUTLAR = [
       if (['katil', 'join'].includes(a)) return isim ? { komut: 'klan', alt: 'katil', secenekler: { isim } } : { eksik: 'klan katil İsim' };
       if (['ayril', 'leave'].includes(a)) return { komut: 'klan', alt: 'ayril' };
       if (['top', 'liderlik'].includes(a)) return { komut: 'klan', alt: 'liderlik' };
+      if (['savas', 'war'].includes(a)) return { komut: 'klan', alt: 'savas' };
       return { komut: 'klan', alt: 'bilgi', secenekler: isim || (a && !['bilgi', 'info'].includes(a)) ? { isim: (alt + ' ' + isim).trim() } : {} };
     }
   },
+  {
+    adlar: ['zanaat', 'zn', 'craft'], ozet: 'zanaat', aciklama: 'zanaat çantası', kur: arg => (
+      /\b(tarif|recipe)/.test(arg) ? { komut: 'zanaat', alt: 'tarifler' } : { komut: 'zanaat', alt: 'canta' })
+  },
+  {
+    adlar: ['kb', 'karaborsa', 'borsa'], ozet: 'kb', aciklama: 'kara borsa', kur: arg => {
+      const islem = /\b(al|buy)\b/.test(arg) ? 'al' : /\b(sat|sell)\b/.test(arg) ? 'sat' : null;
+      if (!islem) return { komut: 'karaborsa', alt: 'bak' };
+      const malzeme = MALZEME_ADLARI.find(([d]) => d.test(arg))?.[1];
+      if (!malzeme) return { eksik: `kb ${islem} demir 5` };
+      return { komut: 'karaborsa', alt: islem, secenekler: { malzeme, adet: Math.min(50, sayiBul(arg) || 1) } };
+    }
+  },
+  {
+    adlar: ['piyango', 'bilet', 'lottery'], ozet: 'piyango 5', aciklama: 'piyango bileti', kur: arg => {
+      const adet = sayiBul(arg);
+      return adet ? { komut: 'piyango', alt: 'bilet', secenekler: { adet: Math.min(50, adet) } } : { komut: 'piyango', alt: 'durum' };
+    }
+  },
+  { adlar: ['rozet', 'basarim', 'ach'], ozet: 'rozet', aciklama: 'başarımlar', kur: (arg, ctx) => ({ komut: 'basarim', secenekler: kimse(ctx) ? { uye: kimse(ctx) } : {} }) },
+  { adlar: ['baskin', 'raid'], ozet: 'baskin', aciklama: 'gölge baskını', kur: () => ({ komut: 'baskin', alt: 'bilgi' }) },
   {
     adlar: ['manga', 'm'], ozet: 'm naruto', aciklama: 'manga ara', kur: (arg, ctx) => (ctx.hamArg ? { komut: 'manga', secenekler: { isim: ctx.hamArg.slice(0, 100) } } : { komut: 'rastgele-manga' })
   },

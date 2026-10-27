@@ -10,7 +10,7 @@ Bu dosya Claude Code, Antigravity ve diğer AI asistanlarının projeyi tek bak�
 ## 🚀 Mimari & Yığın (Stack)
 - **Çalışma Zamanı:** Node.js (ESM modülleri: `"type": "module"`).
 - **Discord Kütüphanesi:** `discord.js` v14 (Slash komutları, Embeds, Butonlar, Modallar).
-- **Veri Depolama:** JSON tabanlı yerel depolar (`data/*.json`), `src/utils/jsonDepo.js` üzerinden otomatik dosya kilitlemeli ve güvenli okuma/yazma.
+- **Veri Depolama:** JSON tabanlı yerel depolar (`data/*.json`), `src/services/jsonDepo.js` üzerinden otomatik dosya kilitlemeli ve güvenli okuma/yazma.
 - **Canlılık & Sunucu:** Node `http` tabanlı canlılık sunucusu (`PORT`, `/health`, `/api/yardim/sor`). Render üzerinde 7/24 çalışır.
 
 ## 🤖 Çoklu Yapay Zeka Ağı (Multi-AI Mesh Architecture)
@@ -29,8 +29,8 @@ Tüm AI yönlendirmesi `src/services/aiRouterServisi.js` ve erişim denetimi `sr
 - **Canlı Admin AI İzleme:** Başka biri konuşurken bile admin kanalına (`aiYonetimKanalId`) hangi kullanıcının hangi soruya hangi motorla yanıt aldığı canlı düşer. Yetkililere mesaj altında motor etiketi (`-# [Motor: ...]`) gösterilir.
 
 ## 📁 Dizin Yapısı
-- `src/commands/`: 71 adet Slash komutu (`export const data`, `export async function execute`).
-- `src/services/`: 33 adet modüler servis (`aiRouterServisi`, `aiErisimServisi`, `golgeGozServisi`, `chatBotServisi`, `ekonomiServisi`, `klanServisi`, `yoldasServisi`, `sunucuMimarisiServisi`, `zindanServisi`, `bossServisi` vb.).
+- `src/commands/`: 76 adet Slash komutu (`export const data`, `export async function execute`).
+- `src/services/`: 45 adet modüler servis (`oyunOlayServisi`, `aiRouterServisi`, `aiErisimServisi`, `golgeGozServisi`, `chatBotServisi`, `ekonomiServisi`, `klanServisi`, `yoldasServisi`, `sunucuMimarisiServisi`, `zindanServisi`, `bossServisi` vb.).
 - `src/events/`: Discord olay dinleyicileri (`interactionCreate`, `messageCreate`, `ready`, `guildMemberAdd`).
 - `data/`: JSON veri depoları (`klanlar.json`, `yoldaslar.json`, `zindan.json`, `ekonomi.json`, `kullanicilar.json`, `golge_goz_istatistik.json`, `dojo.json` vb.).
 - `assets/`: Stickerlar (`assets/stickers/`), profil avatarları (`assets/avatars/`), SVG bannerlar (`assets/banner.svg`).
@@ -49,6 +49,13 @@ Tüm AI yönlendirmesi `src/services/aiRouterServisi.js` ve erişim denetimi `sr
 - `/zindan`, `/boss`, `/kule`, `/dojo`, `/balik`: Kapsamlı RPG & ekonomi oyun döngüsü.
 - `/gorev`: Günlük 3 görev (mesaj, balık, zindan, boss), tamamlama bonusu (`gorevServisi.js`).
 - `/ai-durum` (yönetici): AI sağlayıcı anahtar durumu ve başarı/hata sayaçları.
+- **Oyun olay merkezi (`oyunOlayServisi.js`):** `oyunOlayi(userId, tur)` görev, rozet, klan savaşı puanı ve malzeme düşürmeyi tek yerde işler, `{ notlar }` döner. Yeni oyun komutu bu kancayı çağırmalı ve notları çıktıya eklemeli.
+- `/klan savas`: Haftalık klan savaşı (`klanSavasServisi.js`). Klanlar global, ödül Ryo, kasa ve rozettir.
+- `/zanaat`: Malzeme, tarif, dövme ve kuşanma (`zanaatServisi.js`). Kuşanılan eşyalar zindan bonusu verir.
+- `/karaborsa`: Saatlik fiyatlar ve saatlik nadir mal (`karaBorsaServisi.js`).
+- `/piyango`: Haftalık bilet, pazartesi 00:00 otomatik çekiliş (`piyangoServisi.js`).
+- `/baskin`: Gölge baskını, 5 dakikalık buton savunması, otomatik baskın (`baskinServisi.js`). Baskın kanalı haftalık sonuç duyuru kanalıdır (`etkinlikServisi.js`).
+- `/basarim`: 17 Ryo ödüllü rozet (`basarimServisi.js`). Yoldaş seviye 10'da evrimleşir; `/gunluk` seri kalkanı satar.
 - `/ryo ver|al|bak` (sahip/yönetici): Üyeye Ryo yükleme, geri alma, cüzdan görüntüleme. Sahip (`sahipMi`: OWNER_ID, sunucu sahibi, uygulama sahibi) bütün AI eylemlerinde tam yetkilidir.
 
 ## 🧠 Merkezi Ortak Hafıza (Unified Shared Memory) & Komutsuz Yönetim

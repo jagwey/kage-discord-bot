@@ -20,6 +20,11 @@ export const KILIC_SEVIYELERI = [
   { seviye: 7, ad: '🌌 Kozmik Hiçlik Katanası', bonus: 100, maliyet: 35000, desc: 'Yıldız tozu ve ebedi gölgenin birleşimi. +%100 nihai tanrısal güç.' }
 ];
 
+export const SERI_KALKANI_FIYAT = 1500;
+export const SERI_KALKANI_MAKS = 3;
+/** Belirli seri günlerinde verilen tek seferlik ek ödül. */
+export const SERI_DONUMLERI = { 7: 500, 14: 1000, 30: 3000 };
+
 export const MARKET_URUNLERI = [
   { id: 'unvan_golge', ad: '🥷 Gölge Suikastçısı Unvanı', fiyat: 800, tip: 'unvan', deger: 'Gölge Suikastçısı', desc: 'Profilinizde görünen havalı bir samuray unvanı.' },
   { id: 'unvan_ronin', ad: '📜 Başıboş Ronin Unvanı', fiyat: 400, tip: 'unvan', deger: 'Başıboş Ronin', desc: 'Yalnız bir kılıç ustasının unvanı.' },
@@ -86,6 +91,8 @@ export function bakiyeGetir(userId) {
     banka: h.banka || 0,
     toplam: (h.ryo || 0) + (h.banka || 0),
     streak: h.streak || 0,
+    seriKalkani: h.seriKalkani || 0,
+    enUzunSeri: h.enUzunSeri || h.streak || 0,
     duelloZafer: h.duelloZafer || 0,
     duelloMaglubiyet: h.duelloMaglubiyet || 0,
     zindanZafer: h.zindanZafer || 0,
@@ -149,6 +156,7 @@ export function gunlukAl(userId) {
   const h = kullaniciHesabi(userId);
   const simdi = Date.now();
   const gunMs = 24 * 60 * 60 * 1000;
+  let kalkanKullanildi = false;
 
   if (h.sonGunluk) {
     const gecenZaman = simdi - new Date(h.sonGunluk).getTime();
@@ -164,7 +172,14 @@ export function gunlukAl(userId) {
     }
 
     if (gecenZaman > 2 * gunMs) {
-      h.streak = 1;
+      // Seri kalkanı kaçırılan günü bir kez affeder; yoksa seri sıfırlanır.
+      if ((h.seriKalkani || 0) > 0) {
+        h.seriKalkani -= 1;
+        h.streak = (h.streak || 0) + 1;
+        kalkanKullanildi = true;
+      } else {
+        h.streak = 1;
+      }
     } else {
       h.streak = (h.streak || 0) + 1;
     }
@@ -172,8 +187,10 @@ export function gunlukAl(userId) {
     h.streak = 1;
   }
 
-  const streakBonus = Math.min((h.streak - 1) * 50, 500);
-  const kazanc = 250 + streakBonus;
+  const streakBonus = Math.min((h.streak - 1) * 75, 1500);
+  const donumBonusu = SERI_DONUMLERI[h.streak] || (h.streak > 30 && h.streak % 30 === 0 ? 3000 : 0);
+  const kazanc = 250 + streakBonus + donumBonusu;
+  if (h.streak > (h.enUzunSeri || 0)) h.enUzunSeri = h.streak;
 
   h.ryo = (h.ryo || 0) + kazanc;
   h.sonGunluk = new Date().toISOString();
@@ -183,8 +200,26 @@ export function gunlukAl(userId) {
     basarili: true,
     kazanc,
     streak: h.streak,
+    donumBonusu,
+    kalkanKullanildi,
+    kalanKalkan: h.seriKalkani || 0,
     yeniBakiye: h.ryo
   };
+}
+
+/** Seri kalkanı satın alır; elde en çok SERI_KALKANI_MAKS kalkan tutulur. */
+export function seriKalkaniAl(userId, fiyat = SERI_KALKANI_FIYAT) {
+  const h = kullaniciHesabi(userId);
+  if ((h.seriKalkani || 0) >= SERI_KALKANI_MAKS) {
+    return { basarili: false, mesaj: `En çok **${SERI_KALKANI_MAKS}** seri kalkanı taşıyabilirsin.` };
+  }
+  if ((h.ryo || 0) < fiyat) {
+    return { basarili: false, mesaj: `Yetersiz Ryo! Seri kalkanı **${fiyat} Ryo**. Sende olan: **${h.ryo || 0} Ryo**.` };
+  }
+  h.ryo -= fiyat;
+  h.seriKalkani = (h.seriKalkani || 0) + 1;
+  veriyiKaydet();
+  return { basarili: true, kalkan: h.seriKalkani, kalanRyo: h.ryo };
 }
 
 /**

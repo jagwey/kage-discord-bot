@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { kullaniciProfiliGetir } from '../services/mangaServisi.js';
+import { kazanilanRozetler } from '../services/basarimServisi.js';
 
 export const data = new SlashCommandBuilder()
   .setName('profil')
@@ -32,6 +33,8 @@ export async function execute(interaction) {
 
   const xpBar = xpBariUret(profil.seviye);
   const avatarUrl = interaction.user.displayAvatarURL({ dynamic: true, size: 256 });
+  // Başarımlar Discord hesabına bağlı; başka bir okur adı sorgulanınca gösterilmez.
+  const rozetler = interaction.options.getString('kullanici_adi') ? null : kazanilanRozetler(interaction.user.id);
 
   const embed = kageEmbed({
     baslik: `GÖLGE OKUR KARTI • ${profil.kullaniciAdi}`,
@@ -50,6 +53,11 @@ export async function execute(interaction) {
         value: `**Klan:** ${profil.klan}\n**Favori Tür:** ${profil.favoriTur}`,
         inline: true
       },
+      ...(rozetler ? [{
+        name: `🏅 Başarım Rozetleri (${rozetler.length})`,
+        value: rozetler.map(r => `${r.emoji} ${r.ad}`).join(' • ').slice(0, 1024) || 'Henüz rozet yok. `/basarim` ile ilerlemene bak.',
+        inline: false
+      }] : []),
       {
         name: `${TEMA.EMOJILER.GOLGE} Samuray Yemini`,
         value: `*"Gölgelerde fısıldayan her sayfayı okuyacak, karanlığı kılıcım ve bilgimle yaracağım."*`,

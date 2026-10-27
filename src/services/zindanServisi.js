@@ -1,5 +1,6 @@
 import { jsonDepo } from './jsonDepo.js';
 import { ryoEkle } from './ekonomiServisi.js';
+import { yoldasGucu, evrimlestiMi } from './yoldasServisi.js';
 
 const depo = jsonDepo('zindan.json', () => ({ kullanicilar: {} }));
 
@@ -118,14 +119,15 @@ export function katOdulCarpani(kat) {
 }
 
 /**
- * Yoldaşın savaş etkisi. Bonus seviye başına 3 puan artar; üst sınırlar oyunu kırmamak içindir.
+ * Yoldaşın savaş etkisi. Bonus seviye başına 3 puan artar, evrimde x1.5 olur; üst sınırlar oyunu kırmamak içindir.
  * kritik: Gölge Tekniği şansı, kacinma: darbeden sıyrılma, savunma: hasar azaltma.
  */
 export function yoldasSavasEtkisi(yoldas, tur) {
   const etki = { kritik: 0, kacinma: 0, savunma: 0 };
   if (!yoldas || !tur || !(tur.bonusTip in etki)) return etki;
-  const deger = (tur.bonusDeger + ((yoldas.seviye || 1) - 1) * 3) / 100;
-  const tavan = { kritik: 0.4, kacinma: 0.35, savunma: 0.4 }[tur.bonusTip];
+  const deger = yoldasGucu(yoldas, tur) / 100;
+  // Evrimleşen yoldaş tavanı biraz aşabilir.
+  const tavan = { kritik: 0.4, kacinma: 0.35, savunma: 0.4 }[tur.bonusTip] + (evrimlestiMi(yoldas) ? 0.1 : 0);
   etki[tur.bonusTip] = Math.min(tavan, deger);
   return etki;
 }

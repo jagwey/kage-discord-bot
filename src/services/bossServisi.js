@@ -1,4 +1,4 @@
-import { gorevIlerlet } from './gorevServisi.js';
+import { oyunOlayi } from './oyunOlayServisi.js';
 import { jsonDepo } from './jsonDepo.js';
 import { ryoEkle, bakiyeGetir } from './ekonomiServisi.js';
 
@@ -95,6 +95,12 @@ export function saldir(guildId, userId, simdi = Date.now(), rng = Math.random) {
   }
   depo.yaz(db);
   for (const o of sonuc.odul) ryoEkle(o.uid, o.miktar, `Boss ganimeti (seviye ${sonuc.seviye})`);
-  gorevIlerlet(userId, 'boss');
+  sonuc.notlar = oyunOlayi(userId, 'boss').notlar;
+  if (sonuc.oldu) {
+    for (const o of sonuc.odul) {
+      const n = oyunOlayi(o.uid, 'bossOldur').notlar;
+      if (o.uid === userId) sonuc.notlar.push(...n);
+    }
+  }
   return sonuc;
 }

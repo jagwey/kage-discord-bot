@@ -37,6 +37,35 @@ export const YOLDAS_TURLERI = {
   }
 };
 
+export const EVRIM_SEVIYESI = 10;
+/** Evrimleşen yoldaşın bonusu bu çarpanla büyür. */
+export const EVRIM_CARPANI = 1.5;
+
+/** Seviye 10'da her türün dönüştüğü efsanevi biçim. */
+export const EVRIM_ADLARI = {
+  kurt: '🌑 Ay Yiyen Fenrir',
+  tilki: '🔥 Dokuz Kuyruklu Kitsune',
+  kuzgun: '☀️ Yatagarasu',
+  ejder: '🌊 Ryujin'
+};
+
+/** Yoldaş şu anki türünde evrimleşmiş mi. Tür değişirse evrim yeniden kazanılır. */
+export function evrimlestiMi(yoldas) {
+  return !!yoldas && yoldas.evrimTur === yoldas.turId;
+}
+
+/** Yoldaşın yüzde cinsinden bonus gücü: seviye başına +3, evrimde x1.5. */
+export function yoldasGucu(yoldas, tur) {
+  if (!yoldas || !tur) return 0;
+  const taban = tur.bonusDeger + ((yoldas.seviye || 1) - 1) * 3;
+  return Math.round(taban * (evrimlestiMi(yoldas) ? EVRIM_CARPANI : 1));
+}
+
+export function yoldasAdi(yoldas) {
+  if (!yoldas) return '';
+  return evrimlestiMi(yoldas) ? EVRIM_ADLARI[yoldas.turId] || yoldas.ad : yoldas.ad;
+}
+
 export function kullaniciYoldasGetir(userId) {
   const hepsi = depo.oku();
   return hepsi[userId] || null;
@@ -55,6 +84,7 @@ export function yoldasSec(userId, yoldasId) {
     seviye: mevcut?.seviye || 1,
     xp: mevcut?.xp || 0,
     sadakat: mevcut?.sadakat || 100,
+    evrimTur: mevcut?.evrimTur || null,
     secilmeTarihi: mevcut?.secilmeTarihi || new Date().toISOString()
   };
 
@@ -79,6 +109,12 @@ export function yoldasBesle(userId) {
     seviyeAtladi = true;
   }
 
+  let evrimOldu = false;
+  if (yoldas.seviye >= EVRIM_SEVIYESI && !evrimlestiMi(yoldas)) {
+    yoldas.evrimTur = yoldas.turId;
+    evrimOldu = true;
+  }
+
   depo.yaz(hepsi);
-  return { yoldas, seviyeAtladi };
+  return { yoldas, seviyeAtladi, evrimOldu };
 }

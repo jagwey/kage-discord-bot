@@ -62,5 +62,6 @@ export async function buton(interaction) {
     const satirlar = s.odul.sort((a, b) => b.miktar - a.miktar).slice(0, 5).map(o => `<@${o.uid}> +${ryoYaz(o.miktar)}`);
     not += `\n🏆 **Boss devrildi!** Ganimet dağıtıldı:\n${satirlar.join('\n')}`;
   }
+  if (s.notlar?.length) not += `\n${s.notlar.join('\n')}`;
   return interaction.update(panel(interaction.guildId, not));
 }

@@ -17,6 +17,13 @@ export function gunAnahtari(simdi = Date.now()) {
   return new Date(simdi + 3 * 3600000).toISOString().slice(0, 10);
 }
 
+/** Haftanın pazartesi gününü (UTC+3) anahtar olarak döndürür; hafta pazar gecesi biter. */
+export function haftaAnahtari(simdi = Date.now()) {
+  const d = new Date(simdi + 3 * 3600000);
+  const pazartesiyeKalan = (d.getUTCDay() + 6) % 7;
+  return new Date(d.getTime() - pazartesiyeKalan * 86400000).toISOString().slice(0, 10);
+}
+
 function karistir(liste, rng) {
   const k = [...liste];
   for (let i = k.length - 1; i > 0; i--) {

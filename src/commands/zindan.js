@@ -1,4 +1,5 @@
-import { gorevIlerlet } from '../services/gorevServisi.js';
+import { oyunOlayi } from '../services/oyunOlayServisi.js';
+import { zanaatBonusu, kusanilanAdlar } from '../services/zanaatServisi.js';
 import {
   SlashCommandBuilder,
   ActionRowBuilder,
@@ -7,7 +8,7 @@ import {
   ComponentType, MessageFlags } from 'discord.js';
 import { TEMA, kageEmbed, rastgeleSlogan } from '../config/tema.js';
 import { oyunStickerEkini } from '../config/oyunGorsel.js';
-import { kullaniciYoldasGetir, YOLDAS_TURLERI } from '../services/yoldasServisi.js';
+import { kullaniciYoldasGetir, YOLDAS_TURLERI, yoldasGucu, yoldasAdi } from '../services/yoldasServisi.js';
 import {
   bakiyeGetir,
   zindanZaferiDetayli,
@@ -208,7 +209,9 @@ export async function execute(interaction) {
   zindanBeklemeBaslat(userId);
   const bakiye = bakiyeGetir(userId);
   const kilic = bakiye.kilic;
-  const kilicBonus = 1 + ((kilic?.bonus || 0) / 100);
+  const zanaat = zanaatBonusu(userId);
+  const zanaatEsyalari = kusanilanAdlar(userId);
+  const kilicBonus = (1 + ((kilic?.bonus || 0) / 100)) * (1 + zanaat.hasar / 100);
 
   const profil = zindanProfili(userId);
   const etki = relikEtkisi(profil.relikler);
@@ -302,8 +305,11 @@ export async function execute(interaction) {
   const aktifYoldas = kullaniciYoldasGetir(userId);
   const yoldasTuru = aktifYoldas ? YOLDAS_TURLERI[aktifYoldas.turId] : null;
   const yEtki = yoldasSavasEtkisi(aktifYoldas, yoldasTuru);
+  // Dövülen eşyaların Gölge şansı ve kaçınma bonusu yoldaş etkisine eklenir.
+  yEtki.kritik += zanaat.kritik / 100;
+  yEtki.kacinma = Math.min(0.5, yEtki.kacinma + zanaat.kacinma / 100);
 
-  const maxOyuncuHp = 100 + etki.ekCan;
+  const maxOyuncuHp = 100 + etki.ekCan + zanaat.can;
   let oyuncuHp = maxOyuncuHp;
   let kat = 1;
   let aktifZindan = katZindani(secilenZindan, kat);
@@ -439,15 +445,21 @@ export async function execute(interaction) {
 
     let yoldasBonusu = 0;
     if (aktifYoldas && yoldasTuru?.bonusTip === 'ryo') {
-      yoldasBonusu = Math.round(kazanilanRyo * ((yoldasTuru.bonusDeger + (aktifYoldas.seviye - 1) * 3) / 100));
+      yoldasBonusu = Math.round(kazanilanRyo * (yoldasGucu(aktifYoldas, yoldasTuru) / 100));
       kazanilanRyo += yoldasBonusu;
     }
+    const zanaatRyo = Math.round(kazanilanRyo * (zanaat.ryo / 100));
+    kazanilanRyo += zanaatRyo;
 
     zindanZaferiDetayli(userId, kazanilanRyo, dusenItem);
-    gorevIlerlet(userId, 'zindan');
+    const olayNotlari = [
+      ...oyunOlayi(userId, 'zindan', { kat: tamamlananKat }).notlar,
+      ...oyunOlayi(userId, 'kat', { deger: tamamlananKat }).notlar
+    ];
     const bonus = zaferIsle(userId, secilenZindan, kazanilanRyo, Date.now(), Math.random, tamamlananKat);
     const bonusSatirlari = [];
-    if (yoldasBonusu > 0) bonusSatirlari.push(`🐾 ${aktifYoldas.ad}: +${yoldasBonusu} Ryo`);
+    if (yoldasBonusu > 0) bonusSatirlari.push(`🐾 ${yoldasAdi(aktifYoldas)}: +${yoldasBonusu} Ryo`);
+    if (zanaatRyo > 0) bonusSatirlari.push(`🪸 Tılsım: +${zanaatRyo} Ryo`);
     if (bonus.relikBonusu) bonusSatirlari.push(`🐸 Kalıntı: +${bonus.relikBonusu}`);
     if (bonus.seriBonusu) bonusSatirlari.push(`🔥 Seri: +${bonus.seriBonusu}`);
     if (bonus.gunlukBonus) bonusSatirlari.push(`🌅 Günün ilk zaferi: +${bonus.gunlukBonus}`);
@@ -465,7 +477,7 @@ export async function execute(interaction) {
         { name: '💰 Yağmalanan Ryo', value: `\`+${kazanilanRyo} Ryo\``, inline: true },
         { name: '🎒 Düşen Eşya', value: dusenItem ? `**${dusenItem}** *(Çantana eklendi)*` : '*Özel eşya bulunamadı.*', inline: true },
         { name: '🕳️ Temizlenen Kat', value: `${tamamlananKat}/${MAKS_KAT} (x${katOdulCarpani(tamamlananKat)})`, inline: true },
-        { name: '🗡️ Kullanılan Silah', value: `${kilic.ad} (+%${kilic.bonus})`, inline: false },
+        { name: '🗡️ Kullanılan Silah', value: `${kilic.ad} (+%${kilic.bonus})` + (zanaatEsyalari.length ? ` • ${zanaatEsyalari.join(', ')}` : ''), inline: false },
         ...(bonusSatirlari.length
           ? [{ name: `✨ Bonus (+${bonus.bonusToplam} Ryo)`, value: bonusSatirlari.join('\n'), inline: false }]
           : []),
@@ -476,7 +488,8 @@ export async function execute(interaction) {
             value: `${RELIKLER[bonus.yeniRelik].emoji} **${RELIKLER[bonus.yeniRelik].ad}**: ${RELIKLER[bonus.yeniRelik].aciklama}`,
             inline: false
           }]
-          : [])
+          : []),
+        ...(olayNotlari.length ? [{ name: '📜 Ganimet Notları', value: olayNotlari.join('\n').slice(0, 1024), inline: false }] : [])
       ],
       altMetin: `Eşyalarını görmek için /envanter yazabilirsin • kage95.com`
     });

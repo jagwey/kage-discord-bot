@@ -4,10 +4,15 @@ import { ryoYaz } from '../config/oyunGorsel.js';
 import { bakiyeGetir, ryoDus } from '../services/ekonomiServisi.js';
 import {
   YOLDAS_TURLERI,
+  EVRIM_SEVIYESI,
   kullaniciYoldasGetir,
   yoldasSec,
-  yoldasBesle
+  yoldasBesle,
+  yoldasGucu,
+  yoldasAdi,
+  evrimlestiMi
 } from '../services/yoldasServisi.js';
+import { oyunOlayi } from '../services/oyunOlayServisi.js';
 
 export const data = new SlashCommandBuilder()
     .setName('yoldas')
@@ -54,13 +59,16 @@ export async function execute(interaction) {
       }
 
       const tur = YOLDAS_TURLERI[yoldas.turId];
-      const bonusGucu = tur.bonusDeger + (yoldas.seviye - 1) * 3;
+      const bonusGucu = yoldasGucu(yoldas, tur);
+      const evrim = evrimlestiMi(yoldas)
+        ? '🌟 **Evrimleşti** (bonus x1.5)'
+        : `Seviye ${EVRIM_SEVIYESI}'da evrimleşir`;
       const gerekenXp = yoldas.seviye * 100;
 
       const embed = new EmbedBuilder()
         .setColor(TEMA.KIRMIZI || 0xe53935)
         .setTitle(`🐾 ${interaction.user.username}'ın Gölge Yoldaşı`)
-        .setDescription(`**${yoldas.ad}**\n*${tur.aciklama}*`)
+        .setDescription(`**${yoldasAdi(yoldas)}**\n*${tur.aciklama}*\n\n${evrim}`)
         .addFields(
           { name: '⭐ Seviye', value: `**${yoldas.seviye}**`, inline: true },
           { name: '🍖 Sadakat', value: `**%${yoldas.sadakat || 100}**`, inline: true },
@@ -77,14 +85,12 @@ export async function execute(interaction) {
       const tur = YOLDAS_TURLERI[secilenTur];
 
       if (tur.fiyat > 0) {
-        const bakiye = bakiyeGetir(userId);
-        if (bakiye < tur.fiyat) {
+        if (!ryoDus(userId, tur.fiyat, `Yoldaş: ${tur.ad}`)) {
           return interaction.reply({
-            content: `❌ **${tur.ad}** çok nadir bir yoldaştır! Sahiplenmek için **${ryoYaz(tur.fiyat)}** gerekir (Mevcut: **${ryoYaz(bakiye)}**).`,
+            content: `❌ **${tur.ad}** çok nadir bir yoldaştır! Sahiplenmek için **${ryoYaz(tur.fiyat)}** gerekir (Mevcut: **${ryoYaz(bakiyeGetir(userId).ryo)}**).`,
             ephemeral: true
           });
         }
-        ryoDus(userId, tur.fiyat);
       }
 
       const yeni = yoldasSec(userId, secilenTur);
@@ -94,22 +100,27 @@ export async function execute(interaction) {
     }
 
     if (sub === 'besle') {
-      const bakiye = bakiyeGetir(userId);
       const UCRET = 100;
-
-      if (bakiye < UCRET) {
+      if (!kullaniciYoldasGetir(userId)) {
+        return interaction.reply({ content: '🐾 Önce `/yoldas sec` ile bir yoldaş edin.', ephemeral: true });
+      }
+      if (!ryoDus(userId, UCRET, 'Yoldaş besleme')) {
         return interaction.reply({
-          content: `❌ Yoldaşını lezzetli av etiyle beslemek için **${ryoYaz(UCRET)}** gerekir (Mevcut: **${ryoYaz(bakiye)}**).`,
+          content: `❌ Yoldaşını lezzetli av etiyle beslemek için **${ryoYaz(UCRET)}** gerekir (Mevcut: **${ryoYaz(bakiyeGetir(userId).ryo)}**).`,
           ephemeral: true
         });
       }
 
-      ryoDus(userId, UCRET);
-      const { yoldas, seviyeAtladi } = yoldasBesle(userId);
+      const { yoldas, seviyeAtladi, evrimOldu } = yoldasBesle(userId);
 
-      let mesaj = `🍖 Yoldaşın **${yoldas.ad}** afiyetle karnını doyurdu! Sadakati ve enerjisi arttı (+35 XP).`;
+      let mesaj = `🍖 Yoldaşın **${yoldasAdi(yoldas)}** afiyetle karnını doyurdu! Sadakati ve enerjisi arttı (+35 XP).`;
       if (seviyeAtladi) {
         mesaj += `\n\n🌟 **TEBRİKLER!** Yoldaşın **Seviye ${yoldas.seviye}** oldu! Savaş bonusları daha da güçlendi.`;
+      }
+      if (evrimOldu) {
+        mesaj += `\n\n🌟 **EVRİM!** Yoldaşın **${yoldasAdi(yoldas)}** biçimine dönüştü. Savaş bonusu artık x1.5.`;
+        const { notlar } = oyunOlayi(userId, 'evrim');
+        if (notlar.length) mesaj += `\n${notlar.join('\n')}`;
       }
 
       return interaction.reply({ content: mesaj });

@@ -92,8 +92,8 @@ Sunucunuz tamamen boş veya dağınık olsa dahi, tek bir komutla tüm sunucuyu 
 ---
 
 ### 3. ⚔️ RPG, Dövüş, Klan, Yoldaş & Ekonomi Sistemi
-- **Samuray Klan & Lonca Sistemi (`/klan`)**: 2.500 Ryo ile kendi klanını kur (`/klan kur`), klan sancağı altında savaşçı topla (`/klan katil`), kasaya Ryo bağışlayarak seviye atlat (`/klan bagis`) ve sunucu klan liderliğinde (`/klan liderlik`) yarış!
-- **Kutsal Gölge Yoldaşı / Pet Sistemi (`/yoldas`)**: Zindanda kritik hasar veren *Gölge Kurdu*, +%20 ek Ryo kazandıran *Alev Tilkisi*, kaçınma sağlayan *Mistik Kuzgun* veya zırh kalkanı veren *Yeşim Ejderi* yoldaşlarını edin, besle ve seviye atlat.
+- **Samuray Klan & Lonca Sistemi (`/klan`)**: 2.500 Ryo ile kendi klanını kur (`/klan kur`), klan sancağı altında savaşçı topla (`/klan katil`), kasaya Ryo bağışlayarak seviye atlat (`/klan bagis`) ve sunucu klan liderliğinde (`/klan liderlik`) yarış! Her hafta klanlar balık, zindan ve boss puanıyla **Klan Savaşı**'nda (`/klan savas`) çarpışır.
+- **Kutsal Gölge Yoldaşı / Pet Sistemi (`/yoldas`)**: Zindanda kritik hasar veren *Gölge Kurdu*, +%20 ek Ryo kazandıran *Alev Tilkisi*, kaçınma sağlayan *Mistik Kuzgun* veya zırh kalkanı veren *Yeşim Ejderi* yoldaşlarını edin, besle ve seviye atlat. Seviye 10'da yoldaş **evrimleşir** ve bonusu 1,5 katına çıkar.
 - **Samuray Kehaneti & Günlük Fal (`/kehanet`)**: Günlük savaş şansı (%0-%100), koruyucu element, bilge sözü ve tapınak sunağından sürpriz Ryo hediyesi.
 - **Kage Bot Mini-Boss Düellosu (`/duello @Kage-95`)**: Oyuncular bota meydan okuyabilir! Kage 120 HP ile savaşı kabul eder, her 1.2 saniyede bir akıllı hamleler yapar (*Kiraz Çiçeği Kalkanı*, *Matcha Çayı İyileşmesi*, *Kadim Şogun Darbesi*). Kazanan oyuncuya 750 Ryo ve hafıza başarımı verilir!
 - **7 Seviye Katana Yükseltme Ağacı (`/demirci`)**:
@@ -106,7 +106,7 @@ Sunucunuz tamamen boş veya dağınık olsa dahi, tek bir komutla tüm sunucuyu 
   - **Seviye 7:** *🌌 Kozmik Hiçlik Katanası* (+%100 hasar)
 - **Zindan Seferi (`/zindan`)**: Derin zindan katlarında yoldaşınla canavarlarla savaş, kritik vuruşlar ve ganimet sandıkları.
 - **Dojo (`/dojo`), Dünya Bossu (`/boss`) & Gölge Kulesi (`/kule`)**: Seviye atlama antrenmanları, sunucu ortak boss akınları ve kat basamakları.
-- **Balıkçılık (`/balik`), Günlük Ryo (`/gunluk`), Bakiye & Transfer (`/bakiye`, `/ode`)**: Dinamik ekonomi ve liderlik tablosu (`/liderlik`).
+- **Balıkçılık (`/balik`), Günlük Ryo (`/gunluk`), Bakiye & Transfer (`/bakiye`, `/ode`)**: Dinamik ekonomi ve liderlik tablosu (`/liderlik`). Günlük seri 7, 14 ve 30. günlerde dönüm ödülü verir; **seri kalkanı** kaçırılan bir günü affeder.
 - **Geniş RPG Marketi (`/market`) & Kişisel Envanter (`/envanter`)**: Şans muskaları, özel klan unvanları ve savaş teçhizatları.
 
 ---
@@ -116,6 +116,101 @@ Sunucunuz tamamen boş veya dağınık olsa dahi, tek bir komutla tüm sunucuyu 
 - **/slot**: 3 sütunlu şans çarkı makinesi; 2'li ve 3'lü eşleşmede büyük jackpot ödülleri.
 - **/yazitura**: Bahisli hızlı şans oyunu.
 - **Dinamik Oyun Sticker'ları**: Oyun sonlarında oyuncunun cinsiyetine ve sonucuna (zafer, kayıp, jackpot) göre otomatik anime sticker eki iliştirilir!
+
+---
+
+### 4.5. 🏯 Haftalık Oyun Döngüsü: Klan Savaşı, Zanaat, Kara Borsa, Piyango, Baskın & Başarımlar
+
+Bütün oyun komutları tek bir olay merkezinden (`oyunOlayServisi.js`) geçer. Bir balık tuttuğunda veya zindan bitirdiğinde aynı anda günlük görevin ilerler, klanına savaş puanı yazılır, malzeme düşebilir ve rozet sayaçların artar. Kazanılan her şey komut çıktısının altında not olarak görünür.
+
+#### ⚔️ Klan Savaşı (`/klan savas`)
+- Klanlar her hafta (pazartesi 00:00 sıfırlanır) puan için yarışır. Puanlar: balık **1**, zindan zaferi **10**, boss saldırısı **5**, boss'u bitiren vuruş **25**.
+- Ödül havuzu 5.000 Ryo'dan başlar, katılan her klan için 1.000 Ryo büyür (en çok 15.000).
+- Havuzun **%40**'ı kazanan klanın kasasına, kalanı üyelere attıkları puan oranında dağılır (kişi başı en az 50 Ryo).
+- Kazanan klanın üyeleri **🏆 Haftanın Klanı** rozetini alır. Sonuç, baskın kanalı ayarlı sunuculara otomatik duyurulur.
+- Klanlar sunuculardan bağımsız (global) olduğu için ödül Discord rolü değil; Ryo, kasa ve rozettir.
+
+#### 🔨 Zanaat (`/zanaat canta | tarifler | yap | kusan`)
+- Malzemeler oynarken düşer: **⛓️ Demir Cevheri** ve **🌑 Gölge Özü** zindandan, **🐚 Balık Pulu** ve **🪸 Kızıl Mercan** balıktan, **💠 Ruh Taşı** derin katlardan ve boss'tan.
+- Demirci 6 eşya döver: silah yuvası için *🗡️ Çelik Kunai*, *⚔️ Gölge Katana*, *🌌 Ruh Kesen*; tılsım yuvası için *🐚 Pul Muskası*, *🪸 Mercan Tılsımı*, *💠 Ruh Tılsımı*.
+- Kuşanılan eşyalar zindanda hasar, Gölge şansı, can, kaçınma ve Ryo bonusu verir.
+
+#### 🌟 Yoldaş Evrimi (`/yoldas`)
+- Yoldaş **10. seviyeye** ulaşınca evrimleşir, bonus gücü **x1,5** olur ve adı değişir: *🌑 Ay Yiyen Fenrir*, *🔥 Dokuz Kuyruklu Kitsune*, *☀️ Yatagarasu*, *🌊 Ryujin*.
+- Tür değiştirirsen evrim yeni tür için yeniden kazanılır.
+
+#### 🔥 Günlük Seri & Seri Kalkanı (`/gunluk`)
+- Kesintisiz seride **7. gün +500**, **14. gün +1.000**, **30. gün +3.000** Ryo dönüm ödülü; 30'dan sonra her 30 günde bir +3.000.
+- `/gunluk` ekranındaki **🛡️ Seri Kalkanı Al** butonu 1.500 Ryo'dur. Elde en çok 3 kalkan tutulur. Bir gün kaçırırsan kalkan harcanır, seri bozulmaz.
+
+#### 🏮 Kara Borsa (`/karaborsa bak | al | sat`)
+- Pelerinli tüccarın fiyatları **her saat** değişir. 📈 pahalı, 📉 ucuz demektir. Tüccar malı alış fiyatının %60'ına geri alır.
+- Her saat bir **nadir mal** gelir (5 stok, kişi başı saatte 1): *Mühürlü Ruh Taşları*, *Gölge Sandığı*, *Derin Deniz Kesesi*, *Kayıp Demirci Seti*.
+- Bir işlemde en çok 50 adet alınıp satılır.
+
+#### 🎟️ Haftalık Piyango (`/piyango bilet | durum`)
+- Bilet 100 Ryo, kişi başı haftada en çok 50 bilet. Bilet gelirinin %90'ı havuza eklenir; havuz 1.000 Ryo'dan başlar.
+- Çekiliş her **pazartesi 00:00**'da otomatik yapılır. Şansın bilet sayınla orantılıdır. Kazanan DM ile haberdar edilir ve **🎟️ Talihli** rozetini alır.
+
+#### 🛡️ Gölge Baskını (`/baskin bilgi | baslat | otomatik`)
+- Düşman kasabaya dayanınca **5 dakika** içinde **Surları savun** butonuna basan herkes savunucu olur.
+- Düşmanlar: *🥷 Gölge Ninja Çetesi* (1+ savunucu, 1.200 Ryo), *⚔️ Haydut Roninler* (2+, 2.000), *👹 Kızıl Oni Sürüsü* (3+, 3.200), *🌪️ Fırtına Tengu Akını* (4+, 4.500).
+- Yeterli savunucu toplanırsa ganimet eşit bölünür (kişi başı en az 100 Ryo).
+- Yöneticiler `/baskin otomatik acik:true kanal:#kanal` ile otomatik baskınları açar. Sohbet hareketliyken en çok 2 saatte bir baskın çıkar. Bot yeniden başlasa da süren baskın kaldığı yerden biter.
+- Aynı kanal haftalık klan savaşı ve piyango sonuçlarının da duyuru kanalıdır.
+
+#### 🏅 Başarım Rozetleri (`/basarim [uye]`)
+17 rozet var ve her biri Ryo ödülüyle gelir. Kazanılan rozetler `/profil` kartında da görünür.
+
+| Rozet | Koşul | Ödül |
+| :--- | :--- | :--- |
+| 🎣 İlk Av / 🐟 Usta Balıkçı / 🌊 Deniz Efendisi | 1 / 100 / 1.000 balık | 50 / 500 / 2.500 |
+| ⚔️ İlk Zafer / 🏯 Zindan Kurdu | 1 / 50 zindan zaferi | 100 / 1.000 |
+| 🕳️ Dipsiz Kuyu | Zindanda 3. kata in | 750 |
+| 🩸 İlk Kan / 👹 Oni Avcısı | Boss'a ilk saldırı / boss'u bitir | 100 / 500 |
+| 🔥 Sadık Ruh / 🗿 Demir İrade | 7 / 30 günlük seri | 300 / 2.000 |
+| 🔨 Demirci Çırağı / ⚒️ Usta Zanaatkâr | 1 / 10 eşya dövme | 150 / 1.000 |
+| 🌟 Bağ Ustası | Yoldaşını evrimleştir | 500 |
+| 🛡️ Baskın Muhafızı | 5 baskın savunması | 400 |
+| 🎟️ Talihli | Piyangoyu kazan | 500 |
+| 🕯️ Karanlık Tüccar | 10 kara borsa işlemi | 300 |
+| 🏆 Haftanın Klanı | Klan savaşını kazan | 1.000 |
+
+---
+
+### 4.6. ⌨️ Kısa Komutlar & Düz Cümle Komutları
+
+Slash yazmadan sohbetten oynanır. `k` önekiyle yazılan kısa komutlar onaysız çalışır; yanlış yazarsan Kage "bunu mu demek istedin?" diye sorar. Türkçe adlar asıldır, İngilizce adlar yedek olarak çalışır.
+
+| Kısa komut | Diğer adlar | Ne yapar |
+| :--- | :--- | :--- |
+| `k yt 100 t` | `yazitura`, `cf` | Yazı tura |
+| `k slot 100` | `s` | Slot |
+| `k bj 100` | `blackjack` | Blackjack |
+| `k g` | `gunluk`, `d` | Günlük ödül |
+| `k b` | `balik`, `olta`, `h` | Balık tut |
+| `k z` | `zindan`, `sefer` | Zindan seferi |
+| `k boss` / `k kule` / `k dojo` | `bs`, `tower`, `train` | Boss, kule, dojo |
+| `k demirci` | `forge` | Katana bileme |
+| `k fal` | `kehanet`, `pray` | Günlük kehanet |
+| `k gorev` | `q`, `quest` | Günlük görevler |
+| `k para` | `bakiye`, `cuzdan`, `bal` | Bakiye |
+| `k ver @üye 500` | `ode`, `give` | Ryo gönder |
+| `k duello @üye 100` | `vs`, `duel` | Düello |
+| `k p` / `k canta` / `k seviye` | `profil`, `envanter`, `xp` | Profil, envanter, seviye |
+| `k sira` / `k market` | `zenginler`, `top`, `dukkan`, `shop` | Zenginler, market |
+| `k besle` / `k yoldas` | `feed`, `pet` | Yoldaş |
+| `k klan` / `k klan savas` | `clan` | Klan, klan savaşı |
+| `k zanaat` / `k zanaat tarif` | `zn`, `craft` | Zanaat çantası, tarifler |
+| `k kb` / `k kb al demir 10` / `k kb sat pul 5` | `karaborsa`, `borsa` | Kara borsa |
+| `k piyango 5` | `bilet`, `lottery` | Piyango bileti (sayı yoksa durum) |
+| `k rozet` | `basarim`, `ach` | Başarımlar |
+| `k baskin` | `raid` | Gölge baskını bilgisi |
+| `k m naruto` / `k rm` | `manga` | Manga ara, rastgele manga |
+| `k dg` | `dogumgunu` | Yaklaşan doğum günleri |
+| `k yardim` | `help` | Kısa komut listesi |
+
+"kage yoldaşımı besle", "kage klan savaşına bak", "kage kara borsadan 10 demir al" gibi düz cümleler de anlaşılır. Bu cümlelerde Kage önce **Onayla / Vazgeç** butonu gösterir, onaylanınca slash komutunu çalıştırır. Bu katman yapay zekâ çağırmaz, büyük sunucularda API kotası harcamaz.
 
 ---
 
@@ -161,7 +256,7 @@ Sunucunuza tek tıkla (`/sticker-yukle`) yüklenebilen ve doğrudan sohbete gön
 
 ---
 
-## 📜 Tüm 69 Adet Eğik Çizgi (Slash) Komutu
+## 📜 Tüm 76 Adet Eğik Çizgi (Slash) Komutu
 
 | Komut | Kategori | Yetki | Açıklama |
 | :--- | :--- | :--- | :--- |
@@ -201,7 +296,7 @@ Sunucunuza tek tıkla (`/sticker-yukle`) yüklenebilen ve doğrudan sohbete gön
 | `/demirci` | RPG / Ekonomi | `Herkes` | Katanayı 7 kademeye kadar biler ve güçlendirir. |
 | `/zindan` | RPG / Macera | `Herkes` | Canavarlarla dolu tehlikeli zindanlara iner. |
 | `/yoldas` | RPG / Yoldaş | `Herkes` | Zindanlarda kritik, Ryo veya kalkan veren gölge petini yönetir. |
-| `/klan` | RPG / Lonca | `Herkes` | Samuray klanı kurar, üye toplar, kasaya bağış yapar. |
+| `/klan` | RPG / Lonca | `Herkes` | Samuray klanı kurar, üye toplar, kasaya bağış yapar, haftalık klan savaşını (`savas`) gösterir. |
 | `/kehanet` | RPG / Fal | `Herkes` | Günlük samuray şansı, elementi, bilge sözü ve kader bahşişi verir. |
 | `/dojo` | RPG / Macera | `Herkes` | Antrenman yaparak seviye ve güç kazanır. |
 | `/boss` | RPG / Macera | `Herkes` | Ortak sunucu dünya boss'u akınına katılır. |
@@ -214,6 +309,12 @@ Sunucunuza tek tıkla (`/sticker-yukle`) yüklenebilen ve doğrudan sohbete gön
 | `/gunluk` | RPG / Ekonomi | `Herkes` | 24 saatte bir günlük Ryo ve XP ödülü toplar. |
 | `/gorev` | RPG / Görev | `Herkes` | Günlük 3 dinamik samuray görevini ve tamamlama bonusunu listeler. |
 | `/liderlik` | RPG / Ekonomi | `Herkes` | En zengin ve en güçlü savaşçıları sıralar. |
+| `/zanaat` | RPG / Zanaat | `Herkes` | Malzemeleri gösterir, tarifleri listeler, eşya döver ve kuşanır. |
+| `/karaborsa` | RPG / Ekonomi | `Herkes` | Saatlik değişen fiyatlarla malzeme alıp satar, nadir malı kapar. |
+| `/piyango` | RPG / Şans | `Herkes` | Haftalık piyango bileti alır, havuzu ve şansını gösterir. |
+| `/baskin` | RPG / Etkinlik | `Herkes` / `Sunucuyu Yönet` | Gölge baskını bilgisi; yöneticiler baskın başlatır ve otomatik baskını ayarlar. |
+| `/basarim` | RPG / Rozet | `Herkes` | Kazanılan ve kilitli başarım rozetlerini ilerlemeyle gösterir. |
+| `/ryo` | RPG / Ekonomi | `Sahip` / `Yönetici` | Üyeye Ryo yükler (`ver`), geri alır (`al`), cüzdanına bakar (`bak`). |
 | `/ekonomi-log` | RPG / Ekonomi | `Yönetici` | Sunucudaki Ryo transferlerinin geçmişini belgeler. |
 | `/blackjack` | Kumarhane | `Herkes` | Krupiyeye karşı 21 oynar (ASCII kart çizimli). |
 | `/slot` | Kumarhane | `Herkes` | 3 çarklı şans makinesini çevirir. |
@@ -226,6 +327,7 @@ Sunucunuza tek tıkla (`/sticker-yukle`) yüklenebilen ve doğrudan sohbete gön
 | `/yeniden-kayit` | Kayıt | `Üyeleri Yönet` | Üyenin kaydını sıfırlayarak panele yönlendirir. |
 | `/ticket` | Destek | `Yönetici` | Butonlu profesyonel destek paneli oluşturur. |
 | `/cekilis` | Etkinlik | `Sunucuyu Yönet` | Süreli ve katılımcı butonlu çekiliş başlatır. |
+| `/dogum-gunu` | Topluluk | `Herkes` | Doğum gününü kaydeder; Kage o gün kutlar. |
 | `/hatirlatici` | Yardımcı | `Herkes` | Zaman ayarlı hatırlatıcı kurar. |
 | `/seviye` | Seviye | `Herkes` | Yazı ve ses aktivitesine göre seviye kartı sunar. |
 | `/manga` | Kage Platform | `Herkes` | kage95.com üzerinden canlı manga arar. |
@@ -278,14 +380,14 @@ graph TD
 │   └── kage-tam-sigan-afis.png
 ├── data/                         # Kalıcı JSON Depoları (.gitignore korumalı)
 ├── src/
-│   ├── commands/                 # 69 Adet Eğik Çizgi (Slash) Komutu
+│   ├── commands/                 # 76 Adet Eğik Çizgi (Slash) Komutu
 │   │   ├── model.js, golge-goz.js, hafizam.js, ozet.js, ai-durum.js, ai.js, ciz.js, egit.js, hafiza.js, ton.js
 │   │   ├── sunucuKur.js, sunucuSifirla.js, ayarlar.js, karsilama.js
 │   │   ├── ban.js, unban.js, kick.js, timeout.js, untimeout.js, sil.js, kilit.js, uyari.js, rol.js
 │   │   ├── otomod.js, ticket.js, cekilis.js, hatirlatici.js, seviye.js
 │   │   ├── duello.js, demirci.js, zindan.js, dojo.js, boss.js, kule.js, balik.js, gorev.js
-│   │   ├── klan.js, yoldas.js, kehanet.js
-│   │   ├── market.js, envanter.js, bakiye.js, ode.js, gunluk.js, liderlik.js, ekonomiLog.js
+│   │   ├── klan.js, yoldas.js, kehanet.js, zanaat.js, karaborsa.js, piyango.js, baskin.js, basarim.js
+│   │   ├── market.js, envanter.js, bakiye.js, ode.js, gunluk.js, liderlik.js, ekonomiLog.js, ryo.js
 │   │   ├── blackjack.js, slot.js, yazitura.js
 │   │   ├── sticker.js, sticker-yukle.js
 │   │   ├── kayitPaneli.js, kayit.js, kayitOtomasyonu.js, yenidenKayit.js
@@ -299,7 +401,7 @@ graph TD
 │   │   ├── guildMemberAdd.js     # Karşılama, oto-rol ve kayıt karşılama
 │   │   ├── guildMemberRemove.js  # Ayrılan üye audit takibi
 │   │   └── guildCreate.js        # Yeni sunucuya katılım kurulumu
-│   ├── services/                 # 33 Adet Bağımsız Modüler Servis Motoru
+│   ├── services/                 # 45 Adet Bağımsız Modüler Servis Motoru
 │   │   ├── golgeGozServisi.js    # Kage-95 Gölge Gözü otonom gözetim & mikro-tamponlu toplu analiz
 │   │   ├── aiRouterServisi.js    # Akıllı Çoklu Model Yönlendiricisi & Fallback (Gemini, Groq, OpenRouter, Pollinations)
 │   │   ├── aiErisimServisi.js    # Sunucu bazlı AI rol yetkilendirme & anti-abuse hız sınırlayıcı
@@ -309,6 +411,15 @@ graph TD
 │   │   ├── duyguServisi.js       # Kişilik & ton adaptasyon motoru
 │   │   ├── ekonomiServisi.js     # Ryo, Demirci seviyeleri ve Market motoru
 │   │   ├── klanServisi.js        # Samuray klanı & lonca yönetim motoru
+│   │   ├── oyunOlayServisi.js    # Tek olay kancası: görev, rozet, klan puanı, malzeme düşürme
+│   │   ├── klanSavasServisi.js   # Haftalık klan savaşı puanı ve ödül dağıtımı
+│   │   ├── zanaatServisi.js      # Malzeme, tarif, dövme ve kuşanma
+│   │   ├── karaBorsaServisi.js   # Saatlik fiyatlar ve nadir mal stoğu
+│   │   ├── piyangoServisi.js     # Haftalık bilet ve çekiliş
+│   │   ├── baskinServisi.js      # Gölge baskını ilanı, katılım ve ganimet
+│   │   ├── basarimServisi.js     # Rozet sayaçları ve ödülleri
+│   │   ├── etkinlikServisi.js    # Haftalık sonuç zamanlayıcısı ve duyurular
+│   │   ├── komutNiyetServisi.js  # Kısa komutlar ve düz cümle komutları
 │   │   ├── yoldasServisi.js      # Gölge yoldaşı & zindan pet motoru
 │   │   ├── zindanServisi.js      # RPG Zindan dövüş mantığı
 │   │   ├── dojoServisi.js        # Karakter antrenman motoru

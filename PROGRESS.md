@@ -154,8 +154,22 @@ Hedefler: docs/PROJE_HEDEFLERI.md. Kullanıcı istemeden commit atılmaz.
   - Asıl adlar Türkçe: `k yt 100 t`, `k slot`, `k g` (günlük), `k b` (balık), `k para`, `k ver @üye 500`, `k duello`, `k canta`, `k sira`, `k market`, `k besle`, `k gorev`, `k demirci`, `k yardim`.
   - Eski OwO adları (`cf`, `s`, `d`, `h`, `give`, `inv`, `top`, `shop`, `help` vb.) yedek olarak çalışmaya devam eder. Yeni yedekler: `cuzdan`, `dukkan`, `zenginler`, `dogumgunu`.
 
+55. **Haftalık oyun döngüsü: 8 yeni sistem (2026-10-27):**
+  - `oyunOlayServisi`: balık, zindan, boss, baskın, zanaat, kara borsa olayları tek yerden görev, rozet, klan puanı ve malzeme düşürmeye gider.
+  - Klan savaşı (`klanSavasServisi`, `/klan savas`): haftalık puan, havuzun %40'ı kasaya, kalanı üyelere. Klanlar global olduğu için ödül rol değil, Ryo ve rozet.
+  - Zanaat (`/zanaat`): 5 malzeme, 6 tarif, silah ve tılsım yuvası, zindan bonusu.
+  - Yoldaş evrimi: seviye 10'da x1.5 bonus ve yeni ad.
+  - Günlük seri: 7/14/30 dönüm ödülü, 1500 Ryo seri kalkanı (en çok 3).
+  - Kara borsa (`/karaborsa`): saatlik fiyat, saatlik nadir mal.
+  - Piyango (`/piyango`): 100 Ryo bilet, pazartesi otomatik çekiliş.
+  - Gölge baskını (`/baskin`): 5 dakikalık buton savunması, otomatik baskın, yeniden başlatmada sürdürme.
+  - Başarımlar (`/basarim`): 17 rozet, Ryo ödüllü, profilde görünür.
+  - `etkinlikServisi`: saatlik kontrol, haftalık sonuçları baskın kanalına duyurur.
+  - Kısa komutlar ve niyetler: `k zanaat`, `k kb`, `k piyango`, `k rozet`, `k baskin`, `k klan savas`.
+  - README ayrıntılı güncellendi (yeni sistemler, kısa komut tablosu, 76 komut).
+
 ## Sürüyor
 
-- Kullanıcı isteği: indie oyunlar. Sıra: /balik, /boss, /kule, /zindan yükseltmesi hepsi tamam. Sonraki fikirler (başlanmadı): evcil hayvan, zanaat, klan savaşı.
+- Yok.
 
 ## Bekliyor

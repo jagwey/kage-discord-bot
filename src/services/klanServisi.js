@@ -121,3 +121,15 @@ export function klanLiderlikSiralamasi() {
   const klanlar = tumKlanlariGetir();
   return Object.values(klanlar).sort((a, b) => b.seviye !== a.seviye ? b.seviye - a.seviye : b.kasa - a.kasa);
 }
+
+/** Haftalık klan savaşı kazananını işler: kasaya pay ekler ve şampiyonluk kaydını tutar. */
+export function klanSampiyonIsle(klanId, kasaPayi, hafta) {
+  const klanlar = tumKlanlariGetir();
+  const klan = klanlar[klanId];
+  if (!klan) return null;
+  klan.kasa = (klan.kasa || 0) + kasaPayi;
+  klan.sampiyonluk = (klan.sampiyonluk || 0) + 1;
+  klan.sonSampiyonHafta = hafta;
+  depo.yaz(klanlar);
+  return klan;
+}
