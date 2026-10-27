@@ -1,8 +1,8 @@
-import { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, MessageFlags } from 'discord.js';
+import { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { KILIC_SEVIYELERI, kilicGelistir, bakiyeGetir } from '../services/ekonomiServisi.js';
 
-const SURE_MS = 120_000;
+export const butonOnek = 'kage_demirci:';
 
 export const data = new SlashCommandBuilder()
   .setName('demirci')
@@ -12,7 +12,7 @@ function seviyeCubugu(seviye) {
   return KILIC_SEVIYELERI.map(k => (k.seviye <= seviye ? '🟥' : '⬛')).join('');
 }
 
-function ocakEkrani(userId, { not = null, kapali = false } = {}) {
+function ocakEkrani(userId, { not = null } = {}) {
   const bakiye = bakiyeGetir(userId);
   const mevcut = bakiye.kilic;
   const sonraki = KILIC_SEVIYELERI.find(k => k.seviye === mevcut.seviye + 1);
@@ -36,15 +36,15 @@ function ocakEkrani(userId, { not = null, kapali = false } = {}) {
     baslik: '⛩️🔨 KAGE DEMİRCİ OCAĞI',
     renk: sonraki ? TEMA.RENKLER.KAN_KIRMIZISI : TEMA.RENKLER.ALTIN,
     aciklama,
-    altMetin: kapali ? 'Ocak soğudu. Tekrar dövmek için /demirci yaz.' : 'Kılıcın düello ve zindanlarda zafer şansını artırır.'
+    altMetin: 'Kılıcın düello ve zindanlarda zafer şansını artırır.'
   });
 
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
-      .setCustomId('kilic_dov_btn')
+      .setCustomId(`${butonOnek}dov:${userId}`)
       .setLabel(sonraki ? `Kılıcı Döv (${sonraki.maliyet} Ryo)` : 'En Yüksek Seviye')
       .setStyle(sonraki && yeter ? ButtonStyle.Danger : ButtonStyle.Secondary)
-      .setDisabled(kapali || !yeter)
+      .setDisabled(!yeter)
       .setEmoji('🔨')
   );
 
@@ -52,32 +52,17 @@ function ocakEkrani(userId, { not = null, kapali = false } = {}) {
 }
 
 export async function execute(interaction) {
-  const userId = interaction.user.id;
-  const yanit = await interaction.reply({ ...ocakEkrani(userId), withResponse: true });
-  const mesaj = yanit.resource?.message ?? yanit;
-  if (!mesaj?.createMessageComponentCollector) return;
+  return interaction.reply(ocakEkrani(interaction.user.id));
+}
 
-  const collector = mesaj.createMessageComponentCollector({ componentType: ComponentType.Button, time: SURE_MS });
-
-  collector.on('collect', async i => {
-    try {
-      if (i.user.id !== userId) {
-        return await i.reply({ content: 'Bu demirci ocağı sadece komutu yazan samuraya aittir.', flags: MessageFlags.Ephemeral });
-      }
-      const sonuc = kilicGelistir(userId);
-      if (!sonuc.basarili) {
-        return await i.reply({ content: `❌ ${sonuc.mesaj}`, flags: MessageFlags.Ephemeral });
-      }
-      collector.resetTimer();
-      await i.update(ocakEkrani(userId, {
-        not: `🔥 **ÖRSTEN KIVILCIMLAR SAÇILDI!** Katanan **${sonuc.yeniKilic.ad}** oldu. Yeni bonus \`+%${sonuc.yeniKilic.bonus}\`.`
-      }));
-    } catch (err) {
-      console.error('[Demirci] buton hatası:', err.message);
-    }
-  });
-
-  collector.on('end', () => {
-    mesaj.edit(ocakEkrani(userId, { kapali: true })).catch(() => null);
-  });
+export async function buton(interaction) {
+  const [, sahip] = interaction.customId.slice(butonOnek.length).split(':');
+  if (sahip !== interaction.user.id) {
+    return interaction.reply({ content: 'Bu demirci ocağı sadece komutu yazan samuraya aittir. Kendin için `/demirci` yaz.', flags: MessageFlags.Ephemeral });
+  }
+  const sonuc = kilicGelistir(sahip);
+  const not = sonuc.basarili
+    ? `🔥 **ÖRSTEN KIVILCIMLAR SAÇILDI!** Katanan **${sonuc.yeniKilic.ad}** oldu. Yeni bonus \`+%${sonuc.yeniKilic.bonus}\`.`
+    : `❌ ${sonuc.mesaj}`;
+  return interaction.update(ocakEkrani(sahip, { not }));
 }

@@ -3,7 +3,7 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  ComponentType, MessageFlags } from 'discord.js';
+  MessageFlags } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { bakiyeGetir, ryoEkle, ryoDus, MAKS_BAHIS } from '../services/ekonomiServisi.js';
 import { bekle, ryoYaz, oyunStickerEkini } from '../config/oyunGorsel.js';
@@ -70,11 +70,96 @@ const cerceve = (m1, m2, m3) =>
   '╚═══════════════════╝\n' +
   '```';
 
-const tekrarButonu = (kapali = false, etiket = 'Tekrar Çevir') =>
+export const butonOnek = 'kage_slot:';
+const mesgul = new Set();
+
+const tekrarButonu = (userId, bahis, kapali = false) =>
   new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('slot_tekrar').setLabel(etiket).setEmoji('🎰')
-      .setStyle(ButtonStyle.Success).setDisabled(kapali)
+    new ButtonBuilder().setCustomId(`${butonOnek}tekrar:${userId}:${bahis}`).setLabel(`Tekrar Çevir (${bahis})`).setEmoji('🎰')
+      .setStyle(ButtonStyle.Success).setDisabled(kapali),
+    new ButtonBuilder().setCustomId(`${butonOnek}tekrar:${userId}:${bahis * 2}`).setLabel(`2× Bahis (${bahis * 2})`).setEmoji('🔥')
+      .setStyle(ButtonStyle.Danger).setDisabled(kapali || bahis * 2 > MAKS_BAHIS)
   );
+
+/** Bir turu oynatır: makaralar sırayla durur, sonuç yazılır. Bahis önceden düşülmüş olmalı. */
+async function turuOyna(interaction, bahis, duzenle) {
+  const userId = interaction.user.id;
+  const a = sembolSec(), b = sembolSec(), c = sembolSec();
+  const baslik = '🎰 KAGE ŞANS MAKİNESİ';
+  const aralar = [
+    [DONME, DONME, DONME, 'Makaralar dönüyor…'],
+    [a.emoji, DONME, DONME, 'İlk makara durdu…'],
+    [a.emoji, b.emoji, DONME, 'İkinci makara durdu… nefesini tut!']
+  ];
+  for (const [x, y, z, not] of aralar) {
+    await duzenle({
+      embeds: [kageEmbed({
+        baslik, renk: TEMA.RENKLER.GOLGE_KIRMIZISI,
+        aciklama: `${cerceve(x, y, z)}\n${not}`,
+        altMetin: `Bahis: ${ryoYaz(bahis)}`
+      })],
+      components: [tekrarButonu(userId, bahis, true)]
+    });
+    await bekle(900);
+  }
+
+  const sonuc = slotSonucu(a, b, c);
+  const odeme = Math.floor(bahis * sonuc.carpan);
+  if (odeme > 0) ryoEkle(userId, odeme, 'slot ödeme');
+  const net = odeme - bahis;
+  const bakiye = bakiyeGetir(userId).ryo;
+
+  let baslikSon, renk, durum, duyguSonuc;
+  if (sonuc.tur === 'uclu') {
+    const buyuk = sonuc.sembol.uclu >= 12;
+    baslikSon = buyuk ? '👑 BÜYÜK İKRAMİYE!' : '🎉 ÜÇLÜ HİZA!';
+    renk = buyuk ? TEMA.RENKLER.ALTIN : TEMA.RENKLER.BASARI;
+    durum = `${sonuc.sembol.emoji} ×3 • **${sonuc.sembol.uclu}×** çarpan\n**+${ryoYaz(net)}** net kazanç`;
+    duyguSonuc = 'para';
+  } else if (sonuc.tur === 'cift') {
+    baslikSon = net > 0 ? '✨ ÇİFT EŞLEŞME' : '🤝 BAHİS İADE';
+    renk = net > 0 ? TEMA.RENKLER.BASARI : TEMA.RENKLER.BILGI;
+    durum = net > 0
+      ? `${sonuc.sembol.emoji} ×2 • **${sonuc.carpan}×** çarpan\n**+${ryoYaz(net)}** net kazanç`
+      : `${sonuc.sembol.emoji} ×2 • bahsin geri döndü.`;
+    duyguSonuc = net > 0 ? 'zafer' : 'cay';
+  } else {
+    baslikSon = '💀 KAYBETTİN';
+    renk = TEMA.RENKLER.HATA;
+    durum = `Hizalama yok. **-${ryoYaz(bahis)}**`;
+    duyguSonuc = 'aglama';
+  }
+
+  const tekrarMumkun = bakiye >= bahis;
+  const { files, attachmentUrl } = oyunStickerEkini(interaction.user, interaction.member, duyguSonuc);
+  const sonucEmbed = kageEmbed({
+    baslik: baslikSon,
+    renk,
+    aciklama: `${cerceve(a.emoji, b.emoji, c.emoji)}\n${durum}\n🪙 Bakiye: **${ryoYaz(bakiye)}**`,
+    altMetin: tekrarMumkun ? `Bahis: ${ryoYaz(bahis)} • Tekrar çevirmek için butona bas` : 'Bakiyen bir sonraki tur için yetersiz'
+  });
+  if (attachmentUrl) sonucEmbed.setThumbnail(attachmentUrl);
+
+  await duzenle({
+    embeds: [sonucEmbed],
+    files,
+    attachments: [],
+    components: tekrarMumkun ? [tekrarButonu(userId, bahis)] : []
+  });
+}
+
+async function oyna(interaction, bahis, duzenle) {
+  const userId = interaction.user.id;
+  if (mesgul.has(userId)) return;
+  mesgul.add(userId);
+  try {
+    await turuOyna(interaction, bahis, duzenle);
+  } catch (err) {
+    console.error('[Slot] Tur hatası:', err.message);
+  } finally {
+    mesgul.delete(userId);
+  }
+}
 
 export async function execute(interaction) {
   const userId = interaction.user.id;
@@ -91,120 +176,30 @@ export async function execute(interaction) {
     return interaction.reply({ content: '❌ Bahis düşülemedi, bakiye değişmiş olabilir.', flags: MessageFlags.Ephemeral });
   }
 
-  const mesaj = await interaction.reply({
+  const yanit = await interaction.reply({
     embeds: [kageEmbed({
       baslik: '🎰 KAGE ŞANS MAKİNESİ',
       renk: TEMA.RENKLER.GOLGE_KIRMIZISI,
-      aciklama: `${cerceve(DONME, DONME, DONME)}\nMakaralar dönüyor…`,
+      aciklama: `${cerceve(DONME, DONME, DONME)}
+Makaralar dönüyor…`,
       altMetin: `Bahis: ${ryoYaz(bahis)}`
     })],
-    fetchReply: true
+    withResponse: true
   });
+  const mesaj = yanit.resource?.message ?? yanit;
+  await oyna(interaction, bahis, p => mesaj.edit(p));
+}
 
-  let mesgul = false;
-
-  /** Bir turu oynatır: makaralar sırayla durur, sonuç yazılır. Bahis önceden düşülmüş olmalı. */
-  async function turuOyna(duzenle) {
-    const a = sembolSec(), b = sembolSec(), c = sembolSec();
-    const baslik = '🎰 KAGE ŞANS MAKİNESİ';
-    const aralar = [
-      [DONME, DONME, DONME, 'Makaralar dönüyor…'],
-      [a.emoji, DONME, DONME, 'İlk makara durdu…'],
-      [a.emoji, b.emoji, DONME, 'İkinci makara durdu… nefesini tut!']
-    ];
-    for (const [x, y, z, not] of aralar) {
-      await duzenle({
-        embeds: [kageEmbed({
-          baslik, renk: TEMA.RENKLER.GOLGE_KIRMIZISI,
-          aciklama: `${cerceve(x, y, z)}\n${not}`,
-          altMetin: `Bahis: ${ryoYaz(bahis)}`
-        })],
-        components: [tekrarButonu(true)]
-      });
-      await bekle(900);
-    }
-
-    const sonuc = slotSonucu(a, b, c);
-    const odeme = Math.floor(bahis * sonuc.carpan);
-    if (odeme > 0) ryoEkle(userId, odeme, 'slot ödeme');
-    const net = odeme - bahis;
-    const bakiye = bakiyeGetir(userId).ryo;
-
-    let baslikSon, renk, durum, duyguSonuc;
-    if (sonuc.tur === 'uclu') {
-      const buyuk = sonuc.sembol.uclu >= 12;
-      baslikSon = buyuk ? '👑 BÜYÜK İKRAMİYE!' : '🎉 ÜÇLÜ HİZA!';
-      renk = buyuk ? TEMA.RENKLER.ALTIN : TEMA.RENKLER.BASARI;
-      durum = `${sonuc.sembol.emoji} ×3 • **${sonuc.sembol.uclu}×** çarpan\n**+${ryoYaz(net)}** net kazanç`;
-      duyguSonuc = 'para';
-    } else if (sonuc.tur === 'cift') {
-      baslikSon = net > 0 ? '✨ ÇİFT EŞLEŞME' : '🤝 BAHİS İADE';
-      renk = net > 0 ? TEMA.RENKLER.BASARI : TEMA.RENKLER.BILGI;
-      durum = net > 0
-        ? `${sonuc.sembol.emoji} ×2 • **${sonuc.carpan}×** çarpan\n**+${ryoYaz(net)}** net kazanç`
-        : `${sonuc.sembol.emoji} ×2 • bahsin geri döndü.`;
-      duyguSonuc = net > 0 ? 'zafer' : 'cay';
-    } else {
-      baslikSon = '💀 KAYBETTİN';
-      renk = TEMA.RENKLER.HATA;
-      durum = `Hizalama yok. **-${ryoYaz(bahis)}**`;
-      duyguSonuc = 'aglama';
-    }
-
-    const { files, attachmentUrl } = oyunStickerEkini(interaction.user, interaction.member, duyguSonuc);
-    const sonucEmbed = kageEmbed({
-      baslik: baslikSon,
-      renk,
-      aciklama: `${cerceve(a.emoji, b.emoji, c.emoji)}\n${durum}\n🪙 Bakiye: **${ryoYaz(bakiye)}**`,
-      altMetin: tekrarMumkun ? `Bahis: ${ryoYaz(bahis)} • 45 sn içinde tekrar çevirebilirsin` : 'Bakiyen bir sonraki tur için yetersiz'
-    });
-    if (attachmentUrl) sonucEmbed.setThumbnail(attachmentUrl);
-
-    const tekrarMumkun = bakiye >= bahis;
-    await duzenle({
-      embeds: [sonucEmbed],
-      files,
-      components: tekrarMumkun ? [tekrarButonu(false)] : []
-    });
+export async function buton(interaction) {
+  const [, sahip, bahisMetni] = interaction.customId.slice(butonOnek.length).split(':');
+  if (sahip !== interaction.user.id) {
+    return interaction.reply({ content: '⛔ Bu makine senin değil. Kendi `/slot` oyununu başlat.', flags: MessageFlags.Ephemeral });
   }
-
-  const collector = mesaj.createMessageComponentCollector({
-    componentType: ComponentType.Button,
-    filter: i => i.customId === 'slot_tekrar',
-    time: 45000
-  });
-
-  collector.on('collect', async bi => {
-    if (bi.user.id !== userId) {
-      return bi.reply({ content: '⛔ Bu makine senin değil. Kendi `/slot` oyununu başlat.', flags: MessageFlags.Ephemeral }).catch(() => null);
-    }
-    await bi.deferUpdate().catch(() => null);
-    if (mesgul) return;
-    mesgul = true;
-    try {
-      if (!ryoDus(userId, bahis, 'slot bahis')) {
-        await mesaj.edit({ components: [] }).catch(() => null);
-        return collector.stop('bakiye');
-      }
-      await turuOyna(p => mesaj.edit(p));
-      collector.resetTimer();
-    } catch (err) {
-      console.error('[Slot] Tur hatası:', err.message);
-    } finally {
-      mesgul = false;
-    }
-  });
-
-  collector.on('end', () => {
-    if (!mesgul) mesaj.edit({ components: [] }).catch(() => null);
-  });
-
-  mesgul = true;
-  try {
-    await turuOyna(p => mesaj.edit(p));
-  } catch (err) {
-    console.error('[Slot] Tur hatası:', err.message);
-  } finally {
-    mesgul = false;
+  const bahis = Math.min(MAKS_BAHIS, Math.max(10, Number(bahisMetni) || 10));
+  if (mesgul.has(sahip)) return interaction.deferUpdate();
+  if (!ryoDus(sahip, bahis, 'slot bahis')) {
+    return interaction.reply({ content: `❌ Yetersiz bakiye. Bu tur için **${ryoYaz(bahis)}** gerekir.`, flags: MessageFlags.Ephemeral });
   }
+  await interaction.deferUpdate();
+  await oyna(interaction, bahis, p => interaction.message.edit(p));
 }

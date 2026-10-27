@@ -3,7 +3,7 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  ComponentType, MessageFlags } from 'discord.js';
+  MessageFlags } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { bakiyeGetir, ryoEkle, ryoDus, MAKS_BAHIS } from '../services/ekonomiServisi.js';
 import { bekle, ryoYaz } from '../config/oyunGorsel.js';
@@ -28,14 +28,65 @@ export const data = new SlashCommandBuilder()
       )
   );
 
+export const butonOnek = 'kage_yt:';
 const ETIKET = { yazi: '🌸 Yazı', tura: '🐉 Tura' };
 const KARE = ['🪙', '⚪', '🪙', '⚫'];
+const mesgul = new Set();
 
-const tekrarButonu = (kapali = false) =>
+const butonlar = (userId, bahis, kapali = false) =>
   new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('yt_tekrar').setLabel('Tekrar At').setEmoji('🪙')
-      .setStyle(ButtonStyle.Success).setDisabled(kapali)
+    new ButtonBuilder().setCustomId(`${butonOnek}at:${userId}:${bahis}:yazi`).setLabel(`Yazı (${bahis})`).setEmoji('🌸')
+      .setStyle(ButtonStyle.Primary).setDisabled(kapali),
+    new ButtonBuilder().setCustomId(`${butonOnek}at:${userId}:${bahis}:tura`).setLabel(`Tura (${bahis})`).setEmoji('🐉')
+      .setStyle(ButtonStyle.Danger).setDisabled(kapali),
+    new ButtonBuilder().setCustomId(`${butonOnek}at:${userId}:${bahis * 2}:${Math.random() < 0.5 ? 'yazi' : 'tura'}`).setLabel(`Rastgele 2× (${bahis * 2})`).setEmoji('🎲')
+      .setStyle(ButtonStyle.Secondary).setDisabled(kapali || bahis * 2 > MAKS_BAHIS)
   );
+
+const ekran = (baslik, renk, aciklama, altMetin) => ({ embeds: [kageEmbed({ baslik, renk, aciklama, altMetin })] });
+
+/** Bir atış yapar. Bahis önceden düşülmüş olmalı. */
+async function at(userId, bahis, secim, duzenle) {
+  for (let i = 1; i < KARE.length; i++) {
+    await duzenle({
+      ...ekran('🪙 GÖLGE MADENİ PARASI', TEMA.RENKLER.GOLGE_KIRMIZISI,
+        `Tahminin: **${ETIKET[secim]}**
+
+${KARE[i]} Para havada${'.'.repeat(i)}`, `Bahis: ${ryoYaz(bahis)}`),
+      components: [butonlar(userId, bahis, true)]
+    });
+    await bekle(600);
+  }
+
+  const sonuc = Math.random() < 0.5 ? 'yazi' : 'tura';
+  const kazandi = sonuc === secim;
+  if (kazandi) ryoEkle(userId, bahis * 2, 'yazıtura ödeme');
+  const bakiye = bakiyeGetir(userId).ryo;
+
+  await duzenle({
+    ...ekran(kazandi ? '🏆 DOĞRU TAHMİN!' : '💀 YANLIŞ TAHMİN', kazandi ? TEMA.RENKLER.BASARI : TEMA.RENKLER.HATA,
+      `Tahminin: **${ETIKET[secim]}** • Gelen: **${ETIKET[sonuc]}**
+
+` +
+      (kazandi ? `**+${ryoYaz(bahis)}** kazandın!` : `**-${ryoYaz(bahis)}** kaybettin.`) +
+      `
+🪙 Bakiye: **${ryoYaz(bakiye)}**`,
+      bakiye >= bahis ? 'Yeni tahminini butonla seç' : 'Bakiyen bir sonraki atış için yetersiz'),
+    components: bakiye >= bahis ? [butonlar(userId, bahis)] : []
+  });
+}
+
+async function oyna(userId, bahis, secim, duzenle) {
+  if (mesgul.has(userId)) return;
+  mesgul.add(userId);
+  try {
+    await at(userId, bahis, secim, duzenle);
+  } catch (err) {
+    console.error('[YaziTura] Atış hatası:', err.message);
+  } finally {
+    mesgul.delete(userId);
+  }
+}
 
 export async function execute(interaction) {
   const userId = interaction.user.id;
@@ -53,90 +104,27 @@ export async function execute(interaction) {
     return interaction.reply({ content: '❌ Bahis düşülemedi, bakiye değişmiş olabilir.', flags: MessageFlags.Ephemeral });
   }
 
-  const mesaj = await interaction.reply({
-    embeds: [kageEmbed({
-      baslik: '🪙 GÖLGE MADENİ PARASI',
-      renk: TEMA.RENKLER.GOLGE_KIRMIZISI,
-      aciklama: `Tahminin: **${ETIKET[secim]}**\n\n${KARE[0]} Para havada…`,
-      altMetin: `Bahis: ${ryoYaz(bahis)}`
-    })],
-    fetchReply: true
+  const yanit = await interaction.reply({
+    ...ekran('🪙 GÖLGE MADENİ PARASI', TEMA.RENKLER.GOLGE_KIRMIZISI,
+      `Tahminin: **${ETIKET[secim]}**
+
+${KARE[0]} Para havada…`, `Bahis: ${ryoYaz(bahis)}`),
+    withResponse: true
   });
+  const mesaj = yanit.resource?.message ?? yanit;
+  await oyna(userId, bahis, secim, p => mesaj.edit(p));
+}
 
-  let mesgul = false;
-
-  /** Bir atış yapar. Bahis önceden düşülmüş olmalı. */
-  async function at(duzenle) {
-    for (let i = 1; i < KARE.length; i++) {
-      await duzenle({
-        embeds: [kageEmbed({
-          baslik: '🪙 GÖLGE MADENİ PARASI',
-          renk: TEMA.RENKLER.GOLGE_KIRMIZISI,
-          aciklama: `Tahminin: **${ETIKET[secim]}**\n\n${KARE[i]} Para havada${'.'.repeat(i)}`,
-          altMetin: `Bahis: ${ryoYaz(bahis)}`
-        })],
-        components: [tekrarButonu(true)]
-      });
-      await bekle(600);
-    }
-
-    const sonuc = Math.random() < 0.5 ? 'yazi' : 'tura';
-    const kazandi = sonuc === secim;
-    if (kazandi) ryoEkle(userId, bahis * 2, 'yazıtura ödeme');
-    const bakiye = bakiyeGetir(userId).ryo;
-    const tekrarMumkun = bakiye >= bahis;
-
-    await duzenle({
-      embeds: [kageEmbed({
-        baslik: kazandi ? '🏆 DOĞRU TAHMİN!' : '💀 YANLIŞ TAHMİN',
-        renk: kazandi ? TEMA.RENKLER.BASARI : TEMA.RENKLER.HATA,
-        aciklama:
-          `Tahminin: **${ETIKET[secim]}** • Gelen: **${ETIKET[sonuc]}**\n\n` +
-          (kazandi ? `**+${ryoYaz(bahis)}** kazandın!` : `**-${ryoYaz(bahis)}** kaybettin.`) +
-          `\n🪙 Bakiye: **${ryoYaz(bakiye)}**`,
-        altMetin: tekrarMumkun ? '45 sn içinde aynı bahisle tekrar atabilirsin' : 'Bakiyen bir sonraki atış için yetersiz'
-      })],
-      components: tekrarMumkun ? [tekrarButonu(false)] : []
-    });
+export async function buton(interaction) {
+  const [, sahip, bahisMetni, secim] = interaction.customId.slice(butonOnek.length).split(':');
+  if (sahip !== interaction.user.id) {
+    return interaction.reply({ content: '⛔ Bu para senin değil. Kendi `/yazitura` oyununu başlat.', flags: MessageFlags.Ephemeral });
   }
-
-  const collector = mesaj.createMessageComponentCollector({
-    componentType: ComponentType.Button,
-    filter: i => i.customId === 'yt_tekrar',
-    time: 45000
-  });
-
-  collector.on('collect', async bi => {
-    if (bi.user.id !== userId) {
-      return bi.reply({ content: '⛔ Bu para senin değil. Kendi `/yazitura` oyununu başlat.', flags: MessageFlags.Ephemeral }).catch(() => null);
-    }
-    await bi.deferUpdate().catch(() => null);
-    if (mesgul) return;
-    mesgul = true;
-    try {
-      if (!ryoDus(userId, bahis, 'yazıtura bahis')) {
-        await mesaj.edit({ components: [] }).catch(() => null);
-        return collector.stop('bakiye');
-      }
-      await at(p => mesaj.edit(p));
-      collector.resetTimer();
-    } catch (err) {
-      console.error('[YaziTura] Atış hatası:', err.message);
-    } finally {
-      mesgul = false;
-    }
-  });
-
-  collector.on('end', () => {
-    if (!mesgul) mesaj.edit({ components: [] }).catch(() => null);
-  });
-
-  mesgul = true;
-  try {
-    await at(p => mesaj.edit(p));
-  } catch (err) {
-    console.error('[YaziTura] Atış hatası:', err.message);
-  } finally {
-    mesgul = false;
+  const bahis = Math.min(MAKS_BAHIS, Math.max(10, Number(bahisMetni) || 10));
+  if (mesgul.has(sahip)) return interaction.deferUpdate();
+  if (!ETIKET[secim] || !ryoDus(sahip, bahis, 'yazıtura bahis')) {
+    return interaction.reply({ content: `❌ Yetersiz bakiye. Bu atış için **${ryoYaz(bahis)}** gerekir.`, flags: MessageFlags.Ephemeral });
   }
+  await interaction.deferUpdate();
+  await oyna(sahip, bahis, secim, p => interaction.message.edit(p));
 }

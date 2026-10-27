@@ -145,6 +145,16 @@ export async function execute(interaction) {
         return interaction.editReply({ content: `❌ Alternatif modele danışılırken hata oluştu: ${err.message}` });
       }
     }
+
+    // Collector'a bağlı butonlar bot yeniden başlayınca sahipsiz kalır. Kimse 2,5 sn içinde
+    // yanıtlamazsa "yanıt vermedi" yerine kullanıcıya panelin süresinin dolduğunu söyle.
+    setTimeout(() => {
+      if (interaction.replied || interaction.deferred) return;
+      interaction.reply({
+        content: '⌛ Bu panelin süresi doldu. Komutu yeniden yazarak taze bir panel aç.',
+        flags: MessageFlags.Ephemeral
+      }).catch(() => null);
+    }, 2500);
   }
 
   // 3. Modal Form Gönderimleri (Detaylı Kayıt İşlemi)
