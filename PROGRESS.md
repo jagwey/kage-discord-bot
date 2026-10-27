@@ -100,6 +100,10 @@ Hedefler: docs/PROJE_HEDEFLERI.md. Kullanıcı istemeden commit atılmaz.
   - `site_veri_getir`: Discord bağlamı istemeyen `siteVeriGetir` fonksiyonuna taşındı (web yardım sohbeti artık çalışır). detay ad ile de çalışır, bölüm okuma linkleri ve manga linki döner; yeni `duyurular` işlemi.
   - Sohbet sistem metnine her mesajda canlı katalog (`canliKatalogMetni`: id, bölüm, durum, tür, link) girer. Hafıza bağlamı günlük anlık görüntü yerine bellekteki canlı listeyi kullanır.
   - Duyuru poller'ı: tek taramada 3'ten fazla yeni ID gelirse (ID taşıması) duyurmadan indeksler; `yayinda: false` seriler duyurulmaz.
+- [x] 46. Yapay zeka insan gibi yazar, yetkisiz "ai" çağrısı chatbota düşer (2026-10-27):
+  - `messageCreate.js`: AI, chatbot, görsel analizi ve model geçişi cevapları embed/buton paneli olmadan düz mesaj. Kısa çok satırlı cevap (≤600 karakter, ≤5 satır) ayrı ardışık mesajlara bölünür, araya yazıyor göstergesi girer. Başlık, kalın, madde işaretleri temizlenir. Motor etiketi sohbetten kalktı (admin AI log kanalı aynen gösterir). Onay butonları duruyor.
+  - Yetkisi olmayan kullanıcı "ai ...", "kage ..." veya AI kanalıyla çağırırsa ret mesajı yerine `chatBotYanitla` cevap verir. Eylem niyeti, model geçişi, görsel analizi ve otonom vezir kapalı kalır.
+  - `chatBotYanitla` dönüşüne `metin` eklendi. Chatbot ve `kageBeyin` sistem metinlerine "sunucudaki biri gibi kısa düz satır yaz" kuralı girdi. Sticker artık panel içinde değil, ara sıra ayrı mesaj.
 
 ## Sürüyor
 

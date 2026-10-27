@@ -1,4 +1,4 @@
-import { Events, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { Events, PermissionFlagsBits } from 'discord.js';
 import { chatBotYanitla, kullaniciKizMi } from '../services/chatBotServisi.js';
 import { sunucuAyarGetir } from '../services/veritabaniServisi.js';
 import { yardimKartiOlustur } from '../commands/yardim.js';
@@ -88,41 +88,34 @@ function parcala(metin, limit = 1900) {
   return parcalar;
 }
 
-function aiHizliButonlar(userId) {
-  return new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId(`ai_baska_${userId}`)
-      .setLabel('Farklı Modele Sor')
-      .setEmoji('🔄')
-      .setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId(`ai_ogren_${userId}`)
-      .setLabel('Ne Öğrendin?')
-      .setEmoji('🧠')
-      .setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId(`ai_sil_${userId}`)
-      .setLabel('Sıfırla')
-      .setEmoji('🗑️')
-      .setStyle(ButtonStyle.Secondary)
-  );
+// Model çıktısındaki panel süslerini (başlık, kalın, liste işareti) atar; düz sohbet satırı bırakır.
+function sohbetMetni(metin) {
+  return String(metin || '')
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/\*\*(.+?)\*\*/g, (_, ic) => ic)
+    .replace(/^\s*[-*•]\s+/gm, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 }
 
-async function cevabiGonder(message, sonuc, yanitla = true) {
-  const parcalar = parcala(sonuc.cevap);
-  const toplamParca = parcalar.length;
+// Kısa cevapları bir insan gibi ardışık mesajlara böler; uzun cevaplar 1900 karakterlik parçalara.
+function mesajBalonlari(metin) {
+  const satirlar = metin.split(/\n+/).map(x => x.trim()).filter(Boolean);
+  const kisaMi = metin.length <= 600 && satirlar.length > 1 && satirlar.length <= 5
+    && satirlar.every(x => x.length <= 300 && !x.startsWith('```'));
+  return kisaMi ? satirlar : parcala(metin);
+}
 
-  for (let i = 0; i < toplamParca; i++) {
-    const sonParcaMi = i === toplamParca - 1;
-    const onayVarMi = (sonuc.onaylar || []).length > 0;
-    const butonlar = (sonParcaMi && !onayVarMi) ? [aiHizliButonlar(message.author.id)] : [];
+const bekle = (ms) => new Promise(r => setTimeout(r, ms));
 
-    const secenek = {
-      content: parcalar[i],
-      components: butonlar,
-      allowedMentions: { parse: [], repliedUser: false }
-    };
-
+async function insanGibiGonder(message, metin, { yanitla = true, onaylar = [] } = {}) {
+  const balonlar = mesajBalonlari(sohbetMetni(metin));
+  for (let i = 0; i < balonlar.length; i++) {
+    const secenek = { content: balonlar[i], allowedMentions: { parse: [], repliedUser: false } };
+    if (i > 0) {
+      await message.channel.sendTyping().catch(() => null);
+      await bekle(Math.min(400 + balonlar[i].length * 25, 1800));
+    }
     if (i === 0 && yanitla) {
       await message.reply(secenek).catch(() => message.channel.send(secenek).catch(() => null));
     } else {
@@ -130,13 +123,17 @@ async function cevabiGonder(message, sonuc, yanitla = true) {
     }
   }
 
-  for (const o of sonuc.onaylar || []) {
+  for (const o of onaylar) {
     await message.channel.send({
       content: o.metin,
       components: [o.row],
       allowedMentions: { parse: [], repliedUser: false }
     }).catch(() => null);
   }
+}
+
+async function cevabiGonder(message, sonuc, yanitla = true) {
+  await insanGibiGonder(message, sonuc.cevap, { yanitla, onaylar: sonuc.onaylar || [] });
 }
 
 // Cevaptan sonra duyguya/öğretilen kurala uygun sticker gönderir (gerçek sunucu stickerı, yoksa dosya).
@@ -288,13 +285,9 @@ export async function execute(message) {
   if (!metin) metin = '(Seni çağırdı ama bir şey yazmadı)';
 
   // 1. Yetki ve Rol Kontrolü (Yapay zekanın kötüye kullanımını ve yetkisiz erişimi engeller)
+  // Yetkisi olmayan "ai ..." diyerek de çağırsa reddedilmez; yapay zeka veziri yerine chatbot cevap verir.
   const erisim = aiErisimKontrol(message.member, message.guild, message.client);
-  if (!erisim.izin) {
-    return message.reply({
-      content: erisim.sebep,
-      allowedMentions: { repliedUser: false }
-    }).catch(() => null);
-  }
+  const sadeceChatBot = !erisim.izin;
 
   // 2. Kötüye Kullanım / Spam Kontrolü (Kullanıcı başına 8 saniye bekleme süresi)
   const spam = aiSpamKontrol(message.author.id, 8, erisim.yetkili);
@@ -311,22 +304,18 @@ export async function execute(message) {
   const modelGecisMatch = metin.match(/\b(groq|gemini|deepseek|openrouter|llama|qwen|pollinations|otomatik|oto|auto)\b.*(?:geç|kullan|ayarla|seç|yap|etkinleştir)/iu)
     || metin.match(/(?:modele|modeli)\s+(groq|gemini|deepseek|openrouter|llama|qwen|pollinations|otomatik|oto|auto)(?:\s+(?:yap|geç|ayarla|seç))?/iu);
 
-  if (modelGecisMatch) {
+  if (modelGecisMatch && !sadeceChatBot) {
     const hedefKelime = modelGecisMatch[1];
     const modelKodu = modelKoduCozumle(hedefKelime);
     kullaniciModelSec(message.author.id, modelKodu);
     const modelBilgi = DESTEKLENEN_MODELLER.find(m => m.id === modelKodu) || { ad: modelKodu, emoji: '⚡' };
     
-    return message.reply({
-      content: `${modelBilgi.emoji} **Zihnimi ${modelBilgi.ad} motoruna bağladım samurayım!**\n` +
-        `Ortak hafızamız, hatıralarımız ve kaledeki tüm kayıtların baki kaldı. Artık seninle bu zeka motoru üzerinden konuşacağız. Komut ezberlemene gerek yok, bana ne istersen rahatça söyleyebilirsin!`,
-      allowedMentions: { repliedUser: false }
-    }).catch(() => null);
+    return insanGibiGonder(message, `tamam, artık ${modelBilgi.ad} ile konuşuyorum ${modelBilgi.emoji}\nhafıza aynı, bir şey kaybolmadı`);
   }
 
   // 4. Anlık Model Belirteci (Örn: "kage [groq]: nasılsın", "kage [deepseek]: bu konuda ne düşünüyorsun")
   const anlikModelMatch = metin.match(/^\[([a-zA-Z0-9_\-]+)\]\s*:\s*(.*)/i);
-  if (anlikModelMatch) {
+  if (anlikModelMatch && !sadeceChatBot) {
     const anlikModel = modelKoduCozumle(anlikModelMatch[1]);
     metin = anlikModelMatch[2].trim();
     kullaniciModelSec(message.author.id, anlikModel);
@@ -337,11 +326,11 @@ export async function execute(message) {
   // 5. Doğal Eylem ve Komut Niyeti Tespiti (Komut kullanmayı zorunlu olmaktan çıkarır!)
   // Kullanıcı "şu adamı sustur", "mesajları sil", "bana 100 ryo ver", "kurallara şunu ekle" vb. dediğinde
   const EYLEM_NIYETI = /\b(sustur|mutele|banla|engelle|at\b|kickle|temizle|sil\b|rol ver|rol al|rol aç|kanal aç|kanal sil|kanal kapat|kural ekle|duyuru yap|bakiye|bakiyem|ryo ver|ryo gönder|yavaş mod|kilit|şunu yap|bunu yap)\b/iu;
-  const eylemIstegi = EYLEM_NIYETI.test(metin);
+  const eylemIstegi = !sadeceChatBot && EYLEM_NIYETI.test(metin);
 
   // 6. Görsel Analizi (Multimodal Vision): Kullanıcı resim atıp soru sorduysa
   const resimEki = message.attachments?.find(a => a.contentType?.startsWith('image/'));
-  if (resimEki) {
+  if (resimEki && !sadeceChatBot) {
     try {
       const vizyonSonuc = await gorselAnalizEt({
         resimUrl: resimEki.url,
@@ -351,19 +340,7 @@ export async function execute(message) {
         userName: yazarAdi
       });
 
-      const { kageEmbed, TEMA } = await import('../config/tema.js');
-      const vizyonEmbed = kageEmbed({
-        baslik: '👁️ GÖLGE GÖZÜ • GÖRSEL ANALİZİ',
-        renk: TEMA.RENKLER.BILGI,
-        aciklama: vizyonSonuc.metin,
-        altMetin: `Motor: ${vizyonSonuc.saglayici} • İsteyen: ${message.author.username}`
-      });
-
-      await message.reply({
-        embeds: [vizyonEmbed],
-        components: [aiHizliButonlar(message.author.id)],
-        allowedMentions: { repliedUser: false }
-      });
+      await insanGibiGonder(message, vizyonSonuc.metin);
       adminAiLog(message, vizyonSonuc.saglayici, true, metin);
       return;
     } catch (err) {
@@ -373,7 +350,7 @@ export async function execute(message) {
   }
 
   // Eylem istekleri, doğrudan "ai ..." çağrıları veya AI yönetim kanalındakiler -> Otonom Vezir (kageyeSor)
-  const aiyeYonlendir = !!aiMatch || (aiKanali && !kageMatch) || eylemIstegi;
+  const aiyeYonlendir = !sadeceChatBot && (!!aiMatch || (aiKanali && !kageMatch) || eylemIstegi);
 
   if (aiyeYonlendir) {
     // 1. OTONOM YAPAY ZEKA VEZİRİ (Fonksiyon çağırma, sunucu yönetimi, analitik)
@@ -387,27 +364,11 @@ export async function execute(message) {
       if (sonuc.hata === 'anahtar_yok' || (sonuc.hata && !sonuc.cevap)) {
         // AI anahtarı yoksa veya hata verirse ChatBot motoruna düş
         const yanit = await chatBotYanitla(metin, message.author, message.guild, message.member, message);
-        const { embed, files, saglayici = 'Kural Tabanlı ChatBot', isAi = false } = yanit;
-
-        if (yetkiliMi) {
-          const mevcutFooter = embed.data?.footer?.text || 'Kage-95';
-          embed.setFooter({ text: `${mevcutFooter} • ⚙️ Motor: ${saglayici}` });
-        }
-
-        await message.reply({
-          embeds: [embed],
-          files: files || [],
-          components: [aiHizliButonlar(message.author.id)],
-          allowedMentions: { repliedUser: false }
-        }).catch((err) => console.error('[MessageCreate ChatBot Hatası]:', err));
+        const { metin: cevapMetni, saglayici = 'Kural Tabanlı ChatBot', isAi = false } = yanit;
+        await insanGibiGonder(message, cevapMetni);
 
         adminAiLog(message, saglayici, isAi, metin);
         return TUM_STICKER_ISTEGI.test(metin) ? tumStickerlariGonder(message) : stickerGonder(message, metin, 0);
-      }
-
-      // Yetkili/Admin ise yanıtın sonuna ince motor etiketini ekle
-      if (yetkiliMi && sonuc.cevap) {
-        sonuc.cevap += `\n\n-# ⛩️ [Motor: Gemini Otonom Vezir • Yapay Zeka]`;
       }
 
       await cevabiGonder(message, sonuc);
@@ -425,25 +386,16 @@ export async function execute(message) {
     // 2. KAGE ETKİLEŞİMLİ CHAT BOT (Piksel Sticker, Hafıza, Profil, Kunoichi/Samuray Persona)
     try {
       const yanit = await chatBotYanitla(metin, message.author, message.guild, message.member, message);
-      const { embed, files, saglayici = 'Kural Tabanlı ChatBot', isAi = false } = yanit;
-
-      // Yetkili/Admin ise embed alt bilgisine motor etiketini iliştir
-      if (yetkiliMi) {
-        const mevcutFooter = embed.data?.footer?.text || 'Kage-95';
-        embed.setFooter({ text: `${mevcutFooter} • ⚙️ Motor: ${saglayici}` });
-      }
-
-      await message.reply({
-        embeds: [embed],
-        files: files || [],
-        components: [aiHizliButonlar(message.author.id)],
-        allowedMentions: { repliedUser: false }
-      }).catch((err) => console.error('[MessageCreate ChatBot Hatası]:', err));
+      const { metin: cevapMetni, saglayici = 'Kural Tabanlı ChatBot', isAi = false } = yanit;
+      await insanGibiGonder(message, cevapMetni);
 
       adminAiLog(message, saglayici, isAi, metin);
 
+      // Sticker panelde değil, ayrı bir mesaj olarak ara sıra düşer
       if (TUM_STICKER_ISTEGI.test(metin)) {
         await tumStickerlariGonder(message);
+      } else {
+        await stickerGonder(message, metin, 0.2);
       }
     } catch (err) {
       console.error('[MessageCreate ChatBot Hatası]:', err);

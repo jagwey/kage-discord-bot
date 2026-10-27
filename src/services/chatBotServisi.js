@@ -374,7 +374,7 @@ GÖREV VE KURALLAR:
 [ÖĞRENİLDİ: <kullanıcı hakkında kalıcı 1 cümlelik gerçek>]
 6. Bu konuşmadaki ruh haline en uygun duyguyu seç ve EN SONA şu etiketi ekle:
 [DUYGU: <savas|cay|ofke|zafer|para|sevgi|dusunce|uyku|yemek|sok|aglama|selam|oyun|utanma>]
-7. Yanıtın 1-3 paragraf arasında akıcı, doğal ve tatmin edici olsun.`;
+7. Sunucudaki biri gibi düz Discord mesajı yaz: çoğu cevap 1-3 kısa satır. Başlık, madde listesi, kalın/italik süs ve imza kullanma. Her kısa fikri yeni satıra koy; satırlar ayrı mesaj olarak gönderilir.`;
 
   // 1. Kullanıcı özel bir model seçtiyse (Groq, OpenRouter DeepSeek, Pollinations vb.) doğrudan onu çağır!
   if (kullaniciTercihi && kullaniciTercihi !== 'auto' && kullaniciTercihi !== 'gemini') {
@@ -1189,6 +1189,7 @@ export async function chatBotYanitla(mesajMetni, user, guild = null, member = nu
 
   return {
     embed,
+    metin: aciklama,
     files,
     saglayici: kullanilanMotor,
     isAi: kullanilanMotor !== 'Kural Tabanlı ChatBot'
