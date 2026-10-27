@@ -1,5 +1,6 @@
 import { SlashCommandBuilder } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
+import { gecisSatiri } from '../config/panel.js';
 import { bakiyeGetir, liderlikListesi } from '../services/ekonomiServisi.js';
 
 export const data = new SlashCommandBuilder()
@@ -37,5 +38,5 @@ export async function execute(interaction) {
     altMetin: `Günlük ödülünüzü almak için /gunluk yazabilirsiniz.`
   });
 
-  return interaction.reply({ embeds: [embed] });
+  return interaction.reply({ embeds: [embed], components: [gecisSatiri('gunluk', 'gorev', 'envanter', 'basarim')] });
 }

@@ -1,5 +1,6 @@
 import { SlashCommandBuilder } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
+import { gecisSatiri } from '../config/panel.js';
 import { basarimDurumu } from '../services/basarimServisi.js';
 
 export const data = new SlashCommandBuilder()
@@ -22,6 +23,7 @@ export async function execute(interaction) {
       aciklama: `**${kazanilan.length}/${durum.length}** rozet\n${kazanilan.map(b => b.emoji).join(' ') || 'Henüz rozet yok.'}\n\n${satirlar}`.slice(0, 4000),
       thumbnail: uye.displayAvatarURL({ size: 256 }),
       altMetin: 'Rozetler balık, zindan, boss, seri, zanaat, baskın, piyango ve klan savaşından gelir.'
-    })]
+    })],
+    components: [gecisSatiri('gorev', 'zindan', 'balik', 'envanter')]
   });
 }

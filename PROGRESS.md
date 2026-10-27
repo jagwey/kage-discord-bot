@@ -184,9 +184,13 @@ Hedefler: docs/PROJE_HEDEFLERI.md. Kullanıcı istemeden commit atılmaz.
   - `/balik` Gölet, Akvaryum, Turnuva sekmeleri. Olta at, şamandıra 2-6 sn sonra batar, 3.5 sn içinde Çek! (ilk 1.5 sn kusursuz: olta +3, kg x1.2). Erken ya da geç çekmek avı kaçırır.
   - 13 tür: gece (20-06) Ay Balığı ve Fener Balığı, her mevsime bir balık.
   - Akvaryum 5 yuva, saatlik Ryo, 24 saat kasa sınırı. Haftalık en ağır balık turnuvası 3000/1500/750 Ryo, `etkinlikServisi` duyurur ve DM atar.
+61. **UI (2026-10-27):**
+  - `/profil` PNG samuray kartı (`profilKartiServisi.js`, `@napi-rs/canvas`, Noto Sans).
+  - `/envanter` 5 kategori, sayfalama, kalıcı butonlar.
+  - `src/config/panel.js` geçiş butonları: günlük, görev, bakiye, başarım ve envanter panellerinde sıradaki adım satırı.
 
 ## Sürüyor
 
-- Oyun geliştirme planı: 1 kalıcı buton (bitti), 2 yoldaş (bitti), 3 Ocak (bitti), 4 balık (bitti), 5 UI, 6 yeni oyunlar (bahçe, ticaret, açık artırma, sezon).
+- Oyun geliştirme planı: 1 kalıcı buton (bitti), 2 yoldaş (bitti), 3 Ocak (bitti), 4 balık (bitti), 5 UI (bitti), 6 yeni oyunlar (bahçe, ticaret, açık artırma, sezon).
 
 ## Bekliyor

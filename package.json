@@ -24,6 +24,7 @@
   "author": "Jagwey & Kage Team",
   "license": "MIT",
   "dependencies": {
+    "@napi-rs/canvas": "^0.1.65",
     "axios": "^1.7.9",
     "discord.js": "^14.18.0",
     "dotenv": "^16.4.7"

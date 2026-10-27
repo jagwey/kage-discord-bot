@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { ryoYaz } from '../config/oyunGorsel.js';
+import { gecisSatiri } from '../config/panel.js';
 import { gorevDurumu, gorevOdulAl, TAMAMLAMA_BONUSU } from '../services/gorevServisi.js';
 
 export const butonOnek = 'kage_gorev:';
@@ -27,7 +28,7 @@ function panel(userId, not = '') {
     new ButtonBuilder().setCustomId(`${butonOnek}al:${userId}`).setLabel('Ödülleri al').setEmoji('🎁')
       .setStyle(ButtonStyle.Success).setDisabled(d.alinabilir < 1)
   );
-  return { embeds: [embed], components: [row] };
+  return { embeds: [embed], components: [row, gecisSatiri('zindan', 'boss', 'balik', 'dojo', 'gunluk')] };
 }
 
 export async function execute(interaction) {

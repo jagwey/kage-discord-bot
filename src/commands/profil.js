@@ -1,7 +1,8 @@
-import { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { kullaniciProfiliGetir } from '../services/mangaServisi.js';
 import { kazanilanRozetler } from '../services/basarimServisi.js';
+import { samurayOzeti, profilKartiCiz } from '../services/profilKartiServisi.js';
 
 export const data = new SlashCommandBuilder()
   .setName('profil')
@@ -79,5 +80,20 @@ export async function execute(interaction) {
       .setEmoji(TEMA.EMOJILER.TORII)
   );
 
-  return interaction.editReply({ embeds: [embed], components: [row] });
+  // Kendi profilinde oyun verilerinden çizilen samuray kartı da eklenir; çizim hata verirse kart atlanır.
+  const files = [];
+  if (rozetler) {
+    try {
+      const png = await profilKartiCiz(
+        { ad: interaction.member?.displayName || interaction.user.displayName || interaction.user.username, avatarUrl: interaction.user.displayAvatarURL({ extension: 'png', size: 256 }) },
+        samurayOzeti(interaction.user.id, interaction.guildId)
+      );
+      files.push(new AttachmentBuilder(png, { name: 'kart.png' }));
+      embed.setImage('attachment://kart.png');
+    } catch (err) {
+      console.error('[Profil] kart çizilemedi:', err.message);
+    }
+  }
+
+  return interaction.editReply({ embeds: [embed], components: [row], files });
 }

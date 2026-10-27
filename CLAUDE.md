@@ -58,6 +58,9 @@ Tüm AI yönlendirmesi `src/services/aiRouterServisi.js` ve erişim denetimi `sr
 - `/piyango`: Haftalık bilet, pazartesi 00:00 otomatik çekiliş (`piyangoServisi.js`).
 - `/baskin`: Gölge baskını, 5 dakikalık buton savunması, otomatik baskın (`baskinServisi.js`). Baskın kanalı haftalık sonuç duyuru kanalıdır (`etkinlikServisi.js`).
 - `/basarim`: 17 Ryo ödüllü rozet (`basarimServisi.js`). Yoldaş seviye 10'da evrimleşir; `/gunluk` seri kalkanı satar.
+- **Geçiş butonları (`src/config/panel.js`):** `gecisSatiri('gorev','zindan',...)` "sıradaki adım" butonları kurar (`kgit:<komut>`). Tıklayan herkes için ilgili komutun `execute` fonksiyonu sahte `options` ile çalışır. Yeni komut eklenecekse `GECISLER` listesine yazılır.
+- `/envanter`: Genel, Çanta, Zanaat, Balık, Yoldaş kategorileri; 10 satırlık sayfalama, kalıcı butonlar (`envanter:`).
+- `/profil` (kendi profilin): `profilKartiServisi.js` ile `@napi-rs/canvas` üzerinden PNG samuray kartı çizer. Fontlar `assets/fonts` içindeki Noto Sans; kart metninden emoji ayıklanır, avatar 3 sn içinde gelmezse baş harf çizilir.
 - `/ryo ver|al|bak` (sahip/yönetici): Üyeye Ryo yükleme, geri alma, cüzdan görüntüleme. Sahip (`sahipMi`: OWNER_ID, sunucu sahibi, uygulama sahibi) bütün AI eylemlerinde tam yetkilidir.
 
 ## 🧠 Merkezi Ortak Hafıza (Unified Shared Memory) & Komutsuz Yönetim
