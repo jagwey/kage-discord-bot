@@ -1,112 +1,128 @@
 import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from 'discord.js';
-import { TEMA, kageEmbed } from '../config/tema.js';
-import { golgeGozDurumu, golgeGozTopluAnaliz } from '../services/golgeGozServisi.js';
+import {
+  golgeGozDurumu, golgeGozTopluAnaliz, golgeGozAyarGetir, golgeGozAyarGuncelle,
+  hakimDavasiBaslat, aktifDavalar
+} from '../services/golgeGozServisi.js';
 
 export const data = new SlashCommandBuilder()
   .setName('golge-goz')
-  .setDescription('Kage-95 evreninin tüm sunucuyu izleyen ve otonom öğrenen Gölge Gözü radarı.')
+  .setDescription('Sohbeti anlık izleyen, uyaran, kavgayı sezen ve öğrenen Gölge Göz.')
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
   .addSubcommand(sub =>
     sub.setName('durum')
-      .setDescription('Gölge Gözü canlı telemetrisini ve istatistiklerini gösterir.')
+      .setDescription('Gölge Göz ayarlarını ve sayaçlarını gösterir.')
   )
   .addSubcommand(sub =>
     sub.setName('rapor')
-      .setDescription('Son sohbetlerden otonom olarak öğrenilen gerçekleri ve yakalanan şüpheleri listeler.')
+      .setDescription('Son öğrenilen bilgileri ve yakalanan ihlalleri listeler.')
   )
   .addSubcommand(sub =>
     sub.setName('tara')
       .setDescription('Sohbet havuzunda biriken mesajları yapay zekayla hemen tarar.')
+  )
+  .addSubcommand(sub =>
+    sub.setName('ayar')
+      .setDescription('Gölge Göz davranışını ayarlar.')
+      .addBooleanOption(o => o.setName('acik').setDescription('Gölge Göz bu sunucuda açık mı'))
+      .addBooleanOption(o => o.setName('uyari').setDescription('Küfür edene kanalda anında uyarı'))
+      .addBooleanOption(o => o.setName('yetkilileri-uyar').setDescription('Yöneticiler ve sunucu sahibi de uyarılsın'))
+      .addBooleanOption(o => o.setName('hakim-modu').setDescription('Kavga çıkınca Yargıç Kage devreye girsin'))
+      .addRoleOption(o => o.setName('yetkili-rol').setDescription('Kavgada etiketlenecek mod rolü (yoksa sunucu sahibi)'))
+  )
+  .addSubcommand(sub =>
+    sub.setName('hakim')
+      .setDescription('İki üye arasında Yargıç Kage davası açar.')
+      .addUserOption(o => o.setName('kisi1').setDescription('Birinci taraf').setRequired(true))
+      .addUserOption(o => o.setName('kisi2').setDescription('İkinci taraf').setRequired(true))
+      .addStringOption(o => o.setName('konu').setDescription('Anlaşmazlık neyle ilgili').setMaxLength(300))
   );
+
+const evet = deger => (deger ? 'açık' : 'kapalı');
 
 export async function execute(interaction) {
   const sub = interaction.options.getSubcommand();
   const durum = golgeGozDurumu();
+  const guildId = interaction.guild.id;
 
   if (sub === 'durum') {
-    const embed = kageEmbed({
-      baslik: '👁️ KAGE-95 GÖLGE GÖZÜ • CANLI RADAR',
-      renk: TEMA.RENKLER.ALTIN,
-      aciklama: `Kage-95 Gölge Gözü, sunucudaki tüm kanalları **sıfır gecikmeyle (0 ms)** sessizce izler; reklam ve toksik içerikleri sezer, önemli sohbetleri hafif mikro havuzda toplayarak **kendi kendini eğitir**.\n\n` +
-        `🛡️ **Sistem Yükü & Kota Güvencesi:** Mesajlar tek tek API'ye gönderilmez; mikro tampon sayesinde sıfır API yorgunluğu ve %100 ücretsiz model optimizasyonu ile çalışır.`,
-      alanlar: [
-        {
-          name: '📡 İzlenen Mesaj',
-          value: `\`${durum.toplamIncelenenMesaj.toLocaleString('tr-TR')} mesaj\``,
-          inline: true
-        },
-        {
-          name: '🧠 Otonom Öğrenilen Bilgi',
-          value: `\`${durum.ogrenilenBilgiSayisi.toLocaleString('tr-TR')} gerçek\``,
-          inline: true
-        },
-        {
-          name: '🚨 Önlenen Şüpheli Hareket',
-          value: `\`${durum.onlenenIhlalSayisi.toLocaleString('tr-TR')} ihlal\``,
-          inline: true
-        },
-        {
-          name: '⏱️ Son Otonom Tarama',
-          value: durum.sonTaramaZamani ? `<t:${Math.floor(new Date(durum.sonTaramaZamani).getTime() / 1000)}:R>` : 'Henüz yapılmadı',
-          inline: true
-        },
-        {
-          name: '⚙️ Radar Durumu',
-          value: durum.acik ? '🟢 `Aktif & Nöbette`' : '🔴 `Devre Dışı`',
-          inline: true
-        }
-      ],
-      altMetin: `Gölge Gözü Radarı • Yetkili: ${interaction.user.username}`
-    });
-
-    return interaction.reply({ embeds: [embed] });
+    const ayar = golgeGozAyarGetir(guildId);
+    const davalar = aktifDavalar().filter(d => interaction.guild.channels.cache.has(d.kanalId));
+    const sonTarama = durum.sonTaramaZamani
+      ? `<t:${Math.floor(new Date(durum.sonTaramaZamani).getTime() / 1000)}:R>`
+      : 'henüz yok';
+    const satirlar = [
+      `👁️ Gölge Göz ${ayar.acik ? 'nöbette' : 'kapalı'}`,
+      `uyarı ${evet(ayar.uyari)} • yetkilileri uyar ${evet(ayar.yetkilileriUyar)} • hakim modu ${evet(ayar.hakimModu)}`,
+      `kavgada çağrılan: ${ayar.yetkiliRolId ? `<@&${ayar.yetkiliRolId}>` : 'sunucu sahibi'}`,
+      `${durum.toplamIncelenenMesaj.toLocaleString('tr-TR')} mesaj okundu • ${durum.ogrenilenBilgiSayisi} bilgi öğrenildi • ${durum.onlenenIhlalSayisi} ihlal`,
+      `son öğrenme taraması ${sonTarama}`
+    ];
+    if (davalar.length) satirlar.push(`açık dava: ${davalar.map(d => `<#${d.kanalId}>`).join(', ')}`);
+    return interaction.reply({ content: `${satirlar.join('\n')}\n-# Gölge Göz`, allowedMentions: { parse: [] } });
   }
 
   if (sub === 'rapor') {
-    const ogrenilenler = (durum.sonOgrenilenler || []).slice(0, 8);
-    const ihlaller = (durum.sonIhlaller || []).slice(0, 5);
-
-    const ogrenilenMetin = ogrenilenler.length
-      ? ogrenilenler.map(o => `• **${o.kullanici}:** *${o.bilgi}*`).join('\n')
-      : 'Henüz taze bir bilgi öğrenilmedi.';
-
-    const ihlalMetin = ihlaller.length
-      ? ihlaller.map(i => `• 🚨 **${i.kullanici}** (#${i.kanal}) ➔ \`${i.tip}\``).join('\n')
-      : '🟢 Son dönemde şüpheli bir ihlal sezilmedi.';
-
-    const embed = kageEmbed({
-      baslik: '📜 GÖLGE GÖZÜ İSTİHBARAT RAPORU',
-      renk: TEMA.RENKLER.BILGI,
-      aciklama: `Gölge Gözü'nün sunucu sohbetlerinden yapay zeka ile süzdüğü son istihbarat ve güvenlik kayıtları:`,
-      alanlar: [
-        {
-          name: '🧠 Son Öğrenilen Gerçekler',
-          value: ogrenilenMetin,
-          inline: false
-        },
-        {
-          name: '🛡️ Yakalanan Güvenlik Kayıtları',
-          value: ihlalMetin,
-          inline: false
-        }
-      ],
-      altMetin: 'Kage Güvenlik & Otonom İstihbarat'
-    });
-
-    return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+    const ogrenilenler = (durum.sonOgrenilenler || []).slice(0, 8)
+      .map(o => `• ${o.kullanici}: ${o.bilgi}`);
+    const ihlaller = (durum.sonIhlaller || []).slice(0, 6)
+      .map(i => `• ${i.kullanici} #${i.kanal}: ${i.tip}`);
+    const metin = [
+      '🧠 Son öğrenilenler',
+      ogrenilenler.length ? ogrenilenler.join('\n') : 'henüz yok',
+      '',
+      '🚨 Son ihlaller',
+      ihlaller.length ? ihlaller.join('\n') : 'temiz'
+    ].join('\n').slice(0, 1900);
+    return interaction.reply({ content: `${metin}\n-# Gölge Göz`, flags: MessageFlags.Ephemeral });
   }
 
   if (sub === 'tara') {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     try {
       await golgeGozTopluAnaliz(interaction.client);
-      return interaction.editReply({
-        content: '✅ **Gölge Gözü taraması başarıyla tamamlandı!** Havuzdaki mesajlar yapay zekayla incelendi ve çıkarılan gerçekler merkezi hafızaya işlendi.'
-      });
+      return interaction.editReply({ content: 'havuz tarandı, öğrenilenler hafızaya işlendi.\n-# Gölge Göz' });
     } catch (err) {
-      return interaction.editReply({
-        content: `❌ Tarama sırasında aksaklık: ${err.message}`
-      });
+      return interaction.editReply({ content: `tarama olmadı: ${err.message}` });
     }
+  }
+
+  if (sub === 'ayar') {
+    const degisim = {};
+    const acik = interaction.options.getBoolean('acik');
+    const uyari = interaction.options.getBoolean('uyari');
+    const yetkilileriUyar = interaction.options.getBoolean('yetkilileri-uyar');
+    const hakimModu = interaction.options.getBoolean('hakim-modu');
+    const rol = interaction.options.getRole('yetkili-rol');
+    if (acik !== null) degisim.acik = acik;
+    if (uyari !== null) degisim.uyari = uyari;
+    if (yetkilileriUyar !== null) degisim.yetkilileriUyar = yetkilileriUyar;
+    if (hakimModu !== null) degisim.hakimModu = hakimModu;
+    if (rol) degisim.yetkiliRolId = rol.id;
+
+    const ayar = Object.keys(degisim).length ? golgeGozAyarGuncelle(guildId, degisim) : golgeGozAyarGetir(guildId);
+    return interaction.reply({
+      content: `${Object.keys(degisim).length ? '✅ kaydedildi' : 'değişiklik yok'}\n` +
+        `açık ${evet(ayar.acik)} • uyarı ${evet(ayar.uyari)} • yetkilileri uyar ${evet(ayar.yetkilileriUyar)} • hakim modu ${evet(ayar.hakimModu)}\n` +
+        `kavgada çağrılan: ${ayar.yetkiliRolId ? `<@&${ayar.yetkiliRolId}>` : 'sunucu sahibi'}\n-# Gölge Göz`,
+      flags: MessageFlags.Ephemeral,
+      allowedMentions: { parse: [] }
+    });
+  }
+
+  if (sub === 'hakim') {
+    const k1 = interaction.options.getUser('kisi1');
+    const k2 = interaction.options.getUser('kisi2');
+    if (k1.id === k2.id || k1.bot || k2.bot) {
+      return interaction.reply({ content: 'iki farklı insan üye seç.', flags: MessageFlags.Ephemeral });
+    }
+    const ad = u => interaction.guild.members.cache.get(u.id)?.displayName || u.username;
+    const acildi = await hakimDavasiBaslat(interaction.channel, [
+      { id: k1.id, ad: ad(k1) },
+      { id: k2.id, ad: ad(k2) }
+    ], { ozet: interaction.options.getString('konu') || '', baslatan: interaction.user.id });
+    return interaction.reply({
+      content: acildi ? '⚖️ dava açıldı.' : 'bu kanalda zaten açık bir dava var.',
+      flags: MessageFlags.Ephemeral
+    });
   }
 }

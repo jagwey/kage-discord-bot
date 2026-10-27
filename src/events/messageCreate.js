@@ -11,7 +11,7 @@ import { duyguEmojisi } from '../services/duyguServisi.js';
 import { stickerDuygusuSec, stickerMesajSecenegi } from '../services/stickerServisi.js';
 import { aiErisimKontrol, aiSpamKontrol } from '../services/aiErisimServisi.js';
 import { kullaniciModelSec, kullaniciModelGetir } from '../services/kageHafizaServisi.js';
-import { modelKoduCozumle, DESTEKLENEN_MODELLER, gorselAnalizEt } from '../services/aiRouterServisi.js';
+import { modelKoduCozumle, DESTEKLENEN_MODELLER, gorselAnalizEt, motorEtiketi } from '../services/aiRouterServisi.js';
 import { golgeGozMesajIsle } from '../services/golgeGozServisi.js';
 
 export const name = Events.MessageCreate;
@@ -96,18 +96,6 @@ function sohbetMetni(metin) {
     .replace(/^\s*[-*•]\s+/gm, '')
     .replace(/\n{2,}/g, '\n')
     .trim();
-}
-
-// Cevabı veren motorun kısa adı; mesajın altına küçük gri yazı olarak eklenir.
-function motorEtiketi(saglayici = '', isAi = true) {
-  const s = String(saglayici).toLowerCase();
-  if (!isAi || s.includes('kural')) return 'KageAI';
-  if (s.includes('gemini') || s.includes('google')) return 'Kage-Gemini';
-  if (s.includes('groq')) return 'Kage-Groq';
-  if (s.includes('deepseek')) return 'Kage-DeepSeek';
-  if (s.includes('openrouter') || s.includes('llama') || s.includes('gemma')) return 'Kage-OpenRouter';
-  if (s.includes('pollinations')) return 'Kage-Pollinations';
-  return 'KageAI';
 }
 
 // Ekranı kaplamasın diye cevap tek mesaj olarak gider; yalnızca 1900 karakteri aşarsa bölünür.

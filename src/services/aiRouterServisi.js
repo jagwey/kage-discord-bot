@@ -469,3 +469,19 @@ export async function belirliModelUret({ prompt, system = '', modelKodu = 'auto'
   };
 }
 
+
+/**
+ * Sağlayıcı adını mesaj altındaki kısa motor etiketine çevirir (Kage-Gemini, Kage-Groq, KageAI ...).
+ * @param {string} saglayici
+ * @param {boolean} [isAi] Cevap kural tabanlı chatbottan geldiyse false.
+ */
+export function motorEtiketi(saglayici = '', isAi = true) {
+  const s = String(saglayici).toLowerCase();
+  if (!isAi || s.includes('kural')) return 'KageAI';
+  if (s.includes('gemini') || s.includes('google')) return 'Kage-Gemini';
+  if (s.includes('groq')) return 'Kage-Groq';
+  if (s.includes('deepseek')) return 'Kage-DeepSeek';
+  if (s.includes('openrouter') || s.includes('llama') || s.includes('gemma')) return 'Kage-OpenRouter';
+  if (s.includes('pollinations')) return 'Kage-Pollinations';
+  return 'KageAI';
+}

@@ -160,7 +160,7 @@ const UYARI_SOZLERI = [
   'Kage küfrü sevmez. Mesajın silindi.'
 ];
 
-function yetkiliMi(member, guild) {
+export function yetkiliMi(member, guild) {
   if (!member) return false;
   return guild.ownerId === member.id ||
     member.permissions.has(PermissionFlagsBits.Administrator) ||

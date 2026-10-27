@@ -112,6 +112,13 @@ Hedefler: docs/PROJE_HEDEFLERI.md. Kullanıcı istemeden commit atılmaz.
   - `/hafiza ara`: sonuçlar düz kısa liste. Kelime eşleşmezse yapay zeka tüm hafızadan anlamca yakın kaydı seçer.
   - `hafiza_kaydet` aracı "öğren/unutma" denince bilgiyi tam kaydeder, yönetici başka üyeye de not ekleyebilir.
   - Sohbet cevapları tek mesaj, altında küçük motor etiketi (`-# Kage-Gemini`, `Kage-Groq`, `KageAI` ...). `/ai` de aynı.
+48. **Gölge Göz yeniden yazıldı, Yargıç Kage (2026-10-27):**
+  - Neden: sahip küfür edince uyarı gelmiyordu (Gölge Göz yetkilileri atlıyordu, sadece admin kanalına yazıyordu).
+  - Küfür otomod `yasakliBul` ile anında yakalanır, kanalda kısa uyarı (sahip ve yöneticiler dahil). Otomod açık ve kişi yetkili değilse otomod uyarır, çift uyarı yok. 10 dk'da 3. küfürde yetkili rol ya da sunucu sahibi etiketlenir.
+  - Kanal başına gerilim puanı (küfür, sert söz, tehdit, büyük harf, kişiye yönelme). Eşik aşılınca yapay zeka JSON ile seviye verir: 1 sakinleştir, 2 kavga, 3 tehdit (yetkili çağrılır).
+  - Hakim modu: seviye 2+ olunca Yargıç Kage davası açılır, taraflardan 2 dk ifade toplar, yapay zeka tarafsız karar verir. Yaptırım önerirse yetkili etiketlenir. `/golge-goz hakim` ile elle de açılır.
+  - `/golge-goz ayar` (acik, uyari, yetkilileri-uyar, hakim-modu, yetkili-rol). `durum` ve `rapor` düz kısa metin. Öğrenme taramasında bilinmeyen isimler artık atlanır.
+  - `motorEtiketi` `aiRouterServisi`'ne taşındı, `yetkiliMi` otomoddan export.
 
 ## Sürüyor
 

@@ -2,7 +2,7 @@ import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from 'discord.
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { saygiIhlaliVarMi } from '../services/egitimServisi.js';
 import { hafizaYukle, hafizaArama, bilgiOgren, gunlukDerinOgrenme, profilGetir, kullaniciHafizasiGetir, kullaniciUnut } from '../services/kageHafizaServisi.js';
-import { akilliAiUret } from '../services/aiRouterServisi.js';
+import { akilliAiUret, motorEtiketi } from '../services/aiRouterServisi.js';
 
 // Hafızanın tamamını kısa satırlar halinde modele verip sorguya anlamca en yakın kayıtları seçtirir.
 async function hafizadanYapayZekaSec(sorgu, kullanici) {
@@ -24,10 +24,7 @@ async function hafizadanYapayZekaSec(sorgu, kullanici) {
   });
   const temiz = String(metin || '').trim();
   if (!temiz || /^YOK\b/i.test(temiz)) return null;
-  const s = String(saglayici).toLowerCase();
-  const motor = s.includes('groq') ? 'Kage-Groq' : s.includes('gemini') ? 'Kage-Gemini'
-    : s.includes('openrouter') ? 'Kage-OpenRouter' : s.includes('pollinations') ? 'Kage-Pollinations' : 'KageAI';
-  return { metin: temiz, motor };
+  return { metin: temiz, motor: motorEtiketi(saglayici) };
 }
 
 export const data = new SlashCommandBuilder()
