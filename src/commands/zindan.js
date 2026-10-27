@@ -21,7 +21,8 @@ import {
 import {
   RUTBE_ESIKLERI, RELIKLER, MAKS_RELIK,
   rutbeHarfi, rutbeAcikMi, zindanProfili, relikEtkisi, seriBonusOrani,
-  canavarNiyeti, canavarHasari, zaferIsle, olumIsle, zindanSiralamasi
+  canavarNiyeti, canavarHasari, zaferIsle, olumIsle, zindanSiralamasi,
+  NIYET_METINLERI, MAKS_ODAK, MAKS_KAT, katZindani, katOdulCarpani, yoldasSavasEtkisi
 } from '../services/zindanServisi.js';
 
 export const data = new SlashCommandBuilder()
@@ -129,7 +130,7 @@ const ZINDAN_HAVUZU = [
     minRyo: 480,
     maxRyo: 1000,
     lootTablosu: ['🐉 Kadim Ejder Pulu', '👑 Şogun Altın Mührü', '🔥 Ebedi Alev Taşı'],
-    ozellik: '🔥 Kızgın Magma: Ağır hasar riski ancak devasa altın ödülü!'
+    ozellik: '🔥 Kızgın Magma: Zemin her tur 5 HP yakar; blok tutarsan korunursun.'
   },
   {
     id: 'hiclik_boyutu',
@@ -142,7 +143,7 @@ const ZINDAN_HAVUZU = [
     minRyo: 900,
     maxRyo: 1800,
     lootTablosu: ['👑 Kage İmparatorluk Tacı', '🌌 Hiçlik Yıldızı', '🩸 Muramasa Kan Çeliği'],
-    ozellik: '⚡ Kadim Güç: Bu zindanı temizleyen klan tarihine adını yazdırır!'
+    ozellik: '🌑 İkinci Faz: Hükümdarın canı yarıya inince darbeleri %30 sertleşir!'
   }
 ];
 
@@ -170,7 +171,9 @@ function profilEmbedi(kullanici) {
       { name: 'Zafer', value: String(p.zafer), inline: true },
       { name: 'Ölüm', value: String(p.olum), inline: true },
       { name: 'Seri', value: `${p.seri} (+%${Math.round(seriBonusOrani(p.seri) * 100)} sonraki ödül)`, inline: true },
-      { name: 'En iyi seri', value: String(p.enIyiSeri), inline: true }
+      { name: 'En iyi seri', value: String(p.enIyiSeri), inline: true },
+      { name: 'En derin kat', value: `${p.enDerinKat}/${MAKS_KAT}`, inline: true },
+      { name: 'Temizlenen zindan', value: String(Object.keys(p.temizlenen).length), inline: true }
     ],
     altMetin: 'Seri ölünce sıfırlanır; geri çekilmek seriyi bozmaz.'
   });
@@ -296,91 +299,270 @@ export async function execute(interaction) {
   // ==========================================
   // 2. AŞAMA: SAVAŞ ARENASI (SEÇİLEN ZİNDAN)
   // ==========================================
+  const aktifYoldas = kullaniciYoldasGetir(userId);
+  const yoldasTuru = aktifYoldas ? YOLDAS_TURLERI[aktifYoldas.turId] : null;
+  const yEtki = yoldasSavasEtkisi(aktifYoldas, yoldasTuru);
+
   const maxOyuncuHp = 100 + etki.ekCan;
   let oyuncuHp = maxOyuncuHp;
+  let kat = 1;
+  let aktifZindan = katZindani(secilenZindan, kat);
+  let canavarHp = aktifZindan.canavarHp;
+  let maxCanavarHp = aktifZindan.canavarHp;
   let niyet = canavarNiyeti();
-  let canavarHp = secilenZindan.canavarHp;
-  const maxCanavarHp = secilenZindan.canavarHp;
   let tur = 1;
+  let odak = 0;
   let blokAktif = false;
+  let ikinciFaz = false;
+  // 'savas': hamle bekleniyor, 'karar': zafer sonrası derine in / ganimeti al seçimi.
+  let asama = 'savas';
+  let bitti = false;
+  let mesgul = false;
   let sonOlay = `🚪 **${secilenZindan.ad}** kapısından içeri adım attın. Karanlığın içinden **${secilenZindan.canavar}** kükreyerek üzerine atıldı!`;
 
-  const arenaGuncelle = async (mesaj) => {
+  const odakBari = () => '🔷'.repeat(odak) + '▫️'.repeat(MAKS_ODAK - odak);
+
+  const arenaGuncelle = async () => {
+    const yoldasSatiri = aktifYoldas && yoldasTuru && yoldasTuru.bonusTip !== 'ryo'
+      ? `🐾 **Yoldaş:** ${aktifYoldas.ad} (${yoldasTuru.bonusTip})\n`
+      : '';
     const embed = kageEmbed({
       baslik: `⚔️ SAVAŞ ARENASI • ${secilenZindan.ad}`,
       renk: TEMA.RENKLER.KAN_KIRMIZISI,
-      aciklama: `**Boyut Seviyesi:** ${secilenZindan.rank} | **Tur:** #${tur}\n\n` +
-        `👤 **${interaction.user.username}** [${kilic.ad}]:\n${canBari(oyuncuHp, maxOyuncuHp)}\n\n` +
-        `👾 **${secilenZindan.canavar}**:\n${canBari(canavarHp, maxCanavarHp)}\n` +
-        (niyet === 'agir' ? `⚠️ **Canavar ağır bir hamle hazırlıyor!** Savunmak akıllıca olur.\n\n` : `\n`) +
-        `📜 **Meydan Durumu:**\n*${sonOlay}*\n\n` +
+      aciklama: `**Boyut Seviyesi:** ${secilenZindan.rank} | **Kat:** ${kat}/${MAKS_KAT} | **Tur:** #${tur}\n\n` +
+        `👤 **${interaction.user.username}** [${kilic.ad}]:\n${canBari(oyuncuHp, maxOyuncuHp)}\n` +
+        `🎯 **Odak:** ${odakBari()}${odak >= MAKS_ODAK ? ' **Gölge Tekniği garanti!**' : ''}\n` +
+        yoldasSatiri + `\n` +
+        `👾 **${secilenZindan.canavar}**${kat > 1 ? ` *(Kat ${kat} • Öfkeli)*` : ''}${ikinciFaz ? ' 🌑 **2. FAZ**' : ''}:\n${canBari(canavarHp, maxCanavarHp)}\n` +
+        `${NIYET_METINLERI[niyet]}\n\n` +
+        `📜 **Meydan Durumu:**\n${sonOlay}\n\n` +
         `✨ **Zindan Özelliği:** *${secilenZindan.ozellik}*`,
-      altMetin: `Hamleni seç • Katanan keskin olsun!`
+      altMetin: `Saldır odak biriktirir • Ağır hamleye blok karşı vuruş kazandırır`
     });
 
+    const golgeHazir = odak >= MAKS_ODAK;
     const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId('zindan_saldir')
-        .setLabel('Saldır')
-        .setEmoji('🗡️')
-        .setStyle(ButtonStyle.Primary),
-      new ButtonBuilder()
-        .setCustomId('zindan_blok')
-        .setLabel('Savun/Blok')
-        .setEmoji('🛡️')
-        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('zindan_saldir').setLabel('Saldır').setEmoji('🗡️').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('zindan_blok').setLabel('Savun/Blok').setEmoji('🛡️').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId('zindan_golge')
-        .setLabel('Gölge Tekniği')
+        .setLabel(golgeHazir ? 'Gölge Tekniği • GARANTİ' : `Gölge Tekniği (${odak}/${MAKS_ODAK})`)
         .setEmoji('💥')
-        .setStyle(ButtonStyle.Danger),
-      new ButtonBuilder()
-        .setCustomId('zindan_iksir')
-        .setLabel('Can İksiri')
-        .setEmoji('🧪')
-        .setStyle(ButtonStyle.Success),
-      new ButtonBuilder()
-        .setCustomId('zindan_kac')
-        .setLabel('Geri Çekil')
-        .setEmoji('🏃‍♂️')
-        .setStyle(ButtonStyle.Secondary)
+        .setStyle(golgeHazir ? ButtonStyle.Success : ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId('zindan_iksir').setLabel('Can İksiri').setEmoji('🧪').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId('zindan_kac').setLabel('Geri Çekil').setEmoji('🏃‍♂️').setStyle(ButtonStyle.Secondary)
     );
 
-    return mesaj.edit({ embeds: [embed], components: [row] });
+    return portalMesaji.edit({ embeds: [embed], components: [row] });
   };
 
-  await arenaGuncelle(portalMesaji);
+  const kararGoster = async () => {
+    const sonraki = kat + 1;
+    const embed = kageEmbed({
+      baslik: `👑 KAT ${kat} TEMİZLENDİ! • ${secilenZindan.ad}`,
+      renk: TEMA.RENKLER.BASARI,
+      aciklama: `**${secilenZindan.canavar}** yere serildi ama zindanın dibinden daha derin bir kükreme geliyor...\n\n` +
+        `❤️ **Canın:** ${oyuncuHp}/${maxOyuncuHp} *(inersen +20 HP dinlenirsin)*\n` +
+        `🎯 **Odak:** ${odakBari()} *(korunur)*\n\n` +
+        `💰 **Şu anki ganimet çarpanı:** x${katOdulCarpani(kat)}\n` +
+        `🕳️ **Kat ${sonraki} çarpanı:** x${katOdulCarpani(sonraki)} *(canavar %25 daha güçlü)*\n\n` +
+        `⚠️ Aşağıda ölürsen biriken ganimetin **tamamı** kaybolur.\n` +
+        `⏳ *60 saniye içinde seçmezsen ganimeti alıp çıkarsın.*`,
+      altMetin: 'Açgözlülük mü, bilgelik mi? Karar senin samuray.'
+    });
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('zindan_derin')
+        .setLabel(`Derine İn (Kat ${sonraki} • x${katOdulCarpani(sonraki)})`)
+        .setEmoji('🕳️')
+        .setStyle(ButtonStyle.Danger),
+      new ButtonBuilder()
+        .setCustomId('zindan_ganimet')
+        .setLabel('Ganimeti Al ve Çık')
+        .setEmoji('💰')
+        .setStyle(ButtonStyle.Success)
+    );
+    return portalMesaji.edit({ embeds: [embed], components: [row] });
+  };
+
+  await arenaGuncelle();
 
   const savasCollector = portalMesaji.createMessageComponentCollector({
     componentType: ComponentType.Button,
     filter: i => i.user.id === userId,
-    time: 120000 // 2 dakika savaş süresi
+    idle: 60_000, // 1 dakika hamle yapılmazsa savaş biter
+    time: 600_000
   });
 
-  savasCollector.on('collect', async bi => {
-    await bi.deferUpdate();
+  // Ganimeti öder ve zafer ekranını gösterir. sandikSecimi false ise sandık sorulmadan standart ganimet verilir.
+  const odulVer = async (tamamlananKat, sandikSecimi) => {
+    bitti = true;
+    savasCollector.stop('zafer');
 
-    // 1. KAÇIŞ
-    if (bi.customId === 'zindan_kac') {
-      savasCollector.stop('kacti');
-      const kacisEmbed = kageEmbed({
-        baslik: `🏃‍♂️ SAVAŞTAN GERİ ÇEKİLDİNİZ • ${secilenZindan.ad}`,
-        renk: TEMA.RENKLER.UYARI_SARI,
-        aciklama: `**${interaction.user.username}**, canavarın ezici baskısı karşısında akıllıca bir manevra yaparak gölgelere sığındı ve zindandan kaçtı.\n\n*Ganimet alamadın ama canını ve eşyalarını sağ salim kurtardın!*`
+    let superSandikMi = false;
+    if (sandikSecimi) {
+      const sandikEmbed = kageEmbed({
+        baslik: `💰 HAZİNE ODASI • ${secilenZindan.ad}`,
+        renk: TEMA.RENKLER.BASARI,
+        aciklama: `Arkasındaki gizli hazine odasında iki parıldayan sandık belirdi.\n` +
+          `Birini seç: **Biri BÜYÜK HAZİNE (+%50 Bonus Ryo ve Garanti Nadir Eşya)**, diğeri Standart Ganimet!\n` +
+          (tamamlananKat >= MAKS_KAT ? `🌟 *En dip kata indiğin için iki sandık da büyük hazine!*\n` : '') +
+          `\n⏳ *15 saniye içinde bir sandık seç:*`,
+        altMetin: `Kage Zindan RPG • Şansını dene!`
       });
-      return bi.message.edit({ embeds: [kacisEmbed], components: [] });
+      const sandikRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('sandik_sol').setLabel('📦 Sol Sandık (Ay Taşı)').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('sandik_sag').setLabel('📦 Sağ Sandık (Güneş Taşı)').setStyle(ButtonStyle.Success)
+      );
+      await portalMesaji.edit({ embeds: [sandikEmbed], components: [sandikRow] });
+      try {
+        const sandikTiklama = await portalMesaji.awaitMessageComponent({
+          componentType: ComponentType.Button,
+          filter: i => i.user.id === userId,
+          time: 15000
+        });
+        await sandikTiklama.deferUpdate();
+        superSandikMi = tamamlananKat >= MAKS_KAT || Math.random() < 0.5;
+      } catch {
+        superSandikMi = false;
+      }
+    }
+
+    const tabanRyo = Math.floor(Math.random() * (secilenZindan.maxRyo - secilenZindan.minRyo + 1)) + secilenZindan.minRyo;
+    let kazanilanRyo = Math.round(tabanRyo * katOdulCarpani(tamamlananKat) * (superSandikMi ? 1.5 : 1));
+
+    let dusenItem = null;
+    // Süper sandıkta ve derin katlarda eşya garanti, normalde %70
+    if (superSandikMi || tamamlananKat >= 2 || Math.random() < 0.70) {
+      dusenItem = secilenZindan.lootTablosu[Math.floor(Math.random() * secilenZindan.lootTablosu.length)];
+    }
+
+    let yoldasBonusu = 0;
+    if (aktifYoldas && yoldasTuru?.bonusTip === 'ryo') {
+      yoldasBonusu = Math.round(kazanilanRyo * ((yoldasTuru.bonusDeger + (aktifYoldas.seviye - 1) * 3) / 100));
+      kazanilanRyo += yoldasBonusu;
+    }
+
+    zindanZaferiDetayli(userId, kazanilanRyo, dusenItem);
+    gorevIlerlet(userId, 'zindan');
+    const bonus = zaferIsle(userId, secilenZindan, kazanilanRyo, Date.now(), Math.random, tamamlananKat);
+    const bonusSatirlari = [];
+    if (yoldasBonusu > 0) bonusSatirlari.push(`🐾 ${aktifYoldas.ad}: +${yoldasBonusu} Ryo`);
+    if (bonus.relikBonusu) bonusSatirlari.push(`🐸 Kalıntı: +${bonus.relikBonusu}`);
+    if (bonus.seriBonusu) bonusSatirlari.push(`🔥 Seri: +${bonus.seriBonusu}`);
+    if (bonus.gunlukBonus) bonusSatirlari.push(`🌅 Günün ilk zaferi: +${bonus.gunlukBonus}`);
+
+    const nihaiZaferEmbed = kageEmbed({
+      baslik: `🏆 ZİNDAN FETİH EDİLDİ & ZAFER! • ${secilenZindan.ad}`,
+      renk: TEMA.RENKLER.BASARI,
+      aciklama: `**Tebrikler Şanlı Samuray!**\n\n` +
+        (superSandikMi
+          ? `🌟 **ŞANS SENİNLEYDİ!** Açtığın sandık **EFSANEVİ BÜYÜK HAZİNE SANDIĞI** çıktı! (+%50 Bonus Ryo)\n\n`
+          : `📦 Standart sandığı açtın ve zindan hazinelerini heybene doldurdun!\n\n`) +
+        `*${rastgeleSlogan()}*`,
+      thumbnail: interaction.user.displayAvatarURL({ dynamic: true }),
+      alanlar: [
+        { name: '💰 Yağmalanan Ryo', value: `\`+${kazanilanRyo} Ryo\``, inline: true },
+        { name: '🎒 Düşen Eşya', value: dusenItem ? `**${dusenItem}** *(Çantana eklendi)*` : '*Özel eşya bulunamadı.*', inline: true },
+        { name: '🕳️ Temizlenen Kat', value: `${tamamlananKat}/${MAKS_KAT} (x${katOdulCarpani(tamamlananKat)})`, inline: true },
+        { name: '🗡️ Kullanılan Silah', value: `${kilic.ad} (+%${kilic.bonus})`, inline: false },
+        ...(bonusSatirlari.length
+          ? [{ name: `✨ Bonus (+${bonus.bonusToplam} Ryo)`, value: bonusSatirlari.join('\n'), inline: false }]
+          : []),
+        { name: '🔥 Zafer Serisi', value: `${bonus.seri} • Toplam zafer: ${bonus.toplamZafer}`, inline: false },
+        ...(bonus.yeniRelik
+          ? [{
+            name: '🎁 YENİ KALINTI!',
+            value: `${RELIKLER[bonus.yeniRelik].emoji} **${RELIKLER[bonus.yeniRelik].ad}**: ${RELIKLER[bonus.yeniRelik].aciklama}`,
+            inline: false
+          }]
+          : [])
+      ],
+      altMetin: `Eşyalarını görmek için /envanter yazabilirsin • kage95.com`
+    });
+
+    const { files: zaferFiles, attachmentUrl: zaferAtt } = oyunStickerEkini(interaction.user, interaction.member, 'zafer');
+    if (zaferAtt) nihaiZaferEmbed.setThumbnail(zaferAtt);
+
+    return portalMesaji.edit({ embeds: [nihaiZaferEmbed], files: zaferFiles, components: [] });
+  };
+
+  const olumGoster = async () => {
+    bitti = true;
+    savasCollector.stop('oldu');
+
+    const olumSonucu = olumCezasiUygula(userId);
+    const { kayipSeri } = olumIsle(userId);
+
+    const olumEmbed = kageEmbed({
+      baslik: `💀 ZİNDANDA CAN VERDİNİZ • ${secilenZindan.ad}`,
+      renk: TEMA.RENKLER.HATA,
+      aciklama: `**${interaction.user.username}**, **${secilenZindan.canavar}** karşısında ağır yaralandı ve zindanın soğuk zeminine yığıldı!\n\n` +
+        (kat > 1 ? `🕳️ **Kat ${kat}'te düştün.** Önceki katlarda biriken ganimet karanlıkta kayboldu.\n\n` : '') +
+        `🔥 **Ölüm Cezası:**\n${olumSonucu.kayipMesaji}\n\n` +
+        `💰 **Kalan Cüzdanın:** \`${olumSonucu.kalanRyo} Ryo\`\n` +
+        (kayipSeri > 0 ? `🔥 **${kayipSeri} zaferlik seri bozuldu.**\n` : '') + `\n` +
+        `*Bir dahaki sefere /demirci ile katananı güçlendirip can iksiriyle gitmeyi unutma!*`,
+      altMetin: `Kage Zindan RPG • Ölüm ciddidir.`
+    });
+
+    const { files: olumFiles, attachmentUrl: olumAtt } = oyunStickerEkini(interaction.user, interaction.member, 'aglama');
+    if (olumAtt) olumEmbed.setThumbnail(olumAtt);
+
+    return portalMesaji.edit({ embeds: [olumEmbed], files: olumFiles, components: [] });
+  };
+
+  // Kat 1'de kaçış ganimetsizdir; derin katta temizlenen katların ganimeti sandıksız ödenir.
+  const kacisGoster = async (aciklama) => {
+    if (kat > 1) return odulVer(kat - 1, false);
+    bitti = true;
+    savasCollector.stop('kacti');
+    const kacisEmbed = kageEmbed({
+      baslik: `🏃‍♂️ SAVAŞTAN GERİ ÇEKİLDİNİZ • ${secilenZindan.ad}`,
+      renk: TEMA.RENKLER.UYARI_SARI,
+      aciklama: `${aciklama}\n\n*Ganimet alamadın ama canını ve eşyalarını sağ salim kurtardın!*`
+    });
+    return portalMesaji.edit({ embeds: [kacisEmbed], components: [] });
+  };
+
+  const turIsle = async (customId) => {
+    // ZAFER SONRASI KARAR
+    if (asama === 'karar') {
+      if (customId === 'zindan_ganimet') return odulVer(kat, true);
+      if (customId !== 'zindan_derin') return;
+      kat += 1;
+      aktifZindan = katZindani(secilenZindan, kat);
+      canavarHp = maxCanavarHp = aktifZindan.canavarHp;
+      oyuncuHp = Math.min(maxOyuncuHp, oyuncuHp + 20);
+      niyet = canavarNiyeti();
+      blokAktif = false;
+      ikinciFaz = false;
+      asama = 'savas';
+      sonOlay = `🕳️ Merdivenlerden **Kat ${kat}**'e indin, kısa bir nefeste **+20 HP** topladın. Karanlıkta daha öfkeli bir **${secilenZindan.canavar}** belirdi!`;
+      return arenaGuncelle();
+    }
+
+    let turHasari = 0;
+    const kalkanli = niyet === 'kalkan';
+
+    // 1. KAÇIŞ: açık arazide garanti, diğer zindanlarda %75
+    if (customId === 'zindan_kac') {
+      if (secilenZindan.id === 'haydut_vadisi' || Math.random() < 0.75) {
+        return kacisGoster(`**${interaction.user.username}**, canavarın ezici baskısı karşısında akıllıca bir manevra yaparak gölgelere sığındı ve zindandan kaçtı.`);
+      }
+      sonOlay = `🏃‍♂️ Kaçmaya çalıştın ama **${secilenZindan.canavar}** yolunu kesti!`;
     }
 
     // 2. SAVUNMA / BLOK
-    if (bi.customId === 'zindan_blok') {
+    if (customId === 'zindan_blok') {
       blokAktif = true;
-      sonOlay = `🛡️ Katananı savunma pozisyonuna çektin! Canavarın bir sonraki hamlesini savuşturmaya hazırsın.`;
+      sonOlay = `🛡️ Katananı savunma pozisyonuna çektin!`;
     }
 
     // 3. CAN İKSİRİ İÇME
-    if (bi.customId === 'zindan_iksir') {
+    if (customId === 'zindan_iksir') {
       const iksirVar = esyaVarMi(userId, 'İksir');
-      let tazeHp = (secilenZindan.id === 'zehirli_mabet' ? 60 : 45) + etki.iksirEk;
+      const tazeHp = (secilenZindan.id === 'zehirli_mabet' ? 60 : 45) + etki.iksirEk;
 
       if (iksirVar) {
         esyaHarca(userId, 'İksir');
@@ -399,188 +581,144 @@ export async function execute(interaction) {
       }
     }
 
-    // 4. NORMAL KATANA SALDIRISI
-    if (bi.customId === 'zindan_saldir') {
-      let ekZindanBonus = secilenZindan.id === 'kanli_torii' ? 5 : 0;
+    // 4. NORMAL KATANA SALDIRISI: odak biriktirir, kalkana karşı yarı hasar
+    if (customId === 'zindan_saldir') {
+      const ekZindanBonus = secilenZindan.id === 'kanli_torii' ? 5 : 0;
       const taban = Math.floor(Math.random() * 16) + 20; // 20-35
-      const hasar = Math.round(taban * kilicBonus * etki.hasarCarpani) + ekZindanBonus;
+      let hasar = Math.round(taban * kilicBonus * etki.hasarCarpani) + ekZindanBonus;
+      if (kalkanli) hasar = Math.round(hasar / 2);
+      odak = Math.min(MAKS_ODAK, odak + 1);
       if (secilenZindan.id === 'bambu_ormani' && Math.random() < 0.2) {
-        sonOlay = `🌫️ Bambu ormanının sisi içinde canavarı gözden kaybettin, darben boşa gitti!`;
+        sonOlay = `🌫️ Bambu ormanının sisi içinde canavarı gözden kaybettin, darben boşa gitti! *(+1 odak)*`;
       } else {
         canavarHp = Math.max(0, canavarHp - hasar);
-        sonOlay = `🗡️ **${kilic.ad}** ile seri bir darbe savurdun ve canavara **${hasar} Hasar** verdin!`;
+        turHasari += hasar;
+        sonOlay = `🗡️ **${kilic.ad}** ile seri bir darbe savurdun ve canavara **${hasar} Hasar** verdin!` +
+          (kalkanli ? ' *(kalkan darbeyi yarıya indirdi)*' : '') + ` *(+1 odak)*`;
       }
     }
 
-    // 5. GÖLGE TEKNİĞİ (RİSKLİ KRİTİK)
-    if (bi.customId === 'zindan_golge') {
-      const sans = Math.random();
-      if (sans > 0.4 - etki.golgeSans) {
+    // 5. GÖLGE TEKNİĞİ: odak başına +%15 şans, tam odakta garanti; kalkanı parçalar
+    if (customId === 'zindan_golge') {
+      const garanti = odak >= MAKS_ODAK;
+      const sans = 0.6 + etki.golgeSans + yEtki.kritik + odak * 0.15;
+      odak = 0;
+      if (garanti || Math.random() < sans) {
         const taban = Math.floor(Math.random() * 26) + 38; // 38-63
-        const hasar = Math.round(taban * kilicBonus * etki.hasarCarpani);
+        let hasar = Math.round(taban * kilicBonus * etki.hasarCarpani);
+        if (garanti) hasar = Math.round(hasar * 1.2);
+        if (kalkanli) hasar = Math.round(hasar * 1.25);
         canavarHp = Math.max(0, canavarHp - hasar);
-        sonOlay = `💥 **KRİTİK GÖLGE BIÇAĞI!** Gölgelerin içinden sıyrılıp canavara **${hasar} Hasar** indirdin!`;
+        turHasari += hasar;
+        sonOlay = (garanti ? `💥 **ODAKLANMIŞ GÖLGE BIÇAĞI!**` : `💥 **KRİTİK GÖLGE BIÇAĞI!**`) +
+          ` Gölgelerin içinden sıyrılıp canavara **${hasar} Hasar** indirdin!` +
+          (kalkanli ? ' 🛡️ **Kalkanı parçaladın!**' : '');
       } else {
         sonOlay = `💨 Gölge tekniğin boşa savruldu, canavar hamleni çeviklikle savuşturdu!`;
       }
     }
 
-    // ==========================================
-    // CANAVAR ÖLDÜ MÜ? -> HAZİNE SANDIĞI SEÇİMİ!
-    // ==========================================
-    if (canavarHp <= 0) {
-      savasCollector.stop('zafer');
-
-      // Zafer sonrası 2 sandık seçimi sunalım!
-      const sandikEmbed = kageEmbed({
-        baslik: `👑 CANAVAR DEVRİLDİ! • ${secilenZindan.ad}`,
-        renk: TEMA.RENKLER.BASARI,
-        aciklama: `**${secilenZindan.canavar}** son nefesini vererek yere serildi!\n\n` +
-          `Arkasındaki gizli hazine odasında iki parıldayan sandık belirdi.\n` +
-          `Birini seç: **Biri BÜYÜK HAZİNE (+%50 Bonus Ryo ve Garanti Nadir Eşya)**, diğeri Standart Ganimet!\n\n` +
-          `⏳ *15 saniye içinde bir sandık seç:*`,
-        altMetin: `Kage Zindan RPG • Şansını dene!`
-      });
-
-      const sandikRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId('sandik_sol')
-          .setLabel('📦 Sol Sandık (Ay Taşı)')
-          .setStyle(ButtonStyle.Primary),
-        new ButtonBuilder()
-          .setCustomId('sandik_sag')
-          .setLabel('📦 Sağ Sandık (Güneş Taşı)')
-          .setStyle(ButtonStyle.Success)
-      );
-
-      const sandikMesaji = await bi.message.edit({
-        embeds: [sandikEmbed],
-        components: [sandikRow]
-      });
-
-      let superSandikMi = false;
-      try {
-        const sandikTiklama = await sandikMesaji.awaitMessageComponent({
-          componentType: ComponentType.Button,
-          filter: i => i.user.id === userId,
-          time: 15000
-        });
-        await sandikTiklama.deferUpdate();
-        // %50 şansla büyük hazine sandığı
-        superSandikMi = Math.random() < 0.5;
-      } catch {
-        superSandikMi = false;
-      }
-
-      let tabanRyo = Math.floor(Math.random() * (secilenZindan.maxRyo - secilenZindan.minRyo + 1)) + secilenZindan.minRyo;
-      let kazanilanRyo = superSandikMi ? Math.round(tabanRyo * 1.5) : tabanRyo;
-
-      let dusenItem = null;
-      // Süper sandıkta %100, normalde %70 eşya
-      if (superSandikMi || Math.random() < 0.70) {
-        dusenItem = secilenZindan.lootTablosu[Math.floor(Math.random() * secilenZindan.lootTablosu.length)];
-      }
-
-      const aktifYoldas = kullaniciYoldasGetir(userId);
-      let yoldasBonusu = 0;
-      if (aktifYoldas) {
-        const tur = YOLDAS_TURLERI[aktifYoldas.turId];
-        if (tur?.bonusTip === 'ryo') {
-          yoldasBonusu = Math.round(kazanilanRyo * ((tur.bonusDeger + (aktifYoldas.seviye - 1) * 3) / 100));
-          kazanilanRyo += yoldasBonusu;
-        }
-      }
-
-      zindanZaferiDetayli(userId, kazanilanRyo, dusenItem);
-      gorevIlerlet(userId, 'zindan');
-      const bonus = zaferIsle(userId, secilenZindan, kazanilanRyo);
-      const bonusSatirlari = [];
-      if (aktifYoldas && yoldasBonusu > 0) bonusSatirlari.push(`🐾 ${aktifYoldas.ad}: +${yoldasBonusu} Ryo`);
-      if (bonus.relikBonusu) bonusSatirlari.push(`🐸 Kalıntı: +${bonus.relikBonusu}`);
-      if (bonus.seriBonusu) bonusSatirlari.push(`🔥 Seri: +${bonus.seriBonusu}`);
-      if (bonus.gunlukBonus) bonusSatirlari.push(`🌅 Günün ilk zaferi: +${bonus.gunlukBonus}`);
-
-      const nihaiZaferEmbed = kageEmbed({
-        baslik: `🏆 ZİNDAN FETİH EDİLDİ & ZAFER! • ${secilenZindan.ad}`,
-        renk: TEMA.RENKLER.BASARI,
-        aciklama: `**Tebrikler Şanlı Samuray!**\n\n` +
-          (superSandikMi
-            ? `🌟 **ŞANS SENİNLEYDİ!** Açtığın sandık **EFSANEVİ BÜYÜK HAZİNE SANDIĞI** çıktı! (+%50 Bonus Ryo)\n\n`
-            : `📦 Standart sandığı açtın ve zindan hazinelerini heybene doldurdun!\n\n`) +
-          `*${rastgeleSlogan()}*`,
-        thumbnail: interaction.user.displayAvatarURL({ dynamic: true }),
-        alanlar: [
-          { name: '💰 Yağmalanan Ryo', value: `\`+${kazanilanRyo} Ryo\``, inline: true },
-          { name: '🎒 Düşen Eşya', value: dusenItem ? `**${dusenItem}** *(Çantana eklendi)*` : '*Özel eşya bulunamadı.*', inline: true },
-          { name: '🗡️ Kullanılan Silah', value: `${kilic.ad} (+%${kilic.bonus})`, inline: false },
-          ...(bonusSatirlari.length
-            ? [{ name: `✨ Bonus (+${bonus.bonusToplam} Ryo)`, value: bonusSatirlari.join('\n'), inline: false }]
-            : []),
-          { name: '🔥 Zafer Serisi', value: `${bonus.seri} • Toplam zafer: ${bonus.toplamZafer}`, inline: false },
-          ...(bonus.yeniRelik
-            ? [{
-              name: '🎁 YENİ KALINTI!',
-              value: `${RELIKLER[bonus.yeniRelik].emoji} **${RELIKLER[bonus.yeniRelik].ad}**: ${RELIKLER[bonus.yeniRelik].aciklama}`,
-              inline: false
-            }]
-            : [])
-        ],
-        altMetin: `Eşyalarını görmek için /envanter yazabilirsin • kage95.com`
-      });
-
-      const { files: zaferFiles, attachmentUrl: zaferAtt } = oyunStickerEkini(interaction.user, interaction.member, 'zafer');
-      if (zaferAtt) nihaiZaferEmbed.setThumbnail(zaferAtt);
-
-      return bi.message.edit({ embeds: [nihaiZaferEmbed], files: zaferFiles, components: [] });
+    // Hiçlik Boyutu: can yarıya inince ikinci faz bir kez duyurulur
+    if (secilenZindan.id === 'hiclik_boyutu' && !ikinciFaz && canavarHp > 0 && canavarHp <= maxCanavarHp / 2) {
+      ikinciFaz = true;
+      sonOlay += `\n🌑 **İKİNCİ FAZ!** Hükümdar ruhu gerçek formuna büründü, darbeleri artık %30 daha sert!`;
     }
 
-    // ==========================================
-    // CANAVARIN KARŞI SALDIRISI
-    // ==========================================
-    let canavarHasar = canavarHasari(secilenZindan, niyet, canavarHp);
-    const agirHamleydi = niyet === 'agir';
+    if (canavarHp <= 0) return zaferSonrasi();
 
-    if (blokAktif) {
-      const blokAzaltma = secilenZindan.id === 'buzul_magara' ? 0.75 : 0.65;
-      canavarHasar = Math.max(2, Math.round(canavarHasar * (1 - blokAzaltma)));
-      sonOlay += `\n🛡️ **KUSURSUZ BLOK!** Gelen darbeyi katananla karşıladın, hasar **${canavarHasar} HP**'ye düştü!`;
+    // ==========================================
+    // CANAVARIN HAMLESİ
+    // ==========================================
+    if (niyet === 'kalkan') {
+      sonOlay += `\n🛡️ **${secilenZindan.canavar}** siperinden çıkmadı, bu tur saldırmadı.`;
+      blokAktif = false;
+    } else if (niyet === 'sifa') {
+      if (turHasari >= 30) {
+        sonOlay += `\n✂️ Sert darben **${secilenZindan.canavar}**'nın şifasını böldü!`;
+      } else {
+        const sifa = Math.round(maxCanavarHp * 0.12);
+        canavarHp = Math.min(maxCanavarHp, canavarHp + sifa);
+        sonOlay += `\n💚 **${secilenZindan.canavar}** yaralarını sardı ve **+${sifa} HP** topladı.`;
+      }
       blokAktif = false;
     } else {
-      sonOlay += agirHamleydi
-        ? `\n💢 **${secilenZindan.canavar}** ağır hamlesini indirdi ve sana **${canavarHasar} Hasar** vurdu!`
-        : `\n👾 **${secilenZindan.canavar}** öfkeyle karşı atağa geçti ve sana **${canavarHasar} Hasar** vurdu!`;
-    }
-    niyet = canavarNiyeti();
+      let canavarHasar = canavarHasari(aktifZindan, niyet, canavarHp);
+      const agirHamleydi = niyet === 'agir';
 
-    oyuncuHp = Math.max(0, oyuncuHp - canavarHasar);
-
-    // ==========================================
-    // OYUNCU ÖLDÜ MÜ? -> ÖLÜM CEZASI & EŞYA KAYBI!
-    // ==========================================
-    if (oyuncuHp <= 0) {
-      savasCollector.stop('oldu');
-
-      const olumSonucu = olumCezasiUygula(userId);
-      const { kayipSeri } = olumIsle(userId);
-
-      const olumEmbed = kageEmbed({
-        baslik: `💀 ZİNDANDA CAN VERDİNİZ • ${secilenZindan.ad}`,
-        renk: TEMA.RENKLER.HATA,
-        aciklama: `**${interaction.user.username}**, **${secilenZindan.canavar}** karşısında ağır yaralandı ve zindanın soğuk zeminine yığıldı!\n\n` +
-          `🔥 **Ölüm Cezası:**\n${olumSonucu.kayipMesaji}\n\n` +
-          `💰 **Kalan Cüzdanın:** \`${olumSonucu.kalanRyo} Ryo\`\n` +
-          (kayipSeri > 0 ? `🔥 **${kayipSeri} zaferlik seri bozuldu.**\n` : '') + `\n` +
-          `*Bir dahaki sefere /demirci ile katananı güçlendirip can iksiriyle gitmeyi unutma!*`,
-        altMetin: `Kage Zindan RPG • Ölüm ciddidir.`
-      });
-
-      const { files: olumFiles, attachmentUrl: olumAtt } = oyunStickerEkini(interaction.user, interaction.member, 'aglama');
-      if (olumAtt) olumEmbed.setThumbnail(olumAtt);
-
-      return bi.message.edit({ embeds: [olumEmbed], files: olumFiles, components: [] });
+      if (Math.random() < yEtki.kacinma) {
+        canavarHasar = 0;
+        sonOlay += `\n🦅 **${aktifYoldas.ad}** çığlık atarak uyardı, darbeden tamamen sıyrıldın!`;
+      } else if (blokAktif) {
+        const blokAzaltma = secilenZindan.id === 'buzul_magara' ? 0.75 : 0.65;
+        canavarHasar = Math.max(2, Math.round(canavarHasar * (1 - blokAzaltma)));
+        if (agirHamleydi) {
+          const karsi = Math.round((Math.floor(Math.random() * 11) + 15) * kilicBonus);
+          canavarHp = Math.max(0, canavarHp - karsi);
+          odak = Math.min(MAKS_ODAK, odak + 1);
+          sonOlay += `\n⚔️ **KUSURSUZ SAVUŞTURMA!** Ağır hamleyi karşıladın (**${canavarHasar} HP** aldın) ve anında **${karsi} Hasar** ile karşı vurdun! *(+1 odak)*`;
+        } else {
+          sonOlay += `\n🛡️ **BLOK!** Gelen darbeyi katananla karşıladın, hasar **${canavarHasar} HP**'ye düştü!`;
+        }
+      } else {
+        sonOlay += agirHamleydi
+          ? `\n💢 **${secilenZindan.canavar}** ağır hamlesini indirdi ve sana **${canavarHasar} Hasar** vurdu!`
+          : `\n👾 **${secilenZindan.canavar}** öfkeyle karşı atağa geçti ve sana **${canavarHasar} Hasar** vurdu!`;
+      }
+      if (canavarHasar > 0 && yEtki.savunma > 0) {
+        const azalan = Math.round(canavarHasar * yEtki.savunma);
+        canavarHasar -= azalan;
+        if (azalan > 0) sonOlay += ` *(🐉 ${aktifYoldas.ad} ${azalan} hasarı emdi)*`;
+      }
+      oyuncuHp = Math.max(0, oyuncuHp - canavarHasar);
+      blokAktif = false;
     }
 
+    // Magma Tapınağı: kızgın zemin her tur yakar, blok tutan korunur
+    if (secilenZindan.id === 'magma_tapinagi') {
+      if (customId === 'zindan_blok') {
+        sonOlay += `\n🔥 Siperin seni kızgın magmadan da korudu.`;
+      } else {
+        oyuncuHp = Math.max(0, oyuncuHp - 5);
+        sonOlay += `\n🔥 Kızgın zemin ayaklarını yaktı: **-5 HP**.`;
+      }
+    }
+
+    if (canavarHp <= 0) return zaferSonrasi();
+    if (oyuncuHp <= 0) return olumGoster();
+
+    niyet = canavarNiyeti(Math.random, canavarHp / maxCanavarHp);
     tur++;
-    await arenaGuncelle(bi.message);
+    return arenaGuncelle();
+  };
+
+  const zaferSonrasi = async () => {
+    if (kat >= MAKS_KAT) return odulVer(kat, true);
+    asama = 'karar';
+    return kararGoster();
+  };
+
+  savasCollector.on('collect', async bi => {
+    await bi.deferUpdate().catch(() => null);
+    // Hızlı çift tıklamada iki tur aynı anda işlenmesin
+    if (mesgul || bitti) return;
+    mesgul = true;
+    try {
+      await turIsle(bi.customId);
+    } catch (err) {
+      console.error('[Zindan] Tur işlenemedi:', err.message);
+    } finally {
+      mesgul = false;
+    }
+  });
+
+  savasCollector.on('end', async (_, sebep) => {
+    if (bitti || (sebep !== 'idle' && sebep !== 'time')) return;
+    try {
+      // Karar ekranında süre dolarsa ganimet alınır; savaşta dolarsa geri çekilmiş sayılır.
+      if (asama === 'karar') return await odulVer(kat, false);
+      await kacisGoster(`⏳ **${interaction.user.username}** hamle yapmadan çok bekledi; **${secilenZindan.canavar}** gölgelere çekildi ve savaş yarım kaldı.`);
+    } catch (err) {
+      console.error('[Zindan] Süre sonu işlenemedi:', err.message);
+    }
   });
 }

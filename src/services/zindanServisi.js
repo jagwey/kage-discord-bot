@@ -30,7 +30,7 @@ export function rutbeAcikMi(harf, toplamZafer) {
 }
 
 function bos() {
-  return { zafer: 0, olum: 0, seri: 0, enIyiSeri: 0, relikler: [], gun: '', gunlukZafer: 0, temizlenen: {} };
+  return { zafer: 0, olum: 0, seri: 0, enIyiSeri: 0, relikler: [], gun: '', gunlukZafer: 0, temizlenen: {}, enDerinKat: 1 };
 }
 
 function kayitAl(db, userId) {
@@ -63,24 +63,75 @@ export function seriBonusOrani(seri) {
   return Math.min(SERI_BONUS_TAVAN, Math.max(0, seri) * SERI_BONUS_ORANI);
 }
 
-/** Canavarın bu turdaki niyeti: ağır hamle yapacaksa oyuncuya önceden gösterilir. */
-export function canavarNiyeti(rng = Math.random) {
-  return rng() < 0.3 ? 'agir' : 'normal';
+/** Canavar niyetleri; her biri bir tur önceden oyuncuya gösterilir. */
+export const NIYET_METINLERI = {
+  normal: '👾 Sıradan bir saldırıya hazırlanıyor.',
+  agir: '⚠️ **Ağır hamle hazırlıyor!** Tam zamanında blok karşı vuruş kazandırır.',
+  kalkan: '🛡️ **Siper alıyor!** Bu tur saldırmaz; normal darbeler yarıya iner, Gölge Tekniği kalkanı parçalar.',
+  sifa: '💚 **Yaralarını sarmaya hazırlanıyor!** Bu tur 30+ hasar vurursan iyileşemez.'
+};
+
+/** Odak puanı üst sınırı: her saldırı 1 odak verir, Gölge Tekniği hepsini harcar. */
+export const MAKS_ODAK = 3;
+/** Zaferden sonra derine inilebilecek en fazla kat. */
+export const MAKS_KAT = 3;
+
+/**
+ * Canavarın bu turdaki niyeti. Şifa yalnızca canı %60'ın altına inince seçilebilir.
+ * Eski çağrılar yalnızca rng ile gelir; can oranı verilmezse tam can sayılır.
+ */
+export function canavarNiyeti(rng = Math.random, canOrani = 1) {
+  const r = rng();
+  if (r < 0.28) return 'agir';
+  if (r < 0.43) return 'kalkan';
+  if (r < 0.55 && canOrani < 0.6) return 'sifa';
+  return 'normal';
 }
 
 /**
  * Canavarın verdiği hasar. Ağır hamle %60 fazla vurur; "İblis Öfkesi" zindanında can azaldıkça artar.
- * Blok ağır hamleyi tamamen engellemez ama azaltma oranı aynı kalır.
+ * Hiçlik Boyutu'nun ikinci fazında (can %50 ve altı) bütün darbeler %30 sertleşir.
  */
 export function canavarHasari(zindan, niyet, canavarHp, rng = Math.random) {
   let hasar = Math.floor(rng() * (zindan.maxAtk - zindan.minAtk + 1)) + zindan.minAtk;
   if (niyet === 'agir') hasar = Math.round(hasar * 1.6);
-  if (zindan.id === 'sogun_kalesi' && canavarHp / zindan.canavarHp < 0.5) hasar = Math.round(hasar * 1.25);
+  const oran = canavarHp / zindan.canavarHp;
+  if (zindan.id === 'sogun_kalesi' && oran < 0.5) hasar = Math.round(hasar * 1.25);
+  if (zindan.id === 'hiclik_boyutu' && oran <= 0.5) hasar = Math.round(hasar * 1.3);
   return hasar;
 }
 
+/** Derin katlarda canavar her kat için %25 güçlenir. */
+export function katZindani(zindan, kat) {
+  const c = 1 + (kat - 1) * 0.25;
+  return {
+    ...zindan,
+    canavarHp: Math.round(zindan.canavarHp * c),
+    minAtk: Math.round(zindan.minAtk * c),
+    maxAtk: Math.round(zindan.maxAtk * c)
+  };
+}
+
+/** Katlar boyunca biriken Ryo çarpanı; ölünce hepsi kaybedilir. */
+export function katOdulCarpani(kat) {
+  return [1, 1.6, 2.4][kat - 1] ?? 2.4;
+}
+
+/**
+ * Yoldaşın savaş etkisi. Bonus seviye başına 3 puan artar; üst sınırlar oyunu kırmamak içindir.
+ * kritik: Gölge Tekniği şansı, kacinma: darbeden sıyrılma, savunma: hasar azaltma.
+ */
+export function yoldasSavasEtkisi(yoldas, tur) {
+  const etki = { kritik: 0, kacinma: 0, savunma: 0 };
+  if (!yoldas || !tur || !(tur.bonusTip in etki)) return etki;
+  const deger = (tur.bonusDeger + ((yoldas.seviye || 1) - 1) * 3) / 100;
+  const tavan = { kritik: 0.4, kacinma: 0.35, savunma: 0.4 }[tur.bonusTip];
+  etki[tur.bonusTip] = Math.min(tavan, deger);
+  return etki;
+}
+
 /** Zafer kaydı: seri, günlük ilk zafer, kalıntı düşüşü ve bonus Ryo hesaplar; bonusu öder. */
-export function zaferIsle(userId, zindan, temelRyo, simdi = Date.now(), rng = Math.random) {
+export function zaferIsle(userId, zindan, temelRyo, simdi = Date.now(), rng = Math.random, kat = 1) {
   const db = depo.oku();
   const k = kayitAl(db, userId);
   const gun = bugunAnahtari(simdi);
@@ -94,6 +145,7 @@ export function zaferIsle(userId, zindan, temelRyo, simdi = Date.now(), rng = Ma
   k.seri += 1;
   if (k.seri > k.enIyiSeri) k.enIyiSeri = k.seri;
   k.temizlenen[zindan.id] = (k.temizlenen[zindan.id] || 0) + 1;
+  k.enDerinKat = Math.max(k.enDerinKat || 1, kat);
 
   const etki = relikEtkisi(k.relikler);
   const relikBonusu = Math.round(temelRyo * (etki.ryoCarpani - 1));

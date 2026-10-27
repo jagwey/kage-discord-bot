@@ -137,6 +137,14 @@ Hedefler: docs/PROJE_HEDEFLERI.md. Kullanıcı istemeden commit atılmaz.
   - Yanlış yazımda (Levenshtein, harf kayması dahil) "`k cf` mı demek istedin?" + onay butonu. `k` önekinde sadece 3+ harfli kelimede önerir ("k tmm" sohbeti yakalanmaz).
   - Düz cümle: "kage yoldaşımı besle", "kage günlük ödülümü al" gibi cümleler onay butonu (60 sn) ile komutu çalıştırır. Soru cümleleri ("nasıl", "nedir") yapay zekaya gider.
   - Chatbot yardım cevabı ve yapay zeka bağlamı (`KISA_KOMUT_OZETI`) kısa komutları anlatır.
+52. **Zindan savaşı derinleşti (2026-10-27):**
+  - `src/commands/zindan.js` arena baştan yazıldı, kurallar `src/services/zindanServisi.js` içinde.
+  - Canavar niyeti bir tur önceden görünür: ağır hamle, siper (kalkan), şifa, normal. Ağır hamleye blok karşı vuruş ve +1 odak verir. Siperde normal darbe yarıya iner, Gölge Tekniği kalkanı kırar. Şifayı tek turda 30+ hasar böler.
+  - Odak: her saldırı +1 (en çok 3). Gölge şansı odak başına +%15, tam odakta garanti ve +%20 hasar.
+  - Katlar: zaferden sonra "Derine İn" (en çok 3 kat, canavar kat başına +%25, ödül x1 / x1.6 / x2.4, +20 HP) ya da "Ganimeti Al". Ölünce birikmiş ganimet gider. Derin katta kaçış, temizlenen katların ganimetini sandıksız öder.
+  - Yoldaş etkisi: kurt Gölge şansı, kuzgun kaçınma, ejder hasar emme, tilki Ryo.
+  - Magma her tur 5 HP yakar (blok korur). Hiçlik Boyutu yarı canda ikinci faza girer.
+  - 60 sn hamlesizlikte savaş cezasız biter. Çift tıklama kilidi var. Profilde en derin kat ve temizlenen zindan sayısı görünür.
 
 ## Sürüyor
 
