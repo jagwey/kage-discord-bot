@@ -176,9 +176,17 @@ Hedefler: docs/PROJE_HEDEFLERI.md. Kullanıcı istemeden commit atılmaz.
   - Tokluk ve mutluluk zamanla düşer (saatte 3 ve 2). Aç veya küskün yoldaş yarım güç verir, mutlu yoldaş %10 fazla.
   - Panel butonları: Besle (100), Oyna (30 dk), Eğit (250, 2 sa), Sefer 1/4/8 sa, Topla. `/yoldas isim` eklendi.
   - Sefer Ryo, XP ve malzeme getirir, klan savaşına saat başı 3 puan yazar.
+59. **Ocak (2026-10-27, a163ee6):**
+  - `/demirci` Kılıç, Eşya, Tamir sekmeli tek panel. Kılıç 4. kademeden kırılabilir, 5+ geriler. Koruma tılsımı 750 Ryo, en çok 3.
+  - Eşyalar zindan (6) ve boss (2) ile yıpranır, kırık eşya bonus vermez, Tamir sekmesi Ryo ve malzemeyle onarır.
+  - Kusanagi ve Yata Aynası efsanevi; Kadim Çekirdek sadece bosstan düşer, kara borsada yok.
+60. **Balık (2026-10-27):**
+  - `/balik` Gölet, Akvaryum, Turnuva sekmeleri. Olta at, şamandıra 2-6 sn sonra batar, 3.5 sn içinde Çek! (ilk 1.5 sn kusursuz: olta +3, kg x1.2). Erken ya da geç çekmek avı kaçırır.
+  - 13 tür: gece (20-06) Ay Balığı ve Fener Balığı, her mevsime bir balık.
+  - Akvaryum 5 yuva, saatlik Ryo, 24 saat kasa sınırı. Haftalık en ağır balık turnuvası 3000/1500/750 Ryo, `etkinlikServisi` duyurur ve DM atar.
 
 ## Sürüyor
 
-- Oyun geliştirme planı: 1 kalıcı buton (bitti), 2 yoldaş (bitti), 3 Ocak (zanaat+demirci, kırılma, dayanıklılık, efsanevi tarif), 4 balık, 5 UI, 6 yeni oyunlar (bahçe, ticaret, açık artırma, sezon).
+- Oyun geliştirme planı: 1 kalıcı buton (bitti), 2 yoldaş (bitti), 3 Ocak (bitti), 4 balık (bitti), 5 UI, 6 yeni oyunlar (bahçe, ticaret, açık artırma, sezon).
 
 ## Bekliyor

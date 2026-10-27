@@ -1,6 +1,7 @@
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { haftayiKapat } from './klanSavasServisi.js';
 import { cekilisYap } from './piyangoServisi.js';
+import { turnuvaKapat } from './balikServisi.js';
 import { baskinAyarGetir, baskinlariSurdur } from './baskinServisi.js';
 
 // Haftalık klan savaşı kapanışı, piyango çekilişi ve yarıda kalan baskınlar.
@@ -46,7 +47,21 @@ export async function haftalikSonuclariIsle(client, simdi = Date.now()) {
     }));
     await dmGonder(client, piyango.kazanan, `🎟️ Haftalık piyangoyu kazandın! **${piyango.ikramiye} Ryo** cüzdanına yattı.`);
   }
-  return { klan, piyango };
+
+  const balik = turnuvaKapat(simdi);
+  if (balik) {
+    const madalya = ['🥇', '🥈', '🥉'];
+    await duyur(client, kageEmbed({
+      baslik: 'BALIK TURNUVASI SONUÇLANDI',
+      renk: TEMA.RENKLER.ALTIN,
+      aciklama: `${balik.hafta} haftasının en ağır balıkları:\n\n` +
+        balik.kazananlar.map((k, i) => `${madalya[i]} <@${k.uid}> **${k.kg} kg** (+${k.odul} Ryo)`).join('\n')
+    }));
+    for (const [i, k] of balik.kazananlar.entries()) {
+      await dmGonder(client, k.uid, `🎣 Balık turnuvasında **${i + 1}.** oldun (${k.kg} kg)! **${k.odul} Ryo** cüzdanına yattı.`);
+    }
+  }
+  return { klan, piyango, balik };
 }
 
 /** @param {import('discord.js').Client} client */

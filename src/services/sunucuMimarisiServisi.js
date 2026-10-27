@@ -135,7 +135,7 @@ const KATEGORILER = [
       mesaj: ['ZİNDAN SEFERLERİ', '`/zindan sefer` ile İblis zindanına in. Zaferle D→S rütbesini aç, kalıntı topla, serini koru.\n`/zindan profil` ve `/zindan siralama` ile durumuna bak.', TEMA.RENKLER.ALTIN] },
     { k: 'balik', ad: '🎣・sessiz-göl', ara: ['sessiz-göl'],
       topic: 'Balık tut: /balik. Nadir balıkları yakala, koleksiyonu tamamla.',
-      mesaj: ['SESSİZ GÖL', '`/balik` ile olta at. 9 balık türü, ilk keşif bonusu ve çanta satışı var. Oltanı geliştirdikçe nadir balık şansın artar.', TEMA.RENKLER.ALTIN] },
+      mesaj: ['SESSİZ GÖL', '`/balik` ile olta at, şamandıra batınca Çek! 13 tür, gece ve mevsim balıkları, ilk keşif bonusu var. Akvaryumun saat başı Ryo üretir, en ağır balık haftalık turnuvayı kazanır.', TEMA.RENKLER.ALTIN] },
     { k: 'boss', ad: '🐉・boss-arenası', ara: ['boss-arenası'],
       topic: 'Sunucu ortak bossu: /boss. Saatte bir saldır, ganimet hasar payına göre bölünür.',
       mesaj: ['BOSS ARENASI', '`/boss` ile ortak dünya bossuna saatte bir saldır. Boss ölünce ödül havuzu hasar payına göre dağıtılır, son vuruşa %20 ek.\n48 saatte öldürülmezse kaçar.', TEMA.RENKLER.ALTIN] },

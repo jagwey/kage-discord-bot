@@ -40,7 +40,7 @@ export function yardimKartiOlustur() {
           '`• /ekonomi-log [üye] [adet]` : Son Ryo hareketleri (yönetici).\n' +
           '`• /gorev` : Günlük 3 görev; bitirince Ryo ödülü ve tamamlama bonusu.\n' +
           '`• /dojo` : Kendi dojonu kur; sen yokken saat başı Ryo üretir, topla ve yükselt.\n' +
-          '`• /balik` : Gölette olta at, nadir balık yakala, koleksiyon yap ve sat.\n' +
+          '`• /balik` : Olta at, şamandıra batınca Çek!, gece ve mevsim balıkları, akvaryum geliri, haftalık en ağır balık turnuvası.\n' +
           '`• /boss` : Sunucu ortak dünya bossuna saatte bir saldır; ganimet hasar payına göre bölünür.\n' +
           '`• /kule` : Gölge Kulesi: günde 3 hak, kat kat tırman, güçlenme seç, ölmeden ödülü çek.\n' +
           '`• /karsilama [ayarla|goster|sifirla]` : Karşılama kanalı, mesajı ve rolü (yönetici).\n' +
