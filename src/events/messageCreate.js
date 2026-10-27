@@ -258,7 +258,7 @@ export async function execute(message) {
   const cagrildi = !!kageMatch || !!aiMatch || botEtiketlendi || botaYanit || aiKanali;
   const yazarAdi = message.member?.displayName || message.author.username;
 
-  // OwO tarzı kısa komut: "k cf 100". Kısa sohbet ("k tmm") yanlış yazım sayılmasın diye
+  // Kısa komut: "k yt 100". Kısa sohbet ("k tmm") yanlış yazım sayılmasın diye
   // tahmin sadece 3+ harfli ilk kelimede gösterilir.
   const kisaMatch = message.content.match(/^k\s+(\S.*)$/is);
   if (kisaMatch) {

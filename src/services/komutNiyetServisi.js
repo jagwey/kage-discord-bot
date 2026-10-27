@@ -235,7 +235,8 @@ const NIYETLER = [
 ];
 
 /*
- * OwO tarzı kısa komutlar: "k cf 100", "k s 50", "k d". Önek "k" ya da "kage".
+ * Kısa komutlar: "k yt 100", "k slot 50", "k g". Önek "k" ya da "kage".
+ * İlk ad Türkçe asıl addır; OwO alışkanlığı olanlar için İngilizce adlar da çalışır.
  * Kısa komut yazan ne istediğini bildiği için onay sorulmadan hemen çalışır.
  */
 const bahisVeSecim = arg => {
@@ -245,13 +246,13 @@ const bahisVeSecim = arg => {
 const kimse = ctx => ctx.etiketlenenler[0];
 
 const KISA_KOMUTLAR = [
-  { adlar: ['cf', 'coinflip', 'yt', 'yazitura'], ozet: 'cf 100 t', aciklama: 'yazı tura', kur: arg => ({ komut: 'yazitura', secenekler: bahisVeSecim(arg) }) },
-  { adlar: ['s', 'slot', 'slots'], ozet: 's 100', aciklama: 'slot', kur: arg => ({ komut: 'slot', secenekler: { bahis: sayiBul(arg) || 100 } }) },
+  { adlar: ['yt', 'yazitura', 'cf', 'coinflip'], ozet: 'yt 100 t', aciklama: 'yazı tura', kur: arg => ({ komut: 'yazitura', secenekler: bahisVeSecim(arg) }) },
+  { adlar: ['slot', 's', 'slots'], ozet: 'slot 100', aciklama: 'slot', kur: arg => ({ komut: 'slot', secenekler: { bahis: sayiBul(arg) || 100 } }) },
   { adlar: ['bj', 'blackjack'], ozet: 'bj 100', aciklama: 'blackjack', kur: arg => ({ komut: 'blackjack', secenekler: { bahis: sayiBul(arg) || 100 } }) },
-  { adlar: ['d', 'daily', 'gunluk'], ozet: 'd', aciklama: 'günlük ödül', kur: () => ({ komut: 'gunluk' }) },
-  { adlar: ['h', 'hunt', 'fish', 'balik', 'olta'], ozet: 'h', aciklama: 'balık tut', kur: () => ({ komut: 'balik' }) },
+  { adlar: ['g', 'gunluk', 'd', 'daily'], ozet: 'g', aciklama: 'günlük ödül', kur: () => ({ komut: 'gunluk' }) },
+  { adlar: ['b', 'balik', 'olta', 'h', 'hunt', 'fish'], ozet: 'b', aciklama: 'balık tut', kur: () => ({ komut: 'balik' }) },
   {
-    adlar: ['z', 'zindan', 'dungeon', 'sefer'], ozet: 'z', aciklama: 'zindan seferi', kur: arg => ({
+    adlar: ['z', 'zindan', 'sefer', 'dungeon'], ozet: 'z', aciklama: 'zindan seferi', kur: arg => ({
       komut: 'zindan',
       secenekler: { islem: /\bprofil|\bp\b/.test(arg) ? 'profil' : /\b(top|sira)/.test(arg) ? 'siralama' : 'sefer' }
     })
@@ -259,31 +260,31 @@ const KISA_KOMUTLAR = [
   { adlar: ['boss', 'bs'], ozet: 'boss', aciklama: 'sunucu bossu', kur: () => ({ komut: 'boss' }) },
   { adlar: ['kule', 'tower'], ozet: 'kule', aciklama: 'kule', kur: () => ({ komut: 'kule' }) },
   { adlar: ['dojo', 'train'], ozet: 'dojo', aciklama: 'dojo', kur: () => ({ komut: 'dojo' }) },
-  { adlar: ['forge', 'demirci', 'smith'], ozet: 'forge', aciklama: 'demirci', kur: () => ({ komut: 'demirci' }) },
+  { adlar: ['demirci', 'forge', 'smith'], ozet: 'demirci', aciklama: 'demirci', kur: () => ({ komut: 'demirci' }) },
   { adlar: ['fal', 'pray', 'kehanet'], ozet: 'fal', aciklama: 'günlük kehanet', kur: () => ({ komut: 'kehanet' }) },
-  { adlar: ['q', 'quest', 'gorev'], ozet: 'q', aciklama: 'görevler', kur: () => ({ komut: 'gorev' }) },
-  { adlar: ['cash', 'bal', 'para', 'bakiye'], ozet: 'cash', aciklama: 'bakiye', kur: (arg, ctx) => ({ komut: 'bakiye', secenekler: kimse(ctx) ? { kullanici: kimse(ctx) } : {} }) },
+  { adlar: ['gorev', 'q', 'quest'], ozet: 'gorev', aciklama: 'görevler', kur: () => ({ komut: 'gorev' }) },
+  { adlar: ['para', 'bakiye', 'cuzdan', 'cash', 'bal'], ozet: 'para', aciklama: 'bakiye', kur: (arg, ctx) => ({ komut: 'bakiye', secenekler: kimse(ctx) ? { kullanici: kimse(ctx) } : {} }) },
   {
-    adlar: ['give', 'ode', 'ver'], ozet: 'give @üye 500', aciklama: 'Ryo gönder', kur: (arg, ctx) => {
+    adlar: ['ver', 'ode', 'give'], ozet: 'ver @üye 500', aciklama: 'Ryo gönder', kur: (arg, ctx) => {
       const miktar = sayiBul(arg);
-      return kimse(ctx) && miktar ? { komut: 'ode', secenekler: { alici: kimse(ctx), miktar } } : { eksik: 'give @üye 500' };
+      return kimse(ctx) && miktar ? { komut: 'ode', secenekler: { alici: kimse(ctx), miktar } } : { eksik: 'ver @üye 500' };
     }
   },
   {
-    adlar: ['duel', 'duello', 'vs'], ozet: 'duel @üye 100', aciklama: 'düello', kur: (arg, ctx) => {
-      if (!kimse(ctx)) return { eksik: 'duel @üye 100' };
+    adlar: ['duello', 'vs', 'duel'], ozet: 'duello @üye 100', aciklama: 'düello', kur: (arg, ctx) => {
+      if (!kimse(ctx)) return { eksik: 'duello @üye 100' };
       const bahis = sayiBul(arg);
       return { komut: 'duello', secenekler: { rakip: kimse(ctx), ...(bahis ? { bahis } : {}) } };
     }
   },
   { adlar: ['p', 'profil', 'profile'], ozet: 'p', aciklama: 'profil', kur: () => ({ komut: 'profil' }) },
-  { adlar: ['inv', 'i', 'envanter'], ozet: 'inv', aciklama: 'envanter', kur: (arg, ctx) => ({ komut: 'envanter', secenekler: kimse(ctx) ? { kullanici: kimse(ctx) } : {} }) },
-  { adlar: ['lvl', 'level', 'seviye', 'xp'], ozet: 'lvl', aciklama: 'seviye', kur: (arg, ctx) => (/\btop\b/.test(arg) ? { komut: 'seviye', alt: 'siralama' } : { komut: 'seviye', alt: 'bak', secenekler: kimse(ctx) ? { uye: kimse(ctx) } : {} }) },
-  { adlar: ['top', 'lb', 'liderlik'], ozet: 'top', aciklama: 'zenginler', kur: () => ({ komut: 'liderlik' }) },
-  { adlar: ['shop', 'market'], ozet: 'shop', aciklama: 'market', kur: () => ({ komut: 'market' }) },
-  { adlar: ['feed', 'besle'], ozet: 'feed', aciklama: 'yoldaşı besle', kur: () => ({ komut: 'yoldas', alt: 'besle' }) },
+  { adlar: ['canta', 'envanter', 'inv', 'i'], ozet: 'canta', aciklama: 'envanter', kur: (arg, ctx) => ({ komut: 'envanter', secenekler: kimse(ctx) ? { kullanici: kimse(ctx) } : {} }) },
+  { adlar: ['seviye', 'xp', 'lvl', 'level'], ozet: 'seviye', aciklama: 'seviye', kur: (arg, ctx) => (/\btop\b/.test(arg) ? { komut: 'seviye', alt: 'siralama' } : { komut: 'seviye', alt: 'bak', secenekler: kimse(ctx) ? { uye: kimse(ctx) } : {} }) },
+  { adlar: ['sira', 'zenginler', 'liderlik', 'top', 'lb'], ozet: 'sira', aciklama: 'zenginler', kur: () => ({ komut: 'liderlik' }) },
+  { adlar: ['market', 'dukkan', 'shop'], ozet: 'market', aciklama: 'market', kur: () => ({ komut: 'market' }) },
+  { adlar: ['besle', 'feed'], ozet: 'besle', aciklama: 'yoldaşı besle', kur: () => ({ komut: 'yoldas', alt: 'besle' }) },
   {
-    adlar: ['pet', 'yoldas', 'zoo'], ozet: 'pet', aciklama: 'yoldaş', kur: arg => {
+    adlar: ['yoldas', 'pet', 'zoo'], ozet: 'yoldas', aciklama: 'yoldaş', kur: arg => {
       if (/\b(feed|besle)\b/.test(arg)) return { komut: 'yoldas', alt: 'besle' };
       const tur = YOLDAS_TURU.find(([d]) => d.test(arg))?.[1];
       return tur ? { komut: 'yoldas', alt: 'sec', secenekler: { tur } } : { komut: 'yoldas', alt: 'bilgi' };
@@ -306,8 +307,8 @@ const KISA_KOMUTLAR = [
     adlar: ['manga', 'm'], ozet: 'm naruto', aciklama: 'manga ara', kur: (arg, ctx) => (ctx.hamArg ? { komut: 'manga', secenekler: { isim: ctx.hamArg.slice(0, 100) } } : { komut: 'rastgele-manga' })
   },
   { adlar: ['rm', 'rmanga'], ozet: 'rm', aciklama: 'rastgele manga', kur: () => ({ komut: 'rastgele-manga' }) },
-  { adlar: ['bday', 'dg'], ozet: 'bday', aciklama: 'yaklaşan doğum günleri', kur: () => ({ komut: 'dogum-gunu', alt: 'yaklasan' }) },
-  { adlar: ['help', 'yardim', 'komutlar', 'kmt'], ozet: 'help', aciklama: 'bu liste', kur: () => ({ kilavuz: true }) }
+  { adlar: ['dg', 'dogumgunu', 'bday'], ozet: 'dg', aciklama: 'yaklaşan doğum günleri', kur: () => ({ komut: 'dogum-gunu', alt: 'yaklasan' }) },
+  { adlar: ['yardim', 'komutlar', 'kmt', 'help'], ozet: 'yardim', aciklama: 'bu liste', kur: () => ({ kilavuz: true }) }
 ];
 
 const KISA_HARITA = new Map(KISA_KOMUTLAR.flatMap(k => k.adlar.map(ad => [ad, k])));
@@ -428,7 +429,7 @@ async function kilavuzGonder(message) {
 }
 
 /**
- * OwO tarzı kısa komutu yakalar ve onaysız çalıştırır.
+ * Kısa komutu yakalar ve onaysız çalıştırır.
  * Kısa komut değilse ve tahminGoster açıksa yakın bir komut için "bunu mu demek istedin" sorar.
  * @returns {Promise<boolean>} mesaj işlendiyse true
  */
@@ -444,7 +445,7 @@ export async function kisaKomutuIsle(message, metin, { tahminGoster = true } = {
     const duzeltilmis = [tahmin, ...String(metin).trim().split(/\s+/).slice(1)].join(' ');
     const tahminNiyet = kisaKomutBul(duzeltilmis, { etiketlenenler: etiketlenenleriAl(message) });
     if (!tahminNiyet || tahminNiyet.eksik || tahminNiyet.kilavuz) {
-      await message.reply({ content: `\`${ilk}\` diye bir komutum yok. **\`k ${tahmin}\`** mı demek istedin?\n-# tüm liste: \`k help\``, allowedMentions: { parse: [], repliedUser: false } }).catch(() => null);
+      await message.reply({ content: `\`${ilk}\` diye bir komutum yok. **\`k ${tahmin}\`** mı demek istedin?\n-# tüm liste: \`k yardim\``, allowedMentions: { parse: [], repliedUser: false } }).catch(() => null);
       return true;
     }
     await onayIste(message, tahminNiyet, `🤔 \`${ilk}\` yok. **\`k ${duzeltilmis}\`** mı demek istedin?`);

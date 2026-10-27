@@ -150,6 +150,9 @@ Hedefler: docs/PROJE_HEDEFLERI.md. Kullanıcı istemeden commit atılmaz.
   - `aiErisimServisi.sahipMi`: OWNER_ID, sunucu sahibi ya da uygulama sahibi. Sahip, `aiAjanServisi` içinde Discord izni olmasa da bütün eylemleri yapar.
   - Yapay zekâ sahibe tam yetkiyle konuşur (`kageBeyin` ve `chatBotServisi` istemleri). Yıkıcı eylem onay butonu, sır yasağı ve aile/din/dil/ırk hakareti yasağı sahip için de geçerli.
   - Yeni AI aracı `ryo_dus`. `ryo_ekle` artık hedef bulunamazsa Ryo'yu isteyene vermez.
+54. **Kısa komutlar Türkçeleşti (2026-10-27):**
+  - Asıl adlar Türkçe: `k yt 100 t`, `k slot`, `k g` (günlük), `k b` (balık), `k para`, `k ver @üye 500`, `k duello`, `k canta`, `k sira`, `k market`, `k besle`, `k gorev`, `k demirci`, `k yardim`.
+  - Eski OwO adları (`cf`, `s`, `d`, `h`, `give`, `inv`, `top`, `shop`, `help` vb.) yedek olarak çalışmaya devam eder. Yeni yedekler: `cuzdan`, `dukkan`, `zenginler`, `dogumgunu`.
 
 ## Sürüyor
 
