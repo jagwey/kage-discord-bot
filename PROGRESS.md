@@ -124,6 +124,13 @@ Hedefler: docs/PROJE_HEDEFLERI.md. Kullanıcı istemeden commit atılmaz.
   - Kendinden bahset metnini yapay zeka okur (12 sn sınır): ruh karakteri, motto, ilgi alanları, özet, kişiye özel selam. Profil (`profilGuncelle`) ve kayıt notu (Yaş, Hakkında) güncellenir. Kart sadeleşti, selamla başlar. Hakkında metni herkese açık anonsa girmez.
   - `sahibeBildir(guild, metin)` (golgeGozServisi): admin AI kanalına sahibi etiketler, kanal yoksa DM. Sahibin adı/"kurucu"/"owner"/"sunucu sahibi" geçince 5 dk aralıkla haber; öğrenme taraması `[SAHIBE_NOT]` ile bug, öneri, şikayet, iş birliği, yardım, güvenlik notlarını iletir (tarama başına en fazla 3). Kayıtta yapay zeka sahibin işine yarar bir şey görürse o da gider.
   - `/golge-goz ayar sahibe-bildir` ile kapatılır.
+50. **Topluluk servisi: doğum günü, haftalık rapor, tanıştırma, kayıt hatırlatma (2026-10-27):**
+  - `src/services/toplulukServisi.js`, veri `data/topluluk.json`. 10 dakikada bir tur (Türkiye saati UTC+3).
+  - `/dogum-gunu ayarla|sil|yaklasan|kanal` (70. komut). Saat 10:00'dan sonra sohbet kanalında (`dogumGunuKanalId` ya da sohbet/genel adlı kanal) yapay zekalı kutlama, kullanıcı başına yılda bir 500 Ryo. 29 Şubat artık olmayan yılda 28 Şubat'ta kutlanır. Kayıt kartında doğum günü ipucu satırı.
+  - Haftalık rapor: pazar 20:00'den sonra sahibe DM (katılım, kayıt, sevilen türler, mesaj sayısı, en aktif 5, `sahibeBildir` notları, 7 günlük doğum günleri, tek cümle yapay zeka yorumu). `/golge-goz haftalik` ile anında görülür. Mesaj sayacı rapordan sonra sıfırlanır.
+  - Tanıştırma: ilk kayıtta, anonstan sonra aynı türleri seven kayıtlı bir üye hoş geldin kanalında etiketlenir; eski üye en sık 3 günde bir.
+  - Kayıt hatırlatma: Ronin rolündeki, 24 saat ile 7 gün önce katılan üyeye tek seferlik DM. Üye listesi 6 saatte bir çekilir.
+  - `/golge-goz ayar haftalik-rapor|kayit-hatirlat|tanistir` ile her biri kapatılır.
 
 ## Sürüyor
 

@@ -13,6 +13,7 @@ import { aiErisimKontrol, aiSpamKontrol } from '../services/aiErisimServisi.js';
 import { kullaniciModelSec, kullaniciModelGetir } from '../services/kageHafizaServisi.js';
 import { modelKoduCozumle, DESTEKLENEN_MODELLER, gorselAnalizEt, motorEtiketi } from '../services/aiRouterServisi.js';
 import { golgeGozMesajIsle } from '../services/golgeGozServisi.js';
+import { mesajSay } from '../services/toplulukServisi.js';
 
 export const name = Events.MessageCreate;
 
@@ -168,6 +169,7 @@ export async function execute(message) {
 
   // Gölge Gözü: Tüm sunucu mesajlarını 0 ms'de izler, reklam/şüphe tarar ve otonom öğrenme havuzuna iletir.
   golgeGozMesajIsle(message).catch(() => null);
+  mesajSay(message);
 
   // Otomatik moderasyon: yasaklı kelime içeren mesaj silinir ve işlem burada biter.
   if (await otomodKontrol(message).catch(() => false)) return;

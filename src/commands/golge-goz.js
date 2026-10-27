@@ -3,6 +3,7 @@ import {
   golgeGozDurumu, golgeGozTopluAnaliz, golgeGozAyarGetir, golgeGozAyarGuncelle,
   hakimDavasiBaslat, aktifDavalar
 } from '../services/golgeGozServisi.js';
+import { haftalikRaporOlustur } from '../services/toplulukServisi.js';
 
 export const data = new SlashCommandBuilder()
   .setName('golge-goz')
@@ -29,6 +30,13 @@ export const data = new SlashCommandBuilder()
       .addBooleanOption(o => o.setName('hakim-modu').setDescription('Kavga çıkınca Yargıç Kage devreye girsin'))
       .addBooleanOption(o => o.setName('sahibe-bildir').setDescription('Senden bahsedilince ya da işine yarar bilgi geçince seni etiketlesin'))
       .addRoleOption(o => o.setName('yetkili-rol').setDescription('Kavgada etiketlenecek mod rolü (yoksa sunucu sahibi)'))
+      .addBooleanOption(o => o.setName('haftalik-rapor').setDescription('Pazar akşamı sahibe haftalık özet DM gitsin'))
+      .addBooleanOption(o => o.setName('kayit-hatirlat').setDescription('24 saattir kayıt olmayana nazik DM gitsin'))
+      .addBooleanOption(o => o.setName('tanistir').setDescription('Yeni kayıt olanı aynı türleri seven eski üyeyle tanıştır'))
+  )
+  .addSubcommand(sub =>
+    sub.setName('haftalik')
+      .setDescription('Son 7 günün sahip raporunu şimdi gösterir.')
   )
   .addSubcommand(sub =>
     sub.setName('hakim')
@@ -54,6 +62,7 @@ export async function execute(interaction) {
     const satirlar = [
       `👁️ Gölge Göz ${ayar.acik ? 'nöbette' : 'kapalı'}`,
       `uyarı ${evet(ayar.uyari)} • yetkilileri uyar ${evet(ayar.yetkilileriUyar)} • hakim modu ${evet(ayar.hakimModu)} • sahibe bildir ${evet(ayar.sahibeBildir)}`,
+      `haftalık rapor ${evet(ayar.haftalikRapor)} • kayıt hatırlat ${evet(ayar.kayitHatirlat)} • tanıştır ${evet(ayar.tanistir)}`,
       `kavgada çağrılan: ${ayar.yetkiliRolId ? `<@&${ayar.yetkiliRolId}>` : 'sunucu sahibi'}`,
       `${durum.toplamIncelenenMesaj.toLocaleString('tr-TR')} mesaj okundu • ${durum.ogrenilenBilgiSayisi} bilgi öğrenildi • ${durum.onlenenIhlalSayisi} ihlal`,
       `son öğrenme taraması ${sonTarama}`
@@ -101,15 +110,26 @@ export async function execute(interaction) {
     if (hakimModu !== null) degisim.hakimModu = hakimModu;
     if (sahibeBildir !== null) degisim.sahibeBildir = sahibeBildir;
     if (rol) degisim.yetkiliRolId = rol.id;
+    for (const [secenek, anahtar] of [['haftalik-rapor', 'haftalikRapor'], ['kayit-hatirlat', 'kayitHatirlat'], ['tanistir', 'tanistir']]) {
+      const deger = interaction.options.getBoolean(secenek);
+      if (deger !== null) degisim[anahtar] = deger;
+    }
 
     const ayar = Object.keys(degisim).length ? golgeGozAyarGuncelle(guildId, degisim) : golgeGozAyarGetir(guildId);
     return interaction.reply({
       content: `${Object.keys(degisim).length ? '✅ kaydedildi' : 'değişiklik yok'}\n` +
         `açık ${evet(ayar.acik)} • uyarı ${evet(ayar.uyari)} • yetkilileri uyar ${evet(ayar.yetkilileriUyar)} • hakim modu ${evet(ayar.hakimModu)} • sahibe bildir ${evet(ayar.sahibeBildir)}\n` +
+        `haftalık rapor ${evet(ayar.haftalikRapor)} • kayıt hatırlat ${evet(ayar.kayitHatirlat)} • tanıştır ${evet(ayar.tanistir)}\n` +
         `kavgada çağrılan: ${ayar.yetkiliRolId ? `<@&${ayar.yetkiliRolId}>` : 'sunucu sahibi'}\n-# Gölge Göz`,
       flags: MessageFlags.Ephemeral,
       allowedMentions: { parse: [] }
     });
+  }
+
+  if (sub === 'haftalik') {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    const rapor = await haftalikRaporOlustur(interaction.guild);
+    return interaction.editReply({ content: rapor, allowedMentions: { parse: [] } });
   }
 
   if (sub === 'hakim') {

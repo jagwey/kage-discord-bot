@@ -5,6 +5,7 @@ import { kullaniciNotuEkle, profilGuncelle, bilgiOgren, hafizaKaydet } from './k
 import { akilliAiUret, motorEtiketi } from './aiRouterServisi.js';
 import { sunucuAyarGetir } from './veritabaniServisi.js';
 import { yasakliBul, otomodAyarGetir, yetkiliMi } from './otomodServisi.js';
+import { sahipNotuKaydet } from './toplulukServisi.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -27,7 +28,10 @@ export const VARSAYILAN_AYAR = {
   yetkilileriUyar: true,  // yönetici ve sunucu sahibi de uyarılır
   hakimModu: true,        // kavga çıkınca Yargıç Kage devreye girer
   yetkiliRolId: null,     // kavgada etiketlenecek mod rolü; yoksa sunucu sahibi etiketlenir
-  sahibeBildir: true      // sahipten bahsedilince ya da işine yarar bilgi geçince sahip etiketlenir
+  sahibeBildir: true,     // sahipten bahsedilince ya da işine yarar bilgi geçince sahip etiketlenir
+  haftalikRapor: true,    // pazar akşamı sahibe haftalık özet DM'i
+  kayitHatirlat: true,    // 24 saattir kayıt olmayana nazik DM
+  tanistir: true          // yeni kayıt olanı aynı türleri seven eski üyeyle tanıştır
 };
 
 const SAHIP_ANMA_ARALIK_MS = 5 * 60 * 1000; // aynı sunucuda "senden bahsedildi" en sık bu aralıkla
@@ -339,6 +343,7 @@ function adminKanalaYaz(guild, icerik) {
  */
 export async function sahibeBildir(guild, metin) {
   if (!guild?.ownerId || !golgeGozAyarGetir(guild.id).sahibeBildir) return false;
+  sahipNotuKaydet(guild.id, metin);
   const icerik = `<@${guild.ownerId}> ${metin}`.slice(0, 1900) + '\n-# Gölge Göz';
   const hedefKanalId = sunucuAyarGetir(guild.id).aiYonetimKanalId || process.env.AI_ADMIN_CHANNEL_ID;
   const adminKanal = hedefKanalId && guild.channels.cache.get(hedefKanalId);

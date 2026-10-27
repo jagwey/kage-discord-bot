@@ -29,7 +29,7 @@ Tüm AI yönlendirmesi `src/services/aiRouterServisi.js` ve erişim denetimi `sr
 - **Canlı Admin AI İzleme:** Başka biri konuşurken bile admin kanalına (`aiYonetimKanalId`) hangi kullanıcının hangi soruya hangi motorla yanıt aldığı canlı düşer. Yetkililere mesaj altında motor etiketi (`-# [Motor: ...]`) gösterilir.
 
 ## 📁 Dizin Yapısı
-- `src/commands/`: 69 adet Slash komutu (`export const data`, `export async function execute`).
+- `src/commands/`: 70 adet Slash komutu (`export const data`, `export async function execute`).
 - `src/services/`: 33 adet modüler servis (`aiRouterServisi`, `aiErisimServisi`, `golgeGozServisi`, `chatBotServisi`, `ekonomiServisi`, `klanServisi`, `yoldasServisi`, `sunucuMimarisiServisi`, `zindanServisi`, `bossServisi` vb.).
 - `src/events/`: Discord olay dinleyicileri (`interactionCreate`, `messageCreate`, `ready`, `guildMemberAdd`).
 - `data/`: JSON veri depoları (`klanlar.json`, `yoldaslar.json`, `zindan.json`, `ekonomi.json`, `kullanicilar.json`, `golge_goz_istatistik.json`, `dojo.json` vb.).

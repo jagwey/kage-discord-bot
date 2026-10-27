@@ -18,6 +18,7 @@ import { kullaniciNotuEkle, kullaniciHafizasiGetir, profilGuncelle } from './kag
 import { sunucuAyarGetir } from './veritabaniServisi.js';
 import { akilliAiUret } from './aiRouterServisi.js';
 import { sahibeBildir } from './golgeGozServisi.js';
+import { kayitOlayiKaydet, yeniUyeyiTanistir, turListesi, dogumGunuGetir } from './toplulukServisi.js';
 
 export const YAS_ARALIKLARI = ['13-15', '16-17', '18-20', '21-25', '26-30', '30+'];
 export const MANGA_TURLERI = [
@@ -466,8 +467,9 @@ export async function kayitIsleminiTamamla(interaction, veriler) {
     `📖 ${mangaTuru}`,
     `🥷 ${karakter}`,
     `📜 *${yemin}*`,
-    odul ? `💰 +${odul} Ryo • bakiye ${yeniRyo}` : `💰 bakiye ${yeniRyo}`
-  ].join('\n');
+    odul ? `💰 +${odul} Ryo • bakiye ${yeniRyo}` : `💰 bakiye ${yeniRyo}`,
+    dogumGunuGetir(member.id) ? null : '-# 🎂 `/dogum-gunu ayarla` yaz, o gün Kage seni kutlasın ve Ryo hediye etsin'
+  ].filter(Boolean).join('\n');
   const embed = kageEmbed({
     baslik: isFemale ? '🌸 Kunoichi mührü basıldı' : '🗡️ Samuray mührü basıldı',
     renk: isFemale ? 0xff66b2 : TEMA.RENKLER.BASARI,
@@ -517,8 +519,12 @@ export async function kayitIsleminiTamamla(interaction, veriler) {
         `Kılıcın keskin, bahtın açık olsun!`,
       thumbnail: member.user.displayAvatarURL({ dynamic: true })
     });
-    hosgeldinKanal.send({ embeds: [anonsEmbed] }).catch(() => {});
+    // Anons gittikten sonra aynı türleri seven eski bir üyeyle tanıştırılır.
+    hosgeldinKanal.send({ embeds: [anonsEmbed] })
+      .then(() => yeniUyeyiTanistir(guild, member, turListesi(mangaTuru), hosgeldinKanal))
+      .catch(() => {});
   }
+  if (!zatenKayitli) kayitOlayiKaydet(guild.id, member.id, turListesi(mangaTuru));
 
   return { embed, files, row };
 }

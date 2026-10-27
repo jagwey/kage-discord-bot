@@ -1,6 +1,7 @@
 import { Events, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { TEMA, kageEmbed, rastgeleSlogan } from '../config/tema.js';
 import { sunucuAyarGetir } from '../services/veritabaniServisi.js';
+import { katilimKaydet } from '../services/toplulukServisi.js';
 
 export const name = Events.GuildMemberAdd;
 
@@ -11,6 +12,7 @@ export const name = Events.GuildMemberAdd;
 export async function execute(member) {
   const guild = member.guild;
   const ayarlar = sunucuAyarGetir(guild.id);
+  if (!member.user.bot) katilimKaydet(guild.id);
 
   // 1. Kayıtsız (Ronin) veya Otomatik Rol Atama
   try {
