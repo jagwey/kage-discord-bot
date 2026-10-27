@@ -92,6 +92,10 @@ export function malzemeDusur(tur, { kat = 1 } = {}, rng = Math.random) {
     if (rng() < 0.05 + (kat - 1) * 0.15) dusen.ruh_tasi = 1;
   } else if (tur === 'bossOldur') {
     dusen.ruh_tasi = 1;
+  } else if (tur === 'sefer') {
+    // kat burada sefer süresi (saat).
+    if (rng() < 0.15 * kat) dusen.demir = 1 + Math.floor(kat / 4);
+    if (rng() < 0.05 * kat) dusen.golge_ozu = 1;
   }
   return dusen;
 }

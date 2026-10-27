@@ -167,9 +167,18 @@ Hedefler: docs/PROJE_HEDEFLERI.md. Kullanıcı istemeden commit atılmaz.
   - `etkinlikServisi`: saatlik kontrol, haftalık sonuçları baskın kanalına duyurur.
   - Kısa komutlar ve niyetler: `k zanaat`, `k kb`, `k piyango`, `k rozet`, `k baskin`, `k klan savas`.
   - README ayrıntılı güncellendi (yeni sistemler, kısa komut tablosu, 76 komut).
+56. **Demirci butonu düzeltildi (2026-10-27, a16ff04):**
+  - Yanlış yazım onayından çalışan komutlarda `reply()` InteractionResponse dönüyordu, collector bağlanmıyordu. `butondanKomutEtkilesimi` artık gerçek mesajı döndürür.
+  - Demirci 2 dk açık, art arda dövme, seviye çubuğu, süre bitince buton kapanır. Kılıç sınırı 7 seviye.
+  - Not: collector tabanlı komutlar (demirci, market, slot, yazitura, blackjack, duello, zindan) bot yeniden başlayınca ölür. Kalıcı `butonOnek` yapısına geçmeleri öneri listesinde.
+57. **Kalıcı butonlar (2026-10-27, 22c25fe):** demirci, market, slot, yazitura `butonOnek` yapısına geçti. Yanıtsız kalan butona 2.5 sn sonra "panelin süresi doldu" cevabı gider.
+58. **Yoldaş bakım paneli (2026-10-27):**
+  - Tokluk ve mutluluk zamanla düşer (saatte 3 ve 2). Aç veya küskün yoldaş yarım güç verir, mutlu yoldaş %10 fazla.
+  - Panel butonları: Besle (100), Oyna (30 dk), Eğit (250, 2 sa), Sefer 1/4/8 sa, Topla. `/yoldas isim` eklendi.
+  - Sefer Ryo, XP ve malzeme getirir, klan savaşına saat başı 3 puan yazar.
 
 ## Sürüyor
 
-- Yok.
+- Oyun geliştirme planı: 1 kalıcı buton (bitti), 2 yoldaş (bitti), 3 Ocak (zanaat+demirci, kırılma, dayanıklılık, efsanevi tarif), 4 balık, 5 UI, 6 yeni oyunlar (bahçe, ticaret, açık artırma, sezon).
 
 ## Bekliyor
