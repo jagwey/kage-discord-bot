@@ -94,6 +94,13 @@ Hedefler: docs/PROJE_HEDEFLERI.md. Kullanıcı istemeden commit atılmaz.
   - `/model sor` komutuna merkezi hafıza enjeksiyonu yapıldı; Gemini, Groq, OpenRouter, Pollinations tüm modeller kullanıcının hafızadaki profilini doğrudan tanıyor.
   - README.md güncellendi: 69 Slash komutunun tamamı kategorize edildi, Proje Mimarisi şeması ve Mermaid Gölge Gözü iş akışı diyagramı eklendi.
 
+- [x] 45. Site manga ID değişimi ve yapay zekanın canlı site verisi (2026-10-27):
+  - Site canlı: 19 manga, ID 7–25; bölümü olan tek seri Bleach (#8, bölüm id 15). Çalışan uçlar: `/api/mangas`, `/api/mangas/{id}`, `/api/duyurular`.
+  - Bölüm alanları API ile eşleştirildi (`bolumNo`, `bolumAdi`, `yayinTarihi`); son bölüm taraması yalnız `bolumSayisi > 0` serilerin detayını çeker.
+  - `site_veri_getir`: Discord bağlamı istemeyen `siteVeriGetir` fonksiyonuna taşındı (web yardım sohbeti artık çalışır). detay ad ile de çalışır, bölüm okuma linkleri ve manga linki döner; yeni `duyurular` işlemi.
+  - Sohbet sistem metnine her mesajda canlı katalog (`canliKatalogMetni`: id, bölüm, durum, tür, link) girer. Hafıza bağlamı günlük anlık görüntü yerine bellekteki canlı listeyi kullanır.
+  - Duyuru poller'ı: tek taramada 3'ten fazla yeni ID gelirse (ID taşıması) duyurmadan indeksler; `yayinda: false` seriler duyurulmaz.
+
 ## Sürüyor
 
 - Kullanıcı isteği: indie oyunlar. Sıra: /balik, /boss, /kule, /zindan yükseltmesi hepsi tamam. Sonraki fikirler (başlanmadı): evcil hayvan, zanaat, klan savaşı.

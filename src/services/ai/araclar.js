@@ -1,7 +1,7 @@
 import { aiEylemiCalistir } from '../aiAjanServisi.js';
 import { bakiyeGetir, liderlikListesi, ryoDus, ryoEkle } from '../ekonomiServisi.js';
 import { otomodAyarGetir, otomodAyarGuncelle, otomodDurumu } from '../otomodServisi.js';
-import { tumMangalariGetir } from '../mangaServisi.js';
+import { tumMangalariGetir, mangaSayfaUrl } from '../mangaServisi.js';
 import { hatirlaticiEkle } from '../hatirlaticiServisi.js';
 import { sunucuOzetiMetni } from '../sunucuBilgiServisi.js';
 import { stickerMesajSecenegi } from '../stickerServisi.js';
@@ -20,10 +20,10 @@ function arac(name, description, properties = {}, required = []) {
 
 // Herkesin kullanabildiği, salt okunur (ya da kendi notunu yazan) araçlar
 const HERKESE_ACIK = [
-  arac('site_veri_getir', 'kage95.com sitesinden canlı manga verisi çeker.', {
-    islem: S('tum_mangalar | ara | detay | son_bolumler'),
-    sorgu: S('ara için aranacak kelime'),
-    id: N('detay için manga id')
+  arac('site_veri_getir', 'kage95.com sitesinden CANLI veri çeker (manga listesi, id, bölüm, okuma linki, site duyuruları). Manga ID\'leri değişebilir; hafızadaki eski id\'ye güvenme, her manga/bölüm sorusunda bunu çağır.', {
+    islem: S('tum_mangalar | ara | detay | son_bolumler | duyurular'),
+    sorgu: S('ara için kelime; detay için id bilinmiyorsa manga adı'),
+    id: N('detay için güncel manga id (yoksa sorgu ver)')
   }, ['islem']),
   arac('kullanici_bilgi_getir', 'Bir kullanıcının Discord sicilini, rollerini, Ryo/seviye bilgisini ve hafıza notlarını getirir.', {
     kullanici: S('isim veya id')
@@ -211,7 +211,7 @@ export async function aracCalistir(ad, args = {}, ctx) {
     return {
       basarili: true,
       detay: secilen.map(m =>
-        `• ${m.mangaAdi} (Tür: ${(m.kategoriler || []).join(', ') || 'belirtilmemiş'}, Okunma: ${m.okunmaSayisi || 0})`
+        `• ${m.mangaAdi} (Tür: ${(m.kategoriler || []).join(', ') || 'belirtilmemiş'}, ${m.bolumSayisi ?? 0} bölüm, Okunma: ${m.okunmaSayisi || 0}) ${mangaSayfaUrl(m.id)}`
       ).join('\n')
     };
   }

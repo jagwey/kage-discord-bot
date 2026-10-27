@@ -65,6 +65,11 @@ export async function tumMangalariGetir(zorlaYenile = false) {
   }
 }
 
+// Senkron okuyucular için son çekilen liste (duyuru poller'ı 3 dakikada bir tazeler)
+export function onbellektekiMangalar() {
+  return mangaOnbellegi;
+}
+
 /**
  * İsim veya kategoriye göre manga arar
  * @param {string} sorgu
@@ -117,23 +122,29 @@ export async function sonEklenenBolumleriGetir() {
   const mangalar = await tumMangalariGetir();
   const bolumListesi = [];
 
-  // Mangaların detaylarını çekerek son eklenen bölümleri derler
-  // API hız sınırını aşmamak için ilk 6 güncel seriyi inceler
-  const taranacakMangalar = mangalar.slice(0, 8);
+  // Liste bolumSayisi verir; yalnızca bölümü olan serilerin detayı çekilir.
+  // Alan yoksa (eski API) ilk 8 seri taranır.
+  const bolumluler = mangalar.filter(m => Number(m.bolumSayisi) > 0);
+  const taranacakMangalar = mangalar.some(m => 'bolumSayisi' in m)
+    ? bolumluler.slice(0, 25)
+    : mangalar.slice(0, 8);
 
   for (const manga of taranacakMangalar) {
     try {
       const detay = await mangaDetayGetir(manga.id);
       if (detay && Array.isArray(detay.bolumler) && detay.bolumler.length > 0) {
         for (const bolum of detay.bolumler) {
+          // API alanları: bolumNo, bolumAdi, yayinTarihi; eski adlar yedek olarak duruyor
+          const no = bolum.bolumNo ?? bolum.bolumNumarasi ?? bolum.no ?? 1;
           bolumListesi.push({
             mangaId: manga.id,
             mangaAdi: manga.mangaAdi,
             kapakResmi: tamGorselUrl(manga.kapakResmiURL),
-            bolumId: bolum.id || `${manga.id}-${bolum.bolumNumarasi || bolum.no}`,
-            bolumNo: bolum.bolumNumarasi || bolum.no || 1,
-            bolumBaslik: bolum.baslik || `Bölüm ${bolum.bolumNumarasi || bolum.no || 1}`,
-            eklenmeTarihi: bolum.eklenmeTarihi || manga.eklenmeTarihi || new Date().toISOString(),
+            bolumId: bolum.id || `${manga.id}-${no}`,
+            bolumNo: no,
+            bolumBaslik: bolum.bolumAdi || bolum.baslik || `Bölüm ${no}`,
+            sayfaSayisi: bolum.sayfaSayisi || 0,
+            eklenmeTarihi: bolum.yayinTarihi || bolum.eklenmeTarihi || manga.eklenmeTarihi || new Date().toISOString(),
             okumaUrl: bolumOkumaUrl(bolum.id, manga.id)
           });
         }
@@ -146,6 +157,44 @@ export async function sonEklenenBolumleriGetir() {
   // Tarihe göre yeniden eskiye sırala
   bolumListesi.sort((a, b) => new Date(b.eklenmeTarihi) - new Date(a.eklenmeTarihi));
   return bolumListesi;
+}
+
+/**
+ * Sitenin duyuru akışını çeker (/api/duyurular)
+ * @returns {Promise<Array<{id:number, baslik:string, etiket:string, baglanti:string, tarih:string}>>}
+ */
+export async function siteDuyurulariGetir() {
+  try {
+    const yanit = await axios.get(`${API_BASE}/duyurular`, {
+      timeout: 15000,
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'Kage95-Discord-Bot/1.0 (+https://kage95.com)'
+      }
+    });
+    return Array.isArray(yanit.data) ? yanit.data : [];
+  } catch (hata) {
+    console.error('[MangaServisi] Site duyuruları alınamadı:', hata.message);
+    return [];
+  }
+}
+
+/**
+ * Yapay zeka bağlamı için kısa, canlı katalog metni (id, ad, bölüm, durum, tür, link)
+ * @param {number} limit
+ * @returns {Promise<string>}
+ */
+export async function canliKatalogMetni(limit = 30) {
+  const mangalar = await tumMangalariGetir();
+  if (!mangalar.length) return '';
+  const satirlar = mangalar
+    .filter(m => m.yayinda !== false)
+    .slice(0, limit)
+    .map(m => {
+      const turler = (m.kategoriler || []).slice(0, 3).join('/');
+      return `#${m.id} ${m.mangaAdi} | ${m.bolumSayisi ?? 0} bölüm | ${m.durum || '?'}${turler ? ` | ${turler}` : ''} | ${mangaSayfaUrl(m.id)}`;
+    });
+  return `kage95.com canlı katalog (${mangalar.length} seri):\n${satirlar.join('\n')}`;
 }
 
 /**

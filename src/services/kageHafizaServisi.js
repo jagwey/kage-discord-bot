@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { tumMangalariGetir, sonEklenenBolumleriGetir } from './mangaServisi.js';
+import { tumMangalariGetir, sonEklenenBolumleriGetir, onbellektekiMangalar } from './mangaServisi.js';
 import { liderlikListesi } from './ekonomiServisi.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -457,10 +457,13 @@ export function hafizaBaglamMetniUret(mesaj = '', userId = null, userName = null
 
   satirlar.push('=== [KAGE DERİN HAFIZA & CANLI VERİ TABANI BANKASI] ===');
   satirlar.push(`• Sistem Durumu: Son Öğrenme Döngüsü: ${hafiza.sonGuncelleme} (Toplam Öğrenme: ${hafiza.ogrenmeSayisi})`);
-  satirlar.push(`• Canlı kage95.com Durumu: Kütüphanede ${hafiza.siteVerileri.toplamManga} manga yayında.`);
-  if (hafiza.siteVerileri.trendMangalar.length > 0) {
-    const trendOzet = hafiza.siteVerileri.trendMangalar.slice(0, 3).map(m => m.mangaAdi).join(', ');
-    satirlar.push(`• Öne Çıkan Seriler: ${trendOzet}`);
+  // Bellekteki canlı liste varsa günlük anlık görüntü yerine o kullanılır (ID'ler değişebiliyor)
+  const canli = onbellektekiMangalar();
+  if (Array.isArray(canli) && canli.length > 0) {
+    const trendOzet = [...canli].sort((a, b) => (b.okunmaSayisi || 0) - (a.okunmaSayisi || 0)).slice(0, 3).map(m => m.mangaAdi).join(', ');
+    satirlar.push(`• Canlı kage95.com Durumu: Kütüphanede ${canli.length} manga var. Öne Çıkan Seriler: ${trendOzet}`);
+  } else {
+    satirlar.push(`• kage95.com (son tarama ${hafiza.siteVerileri.sonTaramaTarihi || '?'}): ${hafiza.siteVerileri.toplamManga} manga. Güncel id/bölüm için site_veri_getir kullan.`);
   }
 
   satirlar.push(`• Kaledeki Samuraylar: ${hafiza.sunucuVerileri.toplamUye} üye, ${hafiza.sunucuVerileri.rolSayisi} rol, ${hafiza.sunucuVerileri.kanalSayisi} kanal.`);

@@ -3,13 +3,78 @@ import { TEMA, kageEmbed } from '../config/tema.js';
 import { eskiKanallariTemizle, eskiRolleriTemizle, kageMimarisiInsaEt } from './sunucuMimarisiServisi.js';
 import { ryoEkle, bakiyeGetir, liderlikListesi } from './ekonomiServisi.js';
 import { duyuruKanaliniBul } from './duyuruServisi.js';
-import { tumMangalariGetir, mangaAra, mangaDetayGetir, sonEklenenBolumleriGetir } from './mangaServisi.js';
+import { tumMangalariGetir, mangaAra, mangaDetayGetir, sonEklenenBolumleriGetir, siteDuyurulariGetir, mangaSayfaUrl, bolumOkumaUrl } from './mangaServisi.js';
 import { hafizaYukle, hafizaKaydet, kullaniciNotuEkle, bilgiOgren, hafizaArama, gunlukDerinOgrenme } from './kageHafizaServisi.js';
 
 /**
  * AI tarafından çağrılan Discord eylemlerini yetki kontrolüyle güvenli ve kusursuz şekilde yürütür.
  */
+/**
+ * Canlı kage95.com verisi: her çağrıda API'den okunur, manga ID'leri sabit kabul edilmez.
+ */
+export async function siteVeriGetir(parametreler = {}) {
+  const islem = parametreler.islem || 'tum_mangalar';
+  const satir = m => `• #${m.id} **${m.mangaAdi}** | ${m.bolumSayisi ?? 0} bölüm | ${m.durum || '?'} | Okunma: ${m.okunmaSayisi || 0} | Tür: ${(m.kategoriler || []).join(', ') || '-'} | ${mangaSayfaUrl(m.id)}`;
+  if (islem === 'ara') {
+    const sonuclar = await mangaAra(parametreler.sorgu || '');
+    return {
+      basarili: true,
+      detay: `kage95.com'da "${parametreler.sorgu || ''}" araması: ${sonuclar.length} seri bulundu.\n` +
+        sonuclar.slice(0, 8).map(satir).join('\n')
+    };
+  } else if (islem === 'detay') {
+    // id sayı değilse ad olarak çözülür
+    let mId = parametreler.id || parametreler.manga_id;
+    const ad = parametreler.sorgu || (mId && !/^\d+$/.test(String(mId)) ? String(mId) : '');
+    if (ad) {
+      const bulunan = (await mangaAra(ad))[0];
+      if (!bulunan) return { basarili: false, hata: `"${ad}" adlı manga sitede yok.` };
+      mId = bulunan.id;
+    }
+    if (!mId) return { basarili: false, hata: 'detay için id ya da sorgu (manga adı) gerekli.' };
+    const detay = await mangaDetayGetir(mId);
+    if (!detay) return { basarili: false, hata: `Manga (${mId}) detayları bulunamadı. ID'ler değişmiş olabilir, önce ara kullan.` };
+    const bolumler = (detay.bolumler || [])
+      .slice()
+      .sort((a, b) => (b.bolumNo ?? 0) - (a.bolumNo ?? 0))
+      .slice(0, 15)
+      .map(b => `  - Bölüm ${b.bolumNo ?? '?'}${b.bolumAdi ? ` "${b.bolumAdi}"` : ''} (${b.yayinTarihi ? new Date(b.yayinTarihi).toLocaleDateString('tr-TR') : '?'}) ${bolumOkumaUrl(b.id, detay.id)}`);
+    return {
+      basarili: true,
+      detay: `📖 **${detay.mangaAdi}** (#${detay.id})\n✍️ Yazar: ${detay.yazar || 'Bilinmiyor'} | Çizer: ${detay.cizer || 'Bilinmiyor'} | Durum: ${detay.durum || '?'}\n` +
+        `⭐ Puan: ${detay.puan || 0} (${detay.oySayisi || 0} oy) | 👁️ Okunma: ${detay.okunmaSayisi || 0}\n🏷️ Tür: ${(detay.kategoriler || []).join(', ')}\n` +
+        `📜 Özet: ${detay.aciklama ? detay.aciklama.slice(0, 300) : 'Özet yok'}\n🔗 ${mangaSayfaUrl(detay.id)}\n` +
+        `📚 Toplam Bölüm: ${detay.bolumler?.length || 0}${bolumler.length ? `\n${bolumler.join('\n')}` : ' (henüz bölüm yok)'}`
+    };
+  } else if (islem === 'son_bolumler') {
+    const sonBolumler = await sonEklenenBolumleriGetir();
+    if (!sonBolumler.length) return { basarili: true, detay: 'kage95.com\'da henüz yayınlanmış bölüm yok.' };
+    return {
+      basarili: true,
+      detay: `kage95.com Son Eklenen Bölümler:\n` +
+        sonBolumler.slice(0, 8).map(b => `• **${b.mangaAdi}** - Bölüm ${b.bolumNo}${b.bolumBaslik ? ` "${b.bolumBaslik}"` : ''} (${new Date(b.eklenmeTarihi).toLocaleDateString('tr-TR')}) ${b.okumaUrl}`).join('\n')
+    };
+  } else if (islem === 'duyurular') {
+    const duyurular = await siteDuyurulariGetir();
+    return {
+      basarili: true,
+      detay: duyurular.length
+        ? `kage95.com Site Duyuruları:\n` + duyurular.slice(0, 8).map(d => `• [${d.etiket || 'Duyuru'}] ${d.baslik}${d.tarih ? ` (${new Date(d.tarih).toLocaleDateString('tr-TR')})` : ''}${d.baglanti ? ` ${d.baglanti}` : ''}`).join('\n')
+        : 'Sitede şu an duyuru yok.'
+    };
+  } else {
+    const mangalar = await tumMangalariGetir(true);
+    return {
+      basarili: true,
+      detay: `kage95.com kütüphanesinde toplam **${mangalar.length} manga** var.\n` +
+        mangalar.slice(0, 30).map(satir).join('\n')
+    };
+  }
+}
+
 export async function aiEylemiCalistir({ eylem, parametreler = {}, guild, channel, member, client }) {
+  // Site verisi Discord bağlamı istemez (web yardım sohbeti de kullanır)
+  if (eylem === 'site_veri_getir') return siteVeriGetir(parametreler);
   if (!guild || !member) {
     return { basarili: false, hata: 'Sunucu veya üye bağlamı bulunamadı.' };
   }
@@ -443,40 +508,9 @@ export async function aiEylemiCalistir({ eylem, parametreler = {}, guild, channe
         };
       }
 
-      // 21. Canlı kage95.com Web Sitesi Verisi Getirme
-      case 'site_veri_getir': {
-        const islem = parametreler.islem || 'tum_mangalar';
-        if (islem === 'ara') {
-          const sonuclar = await mangaAra(parametreler.sorgu || '');
-          return {
-            basarili: true,
-            detay: `kage95.com'da "${parametreler.sorgu || ''}" araması: ${sonuclar.length} seri bulundu.\n` +
-              sonuclar.slice(0, 6).map(m => `• **${m.mangaAdi}** (Okunma: ${m.okunmaSayisi || 0}, Tür: ${(m.kategoriler || []).join(', ')})`).join('\n')
-          };
-        } else if (islem === 'detay') {
-          const mId = parametreler.id || parametreler.manga_id;
-          const detay = await mangaDetayGetir(mId);
-          if (!detay) return { basarili: false, hata: `Manga (${mId}) detayları bulunamadı.` };
-          return {
-            basarili: true,
-            detay: `📖 **${detay.mangaAdi}**\n✍️ Yazar: ${detay.yazar || 'Bilinmiyor'} | 👁️ Okunma: ${detay.okunmaSayisi || 0}\n🏷️ Tür: ${(detay.kategoriler || []).join(', ')}\n📜 Özet: ${detay.aciklama ? detay.aciklama.slice(0, 300) : 'Özet yok'}\n📚 Toplam Bölüm: ${detay.bolumler?.length || 0}`
-          };
-        } else if (islem === 'son_bolumler') {
-          const sonBolumler = await sonEklenenBolumleriGetir();
-          return {
-            basarili: true,
-            detay: `kage95.com Son Eklenen Bölümler:\n` +
-              sonBolumler.slice(0, 6).map(b => `• **${b.mangaAdi}** - Bölüm ${b.bolumNo} (${new Date(b.eklenmeTarihi).toLocaleDateString('tr-TR')})`).join('\n')
-          };
-        } else {
-          const mangalar = await tumMangalariGetir();
-          return {
-            basarili: true,
-            detay: `kage95.com kütüphanesinde toplam **${mangalar.length} manga** yayında.\nÖne Çıkanlar: ` +
-              mangalar.slice(0, 6).map(m => m.mangaAdi).join(', ')
-          };
-        }
-      }
+      // 21. Canlı kage95.com Web Sitesi Verisi Getirme (her çağrıda API'den, ID'ler sabit kabul edilmez)
+      case 'site_veri_getir':
+        return siteVeriGetir(parametreler);
 
       // 22. Sunucudaki Kullanıcı Hakkında Derin İstihbarat Raporu
       case 'kullanici_bilgi_getir': {

@@ -4,7 +4,7 @@ import { fileURLToPath } from 'url';
 import { AttachmentBuilder } from 'discord.js';
 import { TEMA, kageEmbed, rastgeleSlogan } from '../config/tema.js';
 import { bakiyeGetir, liderlikListesi, KILIC_SEVIYELERI } from './ekonomiServisi.js';
-import { tumMangalariGetir, mangaAra, mangaSayfaUrl } from './mangaServisi.js';
+import { tumMangalariGetir, mangaAra, mangaSayfaUrl, canliKatalogMetni } from './mangaServisi.js';
 import {
   hafizaBaglamMetniUret,
   kullaniciNotuEkle,
@@ -346,13 +346,10 @@ async function geminiPersonaSohbet(kullaniciMesaji, baglam) {
     ? `Ruh Karakteri: ${kayit.karakter}, Favori Türü: ${kayit.mangaTuru || 'Bilinmiyor'}, Samuray Yemini: "${kayit.yemin || ''}"`
     : '';
 
-  // Canlı Manga Kataloğu Bilgisi
+  // Canlı manga kataloğu: her mesajda siteden (60 sn önbellek) id, bölüm ve linklerle gelir
   let populerMangalar = '';
   try {
-    const mangalar = await tumMangalariGetir();
-    if (mangalar && mangalar.length > 0) {
-      populerMangalar = mangalar.slice(0, 8).map(m => m.mangaAdi).join(', ');
-    }
+    populerMangalar = await canliKatalogMetni(30);
   } catch {}
 
   const hitapTipi = baglam.isFemale ? 'zarif kunoichi, tatlı savaşçı' : 'yiğit samuray, kılıç kardeşi';
@@ -362,7 +359,8 @@ Konuştuğun kullanıcı: ${baglam.userName} (${baglam.isFemale ? 'Kız/Kunoichi
 Kullanıcıya hitap tarzın: ${hitapTipi}.
 Kalenin ${baglam.katilimMetni} bir savaşçısı. Kuşandığı katana: ${baglam.kilicAd}, Kesesindeki servet: ${baglam.ryo} Ryo.
 ${kayitOzeti ? `Kayıt Sicili: ${kayitOzeti}` : ''}
-${populerMangalar ? `kage95.com kütüphanesindeki popüler seriler: ${populerMangalar}` : ''}
+${populerMangalar ? `${populerMangalar}
+Manga sorularında yalnızca bu canlı listeye güven; hafızadaki eski id/isimler geçersiz olabilir. Link verirken listedeki linki kullan.` : ''}
 
 ${hafizaBaglami}
 ${egitimBlogu}

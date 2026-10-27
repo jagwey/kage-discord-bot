@@ -321,6 +321,9 @@ export async function anlikRolGuncelle(client, data) {
   }
 }
 
+// Tek taramada bundan fazla yeni ID gelirse toplu içe aktarma sayılır ve duyurulmaz
+const TOPLU_YENI_ESIK = 3;
+
 /**
  * Arka plan otomatik periyodik tarama (Hem manga hem bölüm kontrolü)
  */
@@ -335,10 +338,16 @@ export async function periyodikKontrolEtVeDuyur(client) {
       if (ilkCalisma && gorulenMangalar.size === 0) {
         for (const m of mangalar) gorulenMangalar.add(String(m.id));
       } else {
-        for (const m of mangalar) {
-          const mId = String(m.id);
-          if (!gorulenMangalar.has(mId)) {
-            gorulenMangalar.add(mId);
+        // Yayında olmayan seri görülmüş sayılmaz; yayına alınınca duyurulur
+        const yeniler = mangalar.filter(m => m.yayinda !== false && !gorulenMangalar.has(String(m.id)));
+        if (yeniler.length > TOPLU_YENI_ESIK) {
+          // Sitede ID taşıması/yeniden içe aktarma: kanalı boğmamak için sessizce indeksle
+          for (const m of yeniler) gorulenMangalar.add(String(m.id));
+          gorulenleriKaydet();
+          console.warn(`[DuyuruServisi] ${yeniler.length} yeni manga ID'si bir anda geldi (ID değişimi?), duyurmadan indekslendi.`);
+        } else {
+          for (const m of yeniler) {
+            gorulenMangalar.add(String(m.id));
             gorulenleriKaydet();
             await anlikMangaDuyur(client, m).catch(() => {});
           }
@@ -352,10 +361,14 @@ export async function periyodikKontrolEtVeDuyur(client) {
       if (ilkCalisma && gorulenBolumler.size === 0) {
         for (const b of sonBolumler) gorulenBolumler.add(String(b.bolumId));
       } else {
-        for (const b of sonBolumler) {
-          const bId = String(b.bolumId);
-          if (!gorulenBolumler.has(bId)) {
-            gorulenBolumler.add(bId);
+        const yeniler = sonBolumler.filter(b => !gorulenBolumler.has(String(b.bolumId)));
+        if (yeniler.length > TOPLU_YENI_ESIK) {
+          for (const b of yeniler) gorulenBolumler.add(String(b.bolumId));
+          gorulenleriKaydet();
+          console.warn(`[DuyuruServisi] ${yeniler.length} yeni bölüm ID'si bir anda geldi, duyurmadan indekslendi.`);
+        } else {
+          for (const b of yeniler) {
+            gorulenBolumler.add(String(b.bolumId));
             gorulenleriKaydet();
             await anlikBolumDuyur(client, b).catch(() => {});
           }
