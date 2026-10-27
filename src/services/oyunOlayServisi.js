@@ -1,6 +1,6 @@
 import { gorevIlerlet } from './gorevServisi.js';
 import { sayacIlerlet, rozetSatiri } from './basarimServisi.js';
-import { malzemeDusur, malzemeEkle, MALZEMELER } from './zanaatServisi.js';
+import { malzemeDusur, malzemeEkle, esyaAsindir, MALZEMELER } from './zanaatServisi.js';
 import { savasPuaniEkle } from './klanSavasServisi.js';
 
 const GOREV_TURLERI = new Set(['mesaj', 'balik', 'zindan', 'boss']);
@@ -30,6 +30,8 @@ export function oyunOlayi(userId, tur, { adet = 1, deger, kat = 1 } = {}) {
     malzemeEkle(userId, dusen);
     notlar.push(`🧰 Malzeme: ${Object.entries(dusen).map(([id, n]) => `${MALZEMELER[id].emoji} ${MALZEMELER[id].ad} x${n}`).join(', ')}`);
   }
+
+  notlar.push(...esyaAsindir(userId, tur));
 
   for (const r of rozetler) notlar.push(rozetSatiri(r));
   return { notlar };

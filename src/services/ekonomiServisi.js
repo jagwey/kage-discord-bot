@@ -10,15 +10,28 @@ const EKONOMI_FILE = path.join(DATA_DIR, 'ekonomi.json');
 
 let ekonomiVerisi = {};
 
+// `risk`: bu kademeye döverken kırılma yüzdesi.
 export const KILIC_SEVIYELERI = [
-  { seviye: 1, ad: '🗡️ Tahta Katana', bonus: 0, maliyet: 0, desc: 'Acemi bir samurayın ilk kılıcı.' },
-  { seviye: 2, ad: '⚔️ Çelik Katana', bonus: 10, maliyet: 500, desc: 'Dövülmüş çelik. Düello ve zindanda +%10 kazanma bonusu.' },
-  { seviye: 3, ad: '🩸 Kanlı Muramasa', bonus: 20, maliyet: 1500, desc: 'Lanetli keskinlik. +%20 kazanma bonusu.' },
-  { seviye: 4, ad: '🐉 Kage Ejder Kılıcı', bonus: 35, maliyet: 3500, desc: 'Ateşle dövülmüş efsanevi katana. +%35 kazanma bonusu.' },
-  { seviye: 5, ad: '👑 Efsanevi Gölge Kılıcı', bonus: 50, maliyet: 8000, desc: 'Şogunların kadim yadigarı. +%50 nihai kazanma bonusu.' },
-  { seviye: 6, ad: '✨ Kadim Kusanagi no Tsurugi', bonus: 70, maliyet: 16000, desc: 'Fırtına tanrısının göklerden indirdiği kutsal kılıç. +%70 üstün hasar bonusu.' },
-  { seviye: 7, ad: '🌌 Kozmik Hiçlik Katanası', bonus: 100, maliyet: 35000, desc: 'Yıldız tozu ve ebedi gölgenin birleşimi. +%100 nihai tanrısal güç.' }
+  { seviye: 1, ad: '🗡️ Tahta Katana', bonus: 0, maliyet: 0, risk: 0, desc: 'Acemi bir samurayın ilk kılıcı.' },
+  { seviye: 2, ad: '⚔️ Çelik Katana', bonus: 10, maliyet: 500, risk: 0, desc: 'Dövülmüş çelik. Düello ve zindanda +%10 kazanma bonusu.' },
+  { seviye: 3, ad: '🩸 Kanlı Muramasa', bonus: 20, maliyet: 1500, risk: 0, desc: 'Lanetli keskinlik. +%20 kazanma bonusu.' },
+  { seviye: 4, ad: '🐉 Kage Ejder Kılıcı', bonus: 35, maliyet: 3500, risk: 15, desc: 'Ateşle dövülmüş efsanevi katana. +%35 kazanma bonusu.' },
+  { seviye: 5, ad: '👑 Efsanevi Gölge Kılıcı', bonus: 50, maliyet: 8000, risk: 25, desc: 'Şogunların kadim yadigarı. +%50 nihai kazanma bonusu.' },
+  { seviye: 6, ad: '✨ Kadim Kusanagi no Tsurugi', bonus: 70, maliyet: 16000, risk: 35, desc: 'Fırtına tanrısının göklerden indirdiği kutsal kılıç. +%70 üstün hasar bonusu.' },
+  { seviye: 7, ad: '🌌 Kozmik Hiçlik Katanası', bonus: 100, maliyet: 35000, risk: 45, desc: 'Yıldız tozu ve ebedi gölgenin birleşimi. +%100 nihai tanrısal güç.' }
 ];
+
+export const KORUMA_TILSIMI_FIYAT = 750;
+export const KORUMA_TILSIMI_MAKS = 3;
+/** Her kırılmada sonraki denemenin başarı şansına eklenen puan. */
+export const OCAK_SANS_ARTISI = 10;
+/** Bu kademeden itibaren kırılan kılıç bir seviye geriler. */
+export const GERILEME_SEVIYESI = 5;
+
+/** Bir sonraki dövmenin gerçek kırılma yüzdesi (birikmiş şans düşülmüş). */
+export function kilicRiski(hedef, ocakSans = 0) {
+  return Math.max(0, (hedef?.risk || 0) - ocakSans);
+}
 
 export const SERI_KALKANI_FIYAT = 1500;
 export const SERI_KALKANI_MAKS = 3;
@@ -98,7 +111,9 @@ export function bakiyeGetir(userId) {
     zindanZafer: h.zindanZafer || 0,
     kilic,
     unvan: h.aktifUnvan || 'Acemi Samuray',
-    envanter: h.envanter || []
+    envanter: h.envanter || [],
+    korumaTilsimi: h.korumaTilsimi || 0,
+    ocakSans: h.ocakSans || 0
   };
 }
 
@@ -330,7 +345,12 @@ export function esyaHarca(userId, esyaParcasi) {
   return cikarilan;
 }
 
-export function kilicGelistir(userId) {
+/**
+ * Kılıcı bir kademe döver. Ücret her denemede düşer. Riskli kademede kırılırsa
+ * sonraki şans artar; GERILEME_SEVIYESI ve üstünde kılıç geriler, koruma tılsımı varsa
+ * tılsım harcanır ve seviye korunur.
+ */
+export function kilicGelistir(userId, rng = Math.random) {
   const h = kullaniciHesabi(userId);
   const mevcutSeviye = h.kilicSeviye || 1;
   if (mevcutSeviye >= KILIC_SEVIYELERI.length) {
@@ -349,8 +369,37 @@ export function kilicGelistir(userId) {
     };
   }
 
-  h.ryo -= sonrakiKilic.maliyet;
+  const risk = kilicRiski(sonrakiKilic, h.ocakSans || 0);
+  ryoDus(userId, sonrakiKilic.maliyet, `Demirci: ${sonrakiKilic.ad}`);
+
+  if (rng() * 100 < risk) {
+    h.ocakSans = (h.ocakSans || 0) + OCAK_SANS_ARTISI;
+    let korundu = false;
+    let geriledi = false;
+    if (sonrakiKilic.seviye >= GERILEME_SEVIYESI) {
+      if ((h.korumaTilsimi || 0) > 0) {
+        h.korumaTilsimi -= 1;
+        korundu = true;
+      } else if (mevcutSeviye > 1) {
+        h.kilicSeviye = mevcutSeviye - 1;
+        geriledi = true;
+      }
+    }
+    veriyiKaydet();
+    return {
+      basarili: false,
+      kirildi: true,
+      korundu,
+      geriledi,
+      risk,
+      kilic: KILIC_SEVIYELERI.find(k => k.seviye === (h.kilicSeviye || 1)),
+      ocakSans: h.ocakSans,
+      kalanRyo: h.ryo
+    };
+  }
+
   h.kilicSeviye = sonrakiKilic.seviye;
+  h.ocakSans = 0;
   veriyiKaydet();
 
   return {
@@ -358,6 +407,19 @@ export function kilicGelistir(userId) {
     yeniKilic: sonrakiKilic,
     kalanRyo: h.ryo
   };
+}
+
+export function korumaTilsimiAl(userId) {
+  const h = kullaniciHesabi(userId);
+  if ((h.korumaTilsimi || 0) >= KORUMA_TILSIMI_MAKS) {
+    return { basarili: false, mesaj: `En çok ${KORUMA_TILSIMI_MAKS} koruma tılsımı taşıyabilirsin.` };
+  }
+  if (!ryoDus(userId, KORUMA_TILSIMI_FIYAT, 'Demirci: koruma tılsımı')) {
+    return { basarili: false, mesaj: `Koruma tılsımı **${KORUMA_TILSIMI_FIYAT} Ryo**. Cüzdanın yetmiyor.` };
+  }
+  h.korumaTilsimi = (h.korumaTilsimi || 0) + 1;
+  veriyiKaydet();
+  return { basarili: true, adet: h.korumaTilsimi };
 }
 
 export function marketSatinAl(userId, urunId) {

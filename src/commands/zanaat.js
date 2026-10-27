@@ -2,7 +2,8 @@ import { SlashCommandBuilder, MessageFlags } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { ryoYaz } from '../config/oyunGorsel.js';
 import {
-  MALZEMELER, TARIFLER, bonusMetni, malzemeMetni, zanaatProfili, esyaDov, esyaKusan, zanaatBonusu
+  MALZEMELER, TARIFLER, bonusMetni, malzemeMetni, zanaatProfili, esyaDov, esyaKusan, zanaatBonusu,
+  esyaDayanimi, azamiDayanim
 } from '../services/zanaatServisi.js';
 import { oyunOlayi } from '../services/oyunOlayServisi.js';
 
@@ -44,7 +45,8 @@ export async function execute(interaction) {
     const esyalar = p.esyalar.map(id => {
       const t = TARIFLER[id];
       const takili = p.kusanilan[t.yuva] === id ? ' ✅' : '';
-      return `${t.emoji} ${t.ad}${takili}`;
+      const kalan = esyaDayanimi(p, id);
+      return `${t.emoji} ${t.ad}${takili} • ${kalan <= 0 ? '💔 kırık' : `🛡️ ${kalan}/${azamiDayanim(id)}`}`;
     }).join('\n') || 'Henüz eşya dövmedin. `/zanaat tarifler` ile başla.';
     return interaction.reply({
       embeds: [kageEmbed({
@@ -55,7 +57,7 @@ export async function execute(interaction) {
           { name: 'Eşyalar (✅ kuşanılı)', value: esyalar, inline: true },
           { name: 'Toplam bonus (zindanda)', value: bonusOzeti(zanaatBonusu(userId)), inline: true }
         ],
-        altMetin: 'Malzemeler zindan zaferi, balık ve boss öldürmeden düşer.'
+        altMetin: 'Malzemeler zindan zaferi, balık ve boss öldürmeden düşer. Tamir: /demirci'
       })],
       flags: MessageFlags.Ephemeral
     });
@@ -64,7 +66,7 @@ export async function execute(interaction) {
   if (sub === 'tarifler') {
     const p = zanaatProfili(userId);
     const alanlar = Object.entries(TARIFLER).map(([id, t]) => ({
-      name: `${t.emoji} ${t.ad} (${t.yuva === 'silah' ? 'silah' : 'tılsım'})${p.esyalar.includes(id) ? ' ✅' : ''}`,
+      name: `${t.emoji} ${t.ad}${t.efsanevi ? ' 🌟' : ''} (${t.yuva === 'silah' ? 'silah' : 'tılsım'})${p.esyalar.includes(id) ? ' ✅' : ''}`,
       value: `${malzemeMetni(t.malzeme)} + ${ryoYaz(t.ryo)}\n${bonusMetni(t.bonus)}`,
       inline: true
     }));
@@ -72,7 +74,7 @@ export async function execute(interaction) {
       embeds: [kageEmbed({
         baslik: '⚒️ DEMİRCİ TARİFLERİ',
         renk: TEMA.RENKLER.ALTIN,
-        aciklama: 'Çelik sabırla dövülür. Her eşya bir kez dövülür, yuvası boşsa kendiliğinden kuşanılır.',
+        aciklama: 'Çelik sabırla dövülür. Her eşya bir kez dövülür, yuvası boşsa kendiliğinden kuşanılır.\n🌟 Efsanevi tarifler Kadim Çekirdek ister; o da yalnızca boss öldürmeden düşer.',
         alanlar
       })]
     });

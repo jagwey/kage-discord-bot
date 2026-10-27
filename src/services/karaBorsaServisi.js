@@ -57,7 +57,7 @@ function adetGecerli(adet) {
 }
 
 export function malzemeAl(userId, malzemeId, adet, simdi = Date.now()) {
-  if (!MALZEMELER[malzemeId]) return { basarili: false, mesaj: 'Tüccar bu malzemeyi tanımıyor.' };
+  if (!TABAN_FIYATLAR[malzemeId]) return { basarili: false, mesaj: 'Tüccar bu malzemeyi tanımıyor.' };
   if (!adetGecerli(adet)) return { basarili: false, mesaj: `Tek seferde 1-${MAKS_ISLEM_ADEDI} adet.` };
   const fiyat = piyasa(simdi).fiyatlar[malzemeId].al * adet;
   if (!ryoDus(userId, fiyat, `Kara borsa alış: ${MALZEMELER[malzemeId].ad} x${adet}`)) {
@@ -68,7 +68,7 @@ export function malzemeAl(userId, malzemeId, adet, simdi = Date.now()) {
 }
 
 export function malzemeSat(userId, malzemeId, adet, simdi = Date.now()) {
-  if (!MALZEMELER[malzemeId]) return { basarili: false, mesaj: 'Tüccar bu malzemeyi tanımıyor.' };
+  if (!TABAN_FIYATLAR[malzemeId]) return { basarili: false, mesaj: 'Tüccar bu malzemeyi tanımıyor.' };
   if (!adetGecerli(adet)) return { basarili: false, mesaj: `Tek seferde 1-${MAKS_ISLEM_ADEDI} adet.` };
   if (!malzemeHarca(userId, { [malzemeId]: adet })) {
     return { basarili: false, mesaj: `Çantanda ${adet} adet ${MALZEMELER[malzemeId].emoji} ${MALZEMELER[malzemeId].ad} yok.` };

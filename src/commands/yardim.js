@@ -27,7 +27,7 @@ export function yardimKartiOlustur() {
         name: `⚔️ Samuray Düello, Zindan & Ekonomi (Ryo)`,
         value: '`• /duello @rakip [bahis]` : Katana bonuslu turnuva düellosu!\n' +
           '`• /zindan [sefer|profil|siralama]` : İblislerle savaş; zaferle rütbe (D-S) aç, kalıntı topla, seri bonusu kazan, ağır hamlelere dikkat!\n' +
-          '`• /demirci` : Katananızı demircide dövüp gücünüzü katlarsınız.\n' +
+          '`• /demirci` : Ocak: katana döv (kırılma riski, koruma tılsımı), eşya yap ve kuşan, yıpranan eşyayı tamir et.\n' +
           '`• /market` : Ryo ile samuray unvanları ve muskalar satın alır.\n' +
           '`• /envanter` : Katananızı, çantanızı ve savaş sicilinizi gösterir.\n' +
           '`• /gunluk` : Günlük Ryo maaşı ve seri (streak).\n' +

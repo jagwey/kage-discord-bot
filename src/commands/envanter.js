@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from 'discord.js';
 import { TEMA, kageEmbed, rastgeleSlogan } from '../config/tema.js';
-import { bakiyeGetir } from '../services/ekonomiServisi.js';
+import { bakiyeGetir, KILIC_SEVIYELERI } from '../services/ekonomiServisi.js';
 
 export const data = new SlashCommandBuilder()
   .setName('envanter')
@@ -25,7 +25,7 @@ export async function execute(interaction) {
     renk: TEMA.RENKLER.KAN_KIRMIZISI,
     aciklama: `*${rastgeleSlogan()}*\n\n` +
       `👤 **Unvan:** \`${b.unvan}\`\n` +
-      `🗡️ **Kuşanılan Katana:** **${b.kilic.ad}** (Sv. ${b.kilic.seviye}/5 • Güç +%${b.kilic.bonus})\n` +
+      `🗡️ **Kuşanılan Katana:** **${b.kilic.ad}** (Sv. ${b.kilic.seviye}/${KILIC_SEVIYELERI.length} • Güç +%${b.kilic.bonus})\n` +
       `💰 **Nakit Cüzdan:** \`${b.ryo} Ryo\`\n` +
       `🏦 **Banka Kasası:** \`${b.banka} Ryo\`\n\n` +
       `⚔️ **Savaş Sicili:**\n` +

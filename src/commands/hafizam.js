@@ -1,7 +1,7 @@
 import { SlashCommandBuilder, MessageFlags, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { kullaniciHafizasiGetir, profilGetir } from '../services/kageHafizaServisi.js';
-import { bakiyeGetir, KILIC_SEVIYELERI } from '../services/ekonomiServisi.js';
+import { bakiyeGetir } from '../services/ekonomiServisi.js';
 import { kullaniciKayitBilgileriniGetir } from '../services/kayitServisi.js';
 import { kullaniciKizMi } from '../services/chatBotServisi.js';
 
@@ -16,8 +16,7 @@ export async function execute(interaction) {
   const hafizaNotu = kullaniciHafizasiGetir(user.id);
   const profil = profilGetir(user.id);
   const kayit = kullaniciKayitBilgileriniGetir(user.id, member);
-  const { ryo, kilicSeviye } = bakiyeGetir(user.id);
-  const kilic = KILIC_SEVIYELERI[kilicSeviye] || KILIC_SEVIYELERI[1];
+  const { ryo, kilic } = bakiyeGetir(user.id);
   const isFemale = kullaniciKizMi(user, member);
 
   const notlarListesi = hafizaNotu?.notlar?.length
@@ -37,7 +36,7 @@ export async function execute(interaction) {
       {
         name: '👤 Savaşçı Kimliği',
         value: `**Hitap:** ${isFemale ? 'Kunoichi 🌸' : 'Samuray 🗡️'}\n` +
-          `**Kılıç:** ${kilic.ad} (+%${kilic.hasarBonusu})\n` +
+          `**Kılıç:** ${kilic.ad} (+%${kilic.bonus})\n` +
           `**Hazine:** ${ryo.toLocaleString('tr-TR')} Ryo\n` +
           `**Ruh Karakteri:** ${kayit?.karakter || 'Bilinmiyor'}`,
         inline: true

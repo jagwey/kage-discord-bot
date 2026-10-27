@@ -52,6 +52,7 @@ Tüm AI yönlendirmesi `src/services/aiRouterServisi.js` ve erişim denetimi `sr
 - **Oyun olay merkezi (`oyunOlayServisi.js`):** `oyunOlayi(userId, tur)` görev, rozet, klan savaşı puanı ve malzeme düşürmeyi tek yerde işler, `{ notlar }` döner. Yeni oyun komutu bu kancayı çağırmalı ve notları çıktıya eklemeli.
 - `/klan savas`: Haftalık klan savaşı (`klanSavasServisi.js`). Klanlar global, ödül Ryo, kasa ve rozettir.
 - `/zanaat`: Malzeme, tarif, dövme ve kuşanma (`zanaatServisi.js`). Kuşanılan eşyalar zindan bonusu verir.
+- `/demirci` (Ocak): Kılıç, Eşya ve Tamir sekmeleri tek panelde. Kılıç 4. kademeden itibaren kırılabilir; 5 ve üstünde geriler, koruma tılsımı (`korumaTilsimiAl`) bunu önler, her kırılma sonraki riski düşürür. Kuşanılı eşyalar `oyunOlayi` içinde `esyaAsindir` ile yıpranır (zindan 6, boss 2), kırık eşya bonus vermez, `esyaTamir` Ryo ve malzemeyle onarır. Efsanevi tarifler Kadim Çekirdek ister; o yalnızca `bossOldur` ile düşer ve kara borsada satılmaz (`borsaDisi`).
 - `/karaborsa`: Saatlik fiyatlar ve saatlik nadir mal (`karaBorsaServisi.js`).
 - `/piyango`: Haftalık bilet, pazartesi 00:00 otomatik çekiliş (`piyangoServisi.js`).
 - `/baskin`: Gölge baskını, 5 dakikalık buton savunması, otomatik baskın (`baskinServisi.js`). Baskın kanalı haftalık sonuç duyuru kanalıdır (`etkinlikServisi.js`).

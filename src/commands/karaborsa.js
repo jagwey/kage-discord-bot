@@ -7,7 +7,7 @@ import { oyunOlayi } from '../services/oyunOlayServisi.js';
 
 export const butonOnek = 'kage_kb:';
 
-const MALZEME_SECENEKLERI = Object.entries(MALZEMELER).map(([id, m]) => ({ name: `${m.emoji} ${m.ad}`, value: id }));
+const MALZEME_SECENEKLERI = Object.entries(MALZEMELER).filter(([, m]) => !m.borsaDisi).map(([id, m]) => ({ name: `${m.emoji} ${m.ad}`, value: id }));
 const malzemeSecenegi = o => o.setName('malzeme').setDescription('Malzeme').setRequired(true).addChoices(...MALZEME_SECENEKLERI);
 const adetSecenegi = o => o.setName('adet').setDescription(`Adet (1-${MAKS_ISLEM_ADEDI})`).setMinValue(1).setMaxValue(MAKS_ISLEM_ADEDI);
 
