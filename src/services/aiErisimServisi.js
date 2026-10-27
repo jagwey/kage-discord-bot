@@ -5,6 +5,18 @@ import { sunucuAyarGetir } from './veritabaniServisi.js';
 const sonKullaniciIstegi = new Map();
 
 /**
+ * Sunucu sahibi, OWNER_ID veya botun uygulama sahibi mi? Sahip her yetkiye sahiptir.
+ */
+export function sahipMi(member, client = null) {
+  if (!member) return false;
+  const userId = member.id || member.user?.id;
+  const ownerId = process.env.OWNER_ID;
+  if (ownerId && userId === ownerId) return true;
+  if (member.guild && member.guild.ownerId === userId) return true;
+  return client?.application?.owner?.id === userId;
+}
+
+/**
  * Kullanıcının sunucu yöneticisi veya bot sahibi olup olmadığını denetler.
  */
 export function yetkiliMi(member, client = null) {

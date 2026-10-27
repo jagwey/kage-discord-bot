@@ -29,7 +29,7 @@ Tüm AI yönlendirmesi `src/services/aiRouterServisi.js` ve erişim denetimi `sr
 - **Canlı Admin AI İzleme:** Başka biri konuşurken bile admin kanalına (`aiYonetimKanalId`) hangi kullanıcının hangi soruya hangi motorla yanıt aldığı canlı düşer. Yetkililere mesaj altında motor etiketi (`-# [Motor: ...]`) gösterilir.
 
 ## 📁 Dizin Yapısı
-- `src/commands/`: 70 adet Slash komutu (`export const data`, `export async function execute`).
+- `src/commands/`: 71 adet Slash komutu (`export const data`, `export async function execute`).
 - `src/services/`: 33 adet modüler servis (`aiRouterServisi`, `aiErisimServisi`, `golgeGozServisi`, `chatBotServisi`, `ekonomiServisi`, `klanServisi`, `yoldasServisi`, `sunucuMimarisiServisi`, `zindanServisi`, `bossServisi` vb.).
 - `src/events/`: Discord olay dinleyicileri (`interactionCreate`, `messageCreate`, `ready`, `guildMemberAdd`).
 - `data/`: JSON veri depoları (`klanlar.json`, `yoldaslar.json`, `zindan.json`, `ekonomi.json`, `kullanicilar.json`, `golge_goz_istatistik.json`, `dojo.json` vb.).
@@ -49,6 +49,7 @@ Tüm AI yönlendirmesi `src/services/aiRouterServisi.js` ve erişim denetimi `sr
 - `/zindan`, `/boss`, `/kule`, `/dojo`, `/balik`: Kapsamlı RPG & ekonomi oyun döngüsü.
 - `/gorev`: Günlük 3 görev (mesaj, balık, zindan, boss), tamamlama bonusu (`gorevServisi.js`).
 - `/ai-durum` (yönetici): AI sağlayıcı anahtar durumu ve başarı/hata sayaçları.
+- `/ryo ver|al|bak` (sahip/yönetici): Üyeye Ryo yükleme, geri alma, cüzdan görüntüleme. Sahip (`sahipMi`: OWNER_ID, sunucu sahibi, uygulama sahibi) bütün AI eylemlerinde tam yetkilidir.
 
 ## 🧠 Merkezi Ortak Hafıza (Unified Shared Memory) & Komutsuz Yönetim
 - **Merkezi Bellek:** `src/services/kageHafizaServisi.js` ve `data/kage_hafiza.json` tek gerçektir. Hangi model (Gemini, Groq, OpenRouter DeepSeek, Pollinations) kullanılırsa kullanılsın tüm bilgiler, kullanıcı notları, profiller ve kural eğitimleri ortaktır.

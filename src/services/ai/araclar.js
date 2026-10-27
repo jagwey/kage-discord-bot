@@ -102,6 +102,7 @@ const YONETICI = [
   arac('yavasmod_ayarla', 'Bu kanalın yavaş modunu ayarlar (0 kapatır).', { saniye: N('saniye') }, ['saniye']),
   arac('kilit_ayarla', 'Bu kanalı kilitler/açar.', { durum: S('kilitle | ac') }, ['durum']),
   arac('ryo_ekle', 'Üyeye Ryo ekler.', { kullanici: S('isim veya id'), miktar: N('miktar') }, ['kullanici', 'miktar']),
+  arac('ryo_dus', 'Üyenin cüzdanından Ryo geri alır.', { kullanici: S('isim veya id'), miktar: N('miktar') }, ['kullanici', 'miktar']),
   arac('otomod_durum', 'Otomatik küfür moderasyonunun durumunu, özel kelimeleri ve ihlalli üyeleri gösterir.'),
   arac('otomod_ayarla', 'Otomatik küfür moderasyonunu açar/kapatır ve özel yasaklı kelime ekler/çıkarır.', {
     acik: { type: 'BOOLEAN', description: 'true açar, false kapatır' },

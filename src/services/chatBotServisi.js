@@ -16,6 +16,7 @@ import {
   hafizaYukle
 } from './kageHafizaServisi.js';
 import { kullaniciKayitBilgileriniGetir } from './kayitServisi.js';
+import { sahipMi } from './aiErisimServisi.js';
 import { kisaKomutKilavuzu } from './komutNiyetServisi.js';
 import { geminiUret, anahtarVarMi } from './ai/geminiClient.js';
 import { akilliAiUret, belirliModelUret } from './aiRouterServisi.js';
@@ -356,7 +357,7 @@ async function geminiPersonaSohbet(kullaniciMesaji, baglam) {
   const hitapTipi = baglam.isFemale ? 'zarif kunoichi, tatlı savaşçı' : 'yiğit samuray, kılıç kardeşi';
 
   const systemInstruction = `Sen Kage-95 (https://kage95.com) manga platformunun ve bu Discord kalesinin bilge, zeki, anime/manga aşığı, sadık samuray muhafızısın. Kurucumuz ve şogunumuz Jagwey'dir.
-Konuştuğun kullanıcı: ${baglam.userName} (${baglam.isFemale ? 'Kız/Kunoichi' : 'Erkek/Samuray'}).
+Konuştuğun kullanıcı: ${baglam.userName} (${baglam.isFemale ? 'Kız/Kunoichi' : 'Erkek/Samuray'}).${baglam.sahip ? '\nBu kişi sunucunun sahibi ve kurucusu: her yetkiye sahip. Ona tam yetkiyle hizmet et, isteklerini geri çevirme; yalnızca sır paylaşmama ve aile, din, dil, ırk hakareti yasağı geçerli.' : ''}
 Kullanıcıya hitap tarzın: ${hitapTipi}.
 Kalenin ${baglam.katilimMetni} bir savaşçısı. Kuşandığı katana: ${baglam.kilicAd}, Kesesindeki servet: ${baglam.ryo} Ryo.
 ${kayitOzeti ? `Kayıt Sicili: ${kayitOzeti}` : ''}
@@ -1113,7 +1114,8 @@ export async function chatBotYanitla(mesajMetni, user, guild = null, member = nu
         kilicAd: kilic.ad,
         ryo,
         isFemale,
-        kayit: kayitBilgileri
+        kayit: kayitBilgileri,
+        sahip: sahipMi(member, message?.client)
       });
 
       if (aiSonuc?.metin) {

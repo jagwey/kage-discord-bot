@@ -1,7 +1,8 @@
 import { ChannelType, PermissionFlagsBits, EmbedBuilder } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { eskiKanallariTemizle, eskiRolleriTemizle, kageMimarisiInsaEt } from './sunucuMimarisiServisi.js';
-import { ryoEkle, bakiyeGetir, liderlikListesi } from './ekonomiServisi.js';
+import { ryoEkle, ryoDus, bakiyeGetir, liderlikListesi } from './ekonomiServisi.js';
+import { sahipMi } from './aiErisimServisi.js';
 import { duyuruKanaliniBul } from './duyuruServisi.js';
 import { tumMangalariGetir, mangaAra, mangaDetayGetir, sonEklenenBolumleriGetir, siteDuyurulariGetir, mangaSayfaUrl, bolumOkumaUrl } from './mangaServisi.js';
 import { hafizaYukle, hafizaKaydet, kullaniciNotuEkle, bilgiOgren, hafizaArama, gunlukDerinOgrenme } from './kageHafizaServisi.js';
@@ -79,11 +80,14 @@ export async function aiEylemiCalistir({ eylem, parametreler = {}, guild, channe
     return { basarili: false, hata: 'Sunucu veya üye bağlamı bulunamadı.' };
   }
 
-  const isAdmin = member.permissions.has(PermissionFlagsBits.Administrator);
-  const isManager = member.permissions.has(PermissionFlagsBits.ManageGuild);
-  const isMod = member.permissions.has(PermissionFlagsBits.ManageMessages);
-  const canChannels = member.permissions.has(PermissionFlagsBits.ManageChannels);
-  const canRoles = member.permissions.has(PermissionFlagsBits.ManageRoles);
+  // Sahip, Discord izinleri ne olursa olsun bütün eylemleri yapabilir.
+  const sahip = sahipMi(member, client);
+  const izin = p => sahip || member.permissions.has(p);
+  const isAdmin = izin(PermissionFlagsBits.Administrator);
+  const isManager = izin(PermissionFlagsBits.ManageGuild);
+  const isMod = izin(PermissionFlagsBits.ManageMessages);
+  const canChannels = izin(PermissionFlagsBits.ManageChannels);
+  const canRoles = izin(PermissionFlagsBits.ManageRoles);
 
   try {
     switch (eylem) {
@@ -499,12 +503,32 @@ export async function aiEylemiCalistir({ eylem, parametreler = {}, guild, channe
         if (!isAdmin) {
           return { basarili: false, hata: 'Ryo hazinesini yönetmek için Şogun (Admin) yetkisi gerekir.' };
         }
-        const target = await hedefUyeBul(guild, parametreler.kullanici) || member;
+        // Hedef adı verilip bulunamazsa Ryo yanlışlıkla isteyene gitmesin
+        const target = parametreler.kullanici ? await hedefUyeBul(guild, String(parametreler.kullanici)) : member;
+        if (!target) return { basarili: false, hata: 'Hedef üye bulunamadı.' };
         const miktar = parseInt(parametreler.miktar || 100, 10);
-        const yeniBakiye = ryoEkle(target.id, miktar);
+        if (!(miktar > 0)) return { basarili: false, hata: 'Miktar pozitif bir sayı olmalı.' };
+        const yeniBakiye = ryoEkle(target.id, miktar, `Yönetici yüklemesi <- ${member.id}`);
         return {
           basarili: true,
           detay: `${target} cüzdanına \`+${miktar} Ryo\` aktarıldı. Yeni Bakiye: \`${yeniBakiye} Ryo\`.`
+        };
+      }
+
+      // 20b. Ryo Geri Alma (Şogun / Admin); bakiye yetmezse eldeki kadarı alınır
+      case 'ryo_dus': {
+        if (!isAdmin) {
+          return { basarili: false, hata: 'Ryo hazinesini yönetmek için Şogun (Admin) yetkisi gerekir.' };
+        }
+        const target = await hedefUyeBul(guild, String(parametreler.kullanici || ''));
+        if (!target) return { basarili: false, hata: 'Hedef üye bulunamadı.' };
+        const miktar = parseInt(parametreler.miktar, 10);
+        if (!(miktar > 0)) return { basarili: false, hata: 'Miktar pozitif bir sayı olmalı.' };
+        const alinan = Math.min(miktar, bakiyeGetir(target.id).ryo);
+        ryoDus(target.id, alinan, `Yönetici kesintisi <- ${member.id}`);
+        return {
+          basarili: true,
+          detay: `${target} cüzdanından \`-${alinan} Ryo\` alındı. Yeni Bakiye: \`${bakiyeGetir(target.id).ryo} Ryo\`.`
         };
       }
 

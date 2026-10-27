@@ -6,6 +6,7 @@ import { denetimKaydet } from './denetim.js';
 import { hafizaBaglamMetniUret, profilGuncelle } from '../kageHafizaServisi.js';
 import { egitimBaglami, ciktiyiDenetle } from '../egitimServisi.js';
 import { sunucuOzetiMetni } from '../sunucuBilgiServisi.js';
+import { sahipMi } from '../aiErisimServisi.js';
 
 function ozetGuvenli(guild) {
   try { return sunucuOzetiMetni(guild); } catch { return '(özet alınamadı)'; }
@@ -14,7 +15,7 @@ function ozetGuvenli(guild) {
 const MAKS_DONGU = 5;
 const MAKS_ARAC_CIKTISI = 6000;
 
-const KISILIK = `Sen Kage'sin: kage95.com manga platformunun Discord topluluğunun gölge ninjası ve hafızalı bekçisi. Herkese aynı Kage olarak konuşursun; yönetici ya da üye fark etmez, kişiliğin değişmez.
+const KISILIK = `Sen Kage'sin: kage95.com manga platformunun Discord topluluğunun gölge ninjası ve hafızalı bekçisi. Herkese aynı Kage olarak konuşursun; yönetici ya da üye fark etmez, kişiliğin değişmez. Tek fark: sunucu sahibinin isteklerini tam yetkiyle yerine getirirsin.
 
 Kişilik:
 - Türkçe konuş. Samimi, esprili, kısa ve net ol. Hafif ninja/samuray havası olsun ama abartma; her cümleye "gölge" sıkıştırma.
@@ -40,14 +41,16 @@ const ARAYA_GIRME_EKI = `
 
 Şu an kimse seni çağırmadı; sohbete kendi inisiyatifinle katılma fırsatın var. Yalnızca gerçekten değer katacaksan (soruya cevap, esprili ve yerinde bir laf, manga/ekonomi bilgisi) kısa bir cevap yaz. Aksi halde sadece [SUS] yaz. Şüphedeysen [SUS]. Araç kullanma gereği duyuyorsan yalnızca okuma araçlarını kullan.`;
 
-function sistemMetni({ yazarAdi, yonetici, guild, channel, araGirme, hafiza, egitim }) {
+const SAHIP_NOTU = 'sunucunun sahibi ve kurucusu; her yetkiye sahip. Ona karşı tam yetkiyle konuş: isteklerini ciddiye al, araçlarla eksiksiz yerine getir, "yetkin yok" ya da "yapamam" deme. Yıkıcı eylemlerde onay butonu yine çıkar; sır paylaşmama ve aile, din, dil, ırk hakareti yasağı onun için de geçerli';
+
+function sistemMetni({ yazarAdi, yonetici, sahip, guild, channel, araGirme, hafiza, egitim }) {
   const tarih = new Date().toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' });
   return `${KISILIK}${araGirme ? ARAYA_GIRME_EKI : ''}
 
 Bağlam:
 - Zaman: ${tarih}
 - Sunucu: ${guild?.name || 'DM'} | Kanal: #${channel?.name || '?'}
-- Son mesajı yazan: ${yazarAdi} (${yonetici ? 'yetkili: yönetim araçları açık' : 'normal üye: yönetim araçları kapalı'})
+- Son mesajı yazan: ${yazarAdi} (${sahip ? SAHIP_NOTU : yonetici ? 'yetkili: yönetim araçları açık' : 'normal üye: yönetim araçları kapalı'})
 ${guild ? `\nSunucu özeti (canlı):\n${ozetGuvenli(guild)}` : ''}
 ${hafiza ? `\nHafızandan ilgili notlar:\n${hafiza}` : ''}${egitim ? `\n\n${egitim}` : ''}`;
 }
@@ -88,12 +91,13 @@ export async function kageyeSor({ metin, yazarAdi, userId, guild, channel, membe
     hafiza = hafizaBaglamMetniUret(metin, userId, yazarAdi) || '';
   } catch { /* hafıza yoksa devam */ }
 
-  const yetkiliAraclar = yonetici && !araGirme;
+  const sahip = sahipMi(member, client);
+  const yetkiliAraclar = (yonetici || sahip) && !araGirme;
   let egitim = '';
   try {
     egitim = egitimBaglami(guild?.id ?? null, userId, metin) || '';
   } catch { /* eğitim yoksa devam */ }
-  const sistem = sistemMetni({ yazarAdi, yonetici: yetkiliAraclar, guild, channel, araGirme, hafiza, egitim });
+  const sistem = sistemMetni({ yazarAdi, yonetici: yetkiliAraclar, sahip: sahip && !araGirme, guild, channel, araGirme, hafiza, egitim });
   const araclar = aracListesi({ yonetici: yetkiliAraclar });
   const ctx = { guild, channel, member, client, yonetici: yetkiliAraclar };
 

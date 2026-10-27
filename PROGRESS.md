@@ -145,6 +145,11 @@ Hedefler: docs/PROJE_HEDEFLERI.md. Kullanıcı istemeden commit atılmaz.
   - Yoldaş etkisi: kurt Gölge şansı, kuzgun kaçınma, ejder hasar emme, tilki Ryo.
   - Magma her tur 5 HP yakar (blok korur). Hiçlik Boyutu yarı canda ikinci faza girer.
   - 60 sn hamlesizlikte savaş cezasız biter. Çift tıklama kilidi var. Profilde en derin kat ve temizlenen zindan sayısı görünür.
+53. **Sahip tam yetkisi ve Ryo yönetimi (2026-10-27):**
+  - Yeni `/ryo ver|al|bak` (`src/commands/ryo.js`): sahip ve yöneticiler üyeye Ryo yükler, geri alır, cüzdana bakar. Neden kayda düşer. `al` bakiyeden fazlasını almaz.
+  - `aiErisimServisi.sahipMi`: OWNER_ID, sunucu sahibi ya da uygulama sahibi. Sahip, `aiAjanServisi` içinde Discord izni olmasa da bütün eylemleri yapar.
+  - Yapay zekâ sahibe tam yetkiyle konuşur (`kageBeyin` ve `chatBotServisi` istemleri). Yıkıcı eylem onay butonu, sır yasağı ve aile/din/dil/ırk hakareti yasağı sahip için de geçerli.
+  - Yeni AI aracı `ryo_dus`. `ryo_ekle` artık hedef bulunamazsa Ryo'yu isteyene vermez.
 
 ## Sürüyor
 
