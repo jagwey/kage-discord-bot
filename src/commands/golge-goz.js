@@ -27,6 +27,7 @@ export const data = new SlashCommandBuilder()
       .addBooleanOption(o => o.setName('uyari').setDescription('Küfür edene kanalda anında uyarı'))
       .addBooleanOption(o => o.setName('yetkilileri-uyar').setDescription('Yöneticiler ve sunucu sahibi de uyarılsın'))
       .addBooleanOption(o => o.setName('hakim-modu').setDescription('Kavga çıkınca Yargıç Kage devreye girsin'))
+      .addBooleanOption(o => o.setName('sahibe-bildir').setDescription('Senden bahsedilince ya da işine yarar bilgi geçince seni etiketlesin'))
       .addRoleOption(o => o.setName('yetkili-rol').setDescription('Kavgada etiketlenecek mod rolü (yoksa sunucu sahibi)'))
   )
   .addSubcommand(sub =>
@@ -52,7 +53,7 @@ export async function execute(interaction) {
       : 'henüz yok';
     const satirlar = [
       `👁️ Gölge Göz ${ayar.acik ? 'nöbette' : 'kapalı'}`,
-      `uyarı ${evet(ayar.uyari)} • yetkilileri uyar ${evet(ayar.yetkilileriUyar)} • hakim modu ${evet(ayar.hakimModu)}`,
+      `uyarı ${evet(ayar.uyari)} • yetkilileri uyar ${evet(ayar.yetkilileriUyar)} • hakim modu ${evet(ayar.hakimModu)} • sahibe bildir ${evet(ayar.sahibeBildir)}`,
       `kavgada çağrılan: ${ayar.yetkiliRolId ? `<@&${ayar.yetkiliRolId}>` : 'sunucu sahibi'}`,
       `${durum.toplamIncelenenMesaj.toLocaleString('tr-TR')} mesaj okundu • ${durum.ogrenilenBilgiSayisi} bilgi öğrenildi • ${durum.onlenenIhlalSayisi} ihlal`,
       `son öğrenme taraması ${sonTarama}`
@@ -92,17 +93,19 @@ export async function execute(interaction) {
     const uyari = interaction.options.getBoolean('uyari');
     const yetkilileriUyar = interaction.options.getBoolean('yetkilileri-uyar');
     const hakimModu = interaction.options.getBoolean('hakim-modu');
+    const sahibeBildir = interaction.options.getBoolean('sahibe-bildir');
     const rol = interaction.options.getRole('yetkili-rol');
     if (acik !== null) degisim.acik = acik;
     if (uyari !== null) degisim.uyari = uyari;
     if (yetkilileriUyar !== null) degisim.yetkilileriUyar = yetkilileriUyar;
     if (hakimModu !== null) degisim.hakimModu = hakimModu;
+    if (sahibeBildir !== null) degisim.sahibeBildir = sahibeBildir;
     if (rol) degisim.yetkiliRolId = rol.id;
 
     const ayar = Object.keys(degisim).length ? golgeGozAyarGuncelle(guildId, degisim) : golgeGozAyarGetir(guildId);
     return interaction.reply({
       content: `${Object.keys(degisim).length ? '✅ kaydedildi' : 'değişiklik yok'}\n` +
-        `açık ${evet(ayar.acik)} • uyarı ${evet(ayar.uyari)} • yetkilileri uyar ${evet(ayar.yetkilileriUyar)} • hakim modu ${evet(ayar.hakimModu)}\n` +
+        `açık ${evet(ayar.acik)} • uyarı ${evet(ayar.uyari)} • yetkilileri uyar ${evet(ayar.yetkilileriUyar)} • hakim modu ${evet(ayar.hakimModu)} • sahibe bildir ${evet(ayar.sahibeBildir)}\n` +
         `kavgada çağrılan: ${ayar.yetkiliRolId ? `<@&${ayar.yetkiliRolId}>` : 'sunucu sahibi'}\n-# Gölge Göz`,
       flags: MessageFlags.Ephemeral,
       allowedMentions: { parse: [] }

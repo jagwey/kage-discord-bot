@@ -119,6 +119,11 @@ Hedefler: docs/PROJE_HEDEFLERI.md. Kullanıcı istemeden commit atılmaz.
   - Hakim modu: seviye 2+ olunca Yargıç Kage davası açılır, taraflardan 2 dk ifade toplar, yapay zeka tarafsız karar verir. Yaptırım önerirse yetkili etiketlenir. `/golge-goz hakim` ile elle de açılır.
   - `/golge-goz ayar` (acik, uyari, yetkilileri-uyar, hakim-modu, yetkili-rol). `durum` ve `rapor` düz kısa metin. Öğrenme taramasında bilinmeyen isimler artık atlanır.
   - `motorEtiketi` `aiRouterServisi`'ne taşındı, `yetkiliMi` otomoddan export.
+49. **Yapay zekalı kayıt formu ve sahibe bildirim (2026-10-27):**
+  - Kayıt modalı LabelBuilder ile 5 bileşen: ad (metin), yol (Samuray/Kunoichi seçimi, zorunlu), yaş aralığı (seçim), türler (en fazla 4 çoklu seçim), "kendinden bahset" (serbest metin). Eski modal alanları da okunur (`kayitModalVerileriniOku`).
+  - Kendinden bahset metnini yapay zeka okur (12 sn sınır): ruh karakteri, motto, ilgi alanları, özet, kişiye özel selam. Profil (`profilGuncelle`) ve kayıt notu (Yaş, Hakkında) güncellenir. Kart sadeleşti, selamla başlar. Hakkında metni herkese açık anonsa girmez.
+  - `sahibeBildir(guild, metin)` (golgeGozServisi): admin AI kanalına sahibi etiketler, kanal yoksa DM. Sahibin adı/"kurucu"/"owner"/"sunucu sahibi" geçince 5 dk aralıkla haber; öğrenme taraması `[SAHIBE_NOT]` ile bug, öneri, şikayet, iş birliği, yardım, güvenlik notlarını iletir (tarama başına en fazla 3). Kayıtta yapay zeka sahibin işine yarar bir şey görürse o da gider.
+  - `/golge-goz ayar sahibe-bildir` ile kapatılır.
 
 ## Sürüyor
 

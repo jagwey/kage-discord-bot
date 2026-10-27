@@ -26,8 +26,13 @@ export const VARSAYILAN_AYAR = {
   uyari: true,            // küfür edene kanalda anında uyarı
   yetkilileriUyar: true,  // yönetici ve sunucu sahibi de uyarılır
   hakimModu: true,        // kavga çıkınca Yargıç Kage devreye girer
-  yetkiliRolId: null      // kavgada etiketlenecek mod rolü; yoksa sunucu sahibi etiketlenir
+  yetkiliRolId: null,     // kavgada etiketlenecek mod rolü; yoksa sunucu sahibi etiketlenir
+  sahibeBildir: true      // sahipten bahsedilince ya da işine yarar bilgi geçince sahip etiketlenir
 };
+
+const SAHIP_ANMA_ARALIK_MS = 5 * 60 * 1000; // aynı sunucuda "senden bahsedildi" en sık bu aralıkla
+const SAHIP_GENEL_KELIMELER = ['jagwey', 'kurucu', 'owner'];
+const sahipAnmaZamani = new Map();
 
 const KUFUR_PENCERE_MS = 10 * 60 * 1000;   // tekrar eden küfür bu sürede sayılır
 const UYARI_ARALIK_MS = 20 * 1000;         // aynı kişiye iki uyarı arası en az bu kadar
@@ -255,9 +260,13 @@ export async function golgeGozMesajIsle(message) {
     kavgaAnalizEt(message.channel, ayar).catch(err => console.warn('[GolgeGoz] Kavga analizi:', err.message));
   }
 
-  // 5. Bilgi taşıyan mesajlar öğrenme havuzuna (kısa selamlar API'ye gitmez)
+  // 5. Sunucu sahibinden bahsediliyorsa sahibe haber verilir
+  if (ayar.sahibeBildir) sahipAnildiMi(message, metin);
+
+  // 6. Bilgi taşıyan mesajlar öğrenme havuzuna (kısa selamlar API'ye gitmez)
   if (!kufur && metin.length >= 15 && !metin.startsWith('/') && !metin.startsWith('!')) {
     mesajHavuzu.push({
+      guildId: message.guild.id,
       userId: message.author.id,
       userName: message.member?.displayName || message.author.username,
       kanal: message.channel.name,
@@ -319,6 +328,54 @@ function adminKanalaYaz(guild, icerik) {
   const hedefKanalId = sunucuAyarGetir(guild.id).aiYonetimKanalId || process.env.AI_ADMIN_CHANNEL_ID;
   const adminKanal = hedefKanalId && guild.channels.cache.get(hedefKanalId);
   if (adminKanal?.isTextBased()) adminKanal.send({ content: icerik, allowedMentions: { parse: [] } }).catch(() => null);
+}
+
+/**
+ * Sunucu sahibinin bilmesi gereken bir şeyi admin AI kanalına sahibi etiketleyerek yazar.
+ * Admin kanalı yoksa sahibe DM atılır. /golge-goz ayar sahibe-bildir ile kapatılabilir.
+ * @param {import('discord.js').Guild} guild
+ * @param {string} metin
+ * @returns {Promise<boolean>} bildirim gitti mi
+ */
+export async function sahibeBildir(guild, metin) {
+  if (!guild?.ownerId || !golgeGozAyarGetir(guild.id).sahibeBildir) return false;
+  const icerik = `<@${guild.ownerId}> ${metin}`.slice(0, 1900) + '\n-# Gölge Göz';
+  const hedefKanalId = sunucuAyarGetir(guild.id).aiYonetimKanalId || process.env.AI_ADMIN_CHANNEL_ID;
+  const adminKanal = hedefKanalId && guild.channels.cache.get(hedefKanalId);
+  if (adminKanal?.isTextBased()) {
+    const gitti = await adminKanal.send({ content: icerik, allowedMentions: { users: [guild.ownerId] } }).catch(() => null);
+    if (gitti) return true;
+  }
+  const sahip = await guild.fetchOwner().catch(() => null);
+  const dm = await sahip?.send({ content: `${guild.name} • ${metin}`.slice(0, 1900) + '\n-# Gölge Göz' }).catch(() => null);
+  return !!dm;
+}
+
+/** Sahibin adı, "kurucu", "owner" gibi bir anma geçiyorsa (ve sahip zaten etiketlenmemişse) haber verir. */
+function sahipAnildiMi(message, metin) {
+  const guild = message.guild;
+  if (message.author.id === guild.ownerId || message.mentions?.users?.has(guild.ownerId)) return;
+  if (message.mentions?.repliedUser?.id === guild.ownerId) return;
+
+  const sahip = guild.members.cache.get(guild.ownerId);
+  const adlar = [sahip?.user?.username, sahip?.displayName, sahip?.user?.globalName]
+    .map(a => sadelestir(a || '').replace(/[^a-z0-9 ]/g, ' ').trim().split(/\s+/)[0])
+    .filter(a => a && a.length >= 3 && a !== 'kage');
+  const aranan = [...new Set([...adlar, ...SAHIP_GENEL_KELIMELER])];
+
+  const duz = sadelestir(metin);
+  const kelimeler = duz.split(/[^a-z0-9]+/).filter(Boolean);
+  const anildi = kelimeler.some(k => aranan.some(a => k === a || (a.length >= 5 && k.startsWith(a))))
+    || duz.includes('sunucu sahibi') || duz.includes('sunucunun sahibi');
+  if (!anildi) return;
+
+  const simdi = Date.now();
+  if (simdi - (sahipAnmaZamani.get(guild.id) || 0) < SAHIP_ANMA_ARALIK_MS) return;
+  sahipAnmaZamani.set(guild.id, simdi);
+
+  const yazan = message.member?.displayName || message.author.username;
+  sahibeBildir(guild, `senden bahsedildi • <#${message.channel.id}> • ${yazan}\n> ${metin.slice(0, 300).replace(/\n/g, '\n> ')}\n${message.url}`)
+    .catch(() => null);
 }
 
 function sohbetDokumu(kanalId, adet = 15) {
@@ -508,7 +565,8 @@ export async function golgeGozTopluAnaliz(client) {
       `1. Kullanıcıların kendileri hakkında paylaştığı önemli kişisel gerçekleri (örn: yaş, şehir, evcil hayvan, favori manga/anime, meslek vb.) tespit et.\n` +
       `Her tespit için format: [KULLANICI_BILGI: <KullanıcıAdı> | <Gerçek Bilgi>]\n` +
       `2. Sunucuya, kage95 platformuna veya topluluğa dair yeni bir genel kural/bilgi varsa çıkar: [GENEL_BILGI: <Kısa Başlık> | <İçerik>]\n` +
-      `3. Eğer kayda değer yeni bir bilgi yoksa sadece [BİLGİ_YOK] yaz.\n` +
+      `3. Sunucu sahibinin bilmesi işine yarayacak bir şey geçtiyse (hata/bug bildirimi, bot, site veya sunucu için öneri, yetkili şikayeti, iş birliği/sponsor teklifi, yardıma ihtiyacı olan biri, baskın/güvenlik tehdidi) ayrıca yaz: [SAHIBE_NOT: <KullanıcıAdı> | <sahip neden bilmeli, tek cümle>]\n` +
+      `4. Eğer kayda değer yeni bir bilgi yoksa sadece [BİLGİ_YOK] yaz.\n` +
       `Cevabını sade ve sadece bu formatta ver.`;
 
     const sonuc = await akilliAiUret({
@@ -545,6 +603,19 @@ export async function golgeGozTopluAnaliz(client) {
         bilgiOgren('otonom_goz', baslik, icerik, 'Gölge Gözü AI');
         v.ogrenilenBilgiSayisi += 1;
       }
+    }
+
+    // Sahibe notlar: tarama başına en fazla 3 bildirim, yalnız havuzdaki bir yazara uyanlar.
+    const sRegex = /\[SAHIBE_NOT:\s*([^|]+)\|\s*([^\]]+)\]/gi;
+    let sMatch;
+    let sahibeGiden = 0;
+    while ((sMatch = sRegex.exec(cevap)) !== null && sahibeGiden < 3) {
+      const eslesen = islenecekMesajlar.find(m => sadelestir(m.userName) === sadelestir(sMatch[1].trim()));
+      const guild = eslesen?.guildId && client?.guilds?.cache?.get(eslesen.guildId);
+      const neden = sMatch[2].trim();
+      if (!guild || neden.length < 6) continue;
+      sahibeGiden++;
+      sahibeBildir(guild, `💡 ${eslesen.userName} • #${eslesen.kanal}\n> ${neden}`).catch(() => null);
     }
 
     v.sonTaramaZamani = new Date().toISOString();

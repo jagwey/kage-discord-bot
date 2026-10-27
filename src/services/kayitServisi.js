@@ -5,6 +5,8 @@ import {
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
+  LabelBuilder,
+  StringSelectMenuBuilder,
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
@@ -12,8 +14,27 @@ import {
 } from 'discord.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { ryoEkle, bakiyeGetir } from './ekonomiServisi.js';
-import { kullaniciNotuEkle, kullaniciHafizasiGetir } from './kageHafizaServisi.js';
+import { kullaniciNotuEkle, kullaniciHafizasiGetir, profilGuncelle } from './kageHafizaServisi.js';
 import { sunucuAyarGetir } from './veritabaniServisi.js';
+import { akilliAiUret } from './aiRouterServisi.js';
+import { sahibeBildir } from './golgeGozServisi.js';
+
+export const YAS_ARALIKLARI = ['13-15', '16-17', '18-20', '21-25', '26-30', '30+'];
+export const MANGA_TURLERI = [
+  { ad: 'Shonen', emoji: '🔥' },
+  { ad: 'Seinen', emoji: '🗡️' },
+  { ad: 'Romantizm', emoji: '💞' },
+  { ad: 'Isekai', emoji: '🌀' },
+  { ad: 'Psikolojik', emoji: '🧠' },
+  { ad: 'Aksiyon', emoji: '💥' },
+  { ad: 'Komedi', emoji: '😂' },
+  { ad: 'Korku', emoji: '👻' },
+  { ad: 'Spor', emoji: '🏀' },
+  { ad: 'Slice of Life', emoji: '🍵' },
+  { ad: 'Fantastik', emoji: '🐉' },
+  { ad: 'Gizem', emoji: '🔍' }
+];
+const AI_SURE_SINIRI_MS = 12_000;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -60,22 +81,35 @@ export function kullaniciKayitBilgileriniGetir(userId, member = null) {
   const varsayilanlar = {
     isim: member?.displayName?.replace(/[🌸🗡️]/g, '').trim() || '',
     cinsiyet: '',
+    yas: '',
     mangaTuru: '',
     karakter: '',
-    yemin: ''
+    yemin: '',
+    hakkinda: ''
   };
 
   const hafiza = kullaniciHafizasiGetir(userId);
   if (hafiza?.notlar && Array.isArray(hafiza.notlar)) {
     for (const not of hafiza.notlar) {
+      // Yalnız kayıt notları okunur; Gölge Göz'ün serbest notları cinsiyeti bozmasın.
+      if (typeof not !== 'string' || !not.startsWith('Karakter Yolu:')) continue;
       if (not.includes('Kız') || not.includes('Kunoichi')) {
         varsayilanlar.cinsiyet = 'Kız (Kunoichi)';
       } else if (not.includes('Erkek') || not.includes('Samuray')) {
         varsayilanlar.cinsiyet = 'Erkek (Samuray)';
       }
 
+      // Eski notlarda "Kenji / 19", yenilerinde "Kenji (18-20)" biçimi vardır.
       const adMatch = not.match(/İsim\/Yaş:\s*([^,]+)/i);
-      if (adMatch && adMatch[1]) varsayilanlar.isim = adMatch[1].trim();
+      if (adMatch && adMatch[1]) {
+        varsayilanlar.isim = adMatch[1].replace(/\s*\([^)]*\)\s*$/, '').replace(/\s*\/\s*\d+\s*$/, '').trim();
+      }
+
+      const yasMatch = not.match(/(?:^|,\s*)Yaş:\s*([^,]+)/);
+      if (yasMatch && yasMatch[1]) varsayilanlar.yas = yasMatch[1].trim();
+
+      const hakkindaMatch = not.match(/Hakkında:\s*"([^"]+)"/);
+      if (hakkindaMatch && hakkindaMatch[1]) varsayilanlar.hakkinda = hakkindaMatch[1].trim();
 
       const turMatch = not.match(/Favori Türü:\s*([^,]+)/i);
       if (turMatch && turMatch[1]) varsayilanlar.mangaTuru = turMatch[1].trim();
@@ -101,81 +135,150 @@ export function kullaniciKayitBilgileriniGetir(userId, member = null) {
 }
 
 /**
- * Kullanıcıya gösterilecek şık, samuray ve kunoichi temalı detaylı kayıt modalını üretir (5 soru)
- * @param {Object} varsayilanlar 
+ * Kayıt modalı: ad yazılır, yol ve yaş seçilir, türler işaretlenir,
+ * gerisini kullanıcı kendi cümleleriyle anlatır ve yapay zeka ayıklar.
+ * @param {Object} varsayilanlar kullaniciKayitBilgileriniGetir çıktısı
  * @returns {ModalBuilder}
  */
 export function kayitModaliOlustur(varsayilanlar = {}) {
-  const modal = new ModalBuilder()
-    .setCustomId('kage_kayit_modal')
-    .setTitle('⛩️ Kage Kalesi Kayıt & Kimlik Mührü');
+  const kizMi = varsayilanlar.cinsiyet ? cinsiyetKizMi(varsayilanlar.cinsiyet) : null;
+  const seciliTurler = String(varsayilanlar.mangaTuru || '')
+    .split(/[\/,]/).map(t => t.trim().toLowerCase()).filter(Boolean);
 
-  // 1. Soru: Ad & Yaş
   const isimInput = new TextInputBuilder()
-    .setCustomId('kayit_isim_yas')
-    .setLabel('👤 Adınız / Takma Adınız & Yaşınız')
-    .setPlaceholder('Örn: Kenji / 19 (veya Alya / 18, sadece isim de olur)')
+    .setCustomId('kayit_isim')
     .setStyle(TextInputStyle.Short)
-    .setMaxLength(32)
+    .setPlaceholder('Kenji, Alya, Zoro... ne denmesini istersen')
+    .setMinLength(2)
+    .setMaxLength(24)
     .setRequired(true);
+  if (varsayilanlar.isim) isimInput.setValue(varsayilanlar.isim.slice(0, 24));
 
-  if (varsayilanlar.isim) isimInput.setValue(varsayilanlar.isim);
-
-  // 2. Soru: Cinsiyet & Karakter Yolu
-  const cinsiyetInput = new TextInputBuilder()
+  const yolSecim = new StringSelectMenuBuilder()
     .setCustomId('kayit_cinsiyet')
-    .setLabel('🎎 Cinsiyet / Yolunuz (Kız veya Erkek)')
-    .setPlaceholder('🌸 Kız (Kunoichi) VEYA 🗡️ Erkek (Samuray)')
-    .setStyle(TextInputStyle.Short)
-    .setMaxLength(25)
-    .setRequired(true);
+    .setPlaceholder('Yolunu seç')
+    .setRequired(true)
+    .addOptions(
+      { label: 'Samuray', description: 'Erkek • Gölge Samurayı rolü', value: 'Erkek (Samuray)', emoji: '🗡️', default: kizMi === false },
+      { label: 'Kunoichi', description: 'Kız • Gölge Kunoichisi rolü', value: 'Kız (Kunoichi)', emoji: '🌸', default: kizMi === true }
+    );
 
-  if (varsayilanlar.cinsiyet) cinsiyetInput.setValue(varsayilanlar.cinsiyet);
+  const yasSecim = new StringSelectMenuBuilder()
+    .setCustomId('kayit_yas')
+    .setPlaceholder('Yaş aralığın (istersen boş bırak)')
+    .setRequired(false)
+    .setMinValues(0)
+    .setMaxValues(1)
+    .addOptions(YAS_ARALIKLARI.map(y => ({ label: y, value: y, default: varsayilanlar.yas === y })));
 
-  // 3. Soru: Favori Manga/Anime Türü
-  const mangaInput = new TextInputBuilder()
-    .setCustomId('kayit_manga_turu')
-    .setLabel('📖 En Sevdiğiniz Manga / Anime Türü')
-    .setPlaceholder('Örn: Shonen, Romantizm, Seinen, Isekai, Psikolojik, Gizem')
-    .setStyle(TextInputStyle.Short)
-    .setMaxLength(40)
-    .setRequired(false);
+  const turSecim = new StringSelectMenuBuilder()
+    .setCustomId('kayit_turler')
+    .setPlaceholder('Sevdiğin türler (en fazla 4)')
+    .setRequired(false)
+    .setMinValues(0)
+    .setMaxValues(4)
+    .addOptions(MANGA_TURLERI.map(t => ({
+      label: t.ad, value: t.ad, emoji: t.emoji, default: seciliTurler.includes(t.ad.toLowerCase())
+    })));
 
-  if (varsayilanlar.mangaTuru) mangaInput.setValue(varsayilanlar.mangaTuru);
-
-  // 4. Soru: Ruh Karakteri / Usta (Waifu / Husbando)
-  const karakterInput = new TextInputBuilder()
-    .setCustomId('kayit_karakter')
-    .setLabel('🥷 Seni En Çok Yansıtan Karakter / Ustan')
-    .setPlaceholder('Örn: Zoro, Mikasa, Guts, Gojo, Frieren, Itachi, Luffy')
-    .setStyle(TextInputStyle.Short)
-    .setMaxLength(50)
-    .setRequired(false);
-
-  if (varsayilanlar.karakter) karakterInput.setValue(varsayilanlar.karakter);
-
-  // 5. Soru: Samuray Yemini / Mottosu
-  const yeminInput = new TextInputBuilder()
-    .setCustomId('kayit_yemin')
-    .setLabel('📜 Klan Mottosu / Samuray Yemini')
-    .setPlaceholder('Örn: Gölgelerde yürür, klanım için kılıç bilerim!')
+  const hakkindaInput = new TextInputBuilder()
+    .setCustomId('kayit_hakkinda')
     .setStyle(TextInputStyle.Paragraph)
-    .setMaxLength(120)
+    .setPlaceholder('Örn: İzmir\'denim, Berserk okurum, Guts benim adamım. Çizim yaparım, oyun severim.')
+    .setMaxLength(400)
     .setRequired(false);
+  if (varsayilanlar.hakkinda) hakkindaInput.setValue(varsayilanlar.hakkinda.slice(0, 400));
 
-  if (varsayilanlar.yemin) yeminInput.setValue(varsayilanlar.yemin);
-
-  modal.addComponents(
-    new ActionRowBuilder().addComponents(isimInput),
-    new ActionRowBuilder().addComponents(cinsiyetInput),
-    new ActionRowBuilder().addComponents(mangaInput),
-    new ActionRowBuilder().addComponents(karakterInput),
-    new ActionRowBuilder().addComponents(yeminInput)
-  );
-
-  return modal;
+  return new ModalBuilder()
+    .setCustomId('kage_kayit_modal')
+    .setTitle('⛩️ Kage Kalesi • Kimlik Mührü')
+    .addLabelComponents(
+      new LabelBuilder().setLabel('Sana ne diyelim?').setTextInputComponent(isimInput),
+      new LabelBuilder().setLabel('Yolun').setDescription('Rolün ve takma adının simgesi buna göre verilir.').setStringSelectMenuComponent(yolSecim),
+      new LabelBuilder().setLabel('Yaşın').setStringSelectMenuComponent(yasSecim),
+      new LabelBuilder().setLabel('Sevdiğin manga / anime türleri').setStringSelectMenuComponent(turSecim),
+      new LabelBuilder()
+        .setLabel('Kendinden biraz bahset')
+        .setDescription('Ne okursun, kimi seversin, neyle uğraşırsın... Kage okur ve seni tanır.')
+        .setTextInputComponent(hakkindaInput)
+    );
 }
 
+function secimDegerleri(fields, customId) {
+  try { return fields.getStringSelectValues(customId) || []; } catch { return []; }
+}
+
+function metinDegeri(fields, customId) {
+  try { return (fields.getTextInputValue(customId) || '').trim(); } catch { return ''; }
+}
+
+/**
+ * Kayıt modalının gönderimini kayitIsleminiTamamla'nın beklediği biçime çevirir.
+ * Eski beş kutulu modal hâlâ açık kalmış biri gönderirse onun alanları da okunur.
+ * @param {import('discord.js').ModalSubmitInteraction} interaction
+ */
+export function kayitModalVerileriniOku(interaction) {
+  const f = interaction.fields;
+  const yolSecimi = secimDegerleri(f, 'kayit_cinsiyet')[0];
+  return {
+    isim: metinDegeri(f, 'kayit_isim') || metinDegeri(f, 'kayit_isim_yas'),
+    cinsiyet: yolSecimi || metinDegeri(f, 'kayit_cinsiyet'),
+    yas: secimDegerleri(f, 'kayit_yas')[0] || '',
+    mangaTuru: secimDegerleri(f, 'kayit_turler').join(' / ') || metinDegeri(f, 'kayit_manga_turu'),
+    hakkinda: metinDegeri(f, 'kayit_hakkinda'),
+    karakter: metinDegeri(f, 'kayit_karakter'),
+    yemin: metinDegeri(f, 'kayit_yemin')
+  };
+}
+
+function jsonAyikla(metin) {
+  const parca = String(metin || '').match(/\{[\s\S]*\}/);
+  if (!parca) return null;
+  try { return JSON.parse(parca[0]); } catch { return null; }
+}
+
+/**
+ * "Kendinden bahset" metnini yapay zekaya okutur: ruh karakteri, motto, ilgi alanları,
+ * kısa özet, kişiye özel karşılama ve sunucu sahibinin bilmesi gereken bir şey varsa o.
+ * Yapay zeka cevap vermezse kayıt yine tamamlanır, yalnız bu alanlar boş kalır.
+ */
+async function hakkindaYorumla(hakkinda, { isim, yolAdi, yas, mangaTuru, userId }) {
+  const prompt =
+    `Yeni üye kaydı. Ad: ${isim}. Yol: ${yolAdi}. Yaş aralığı: ${yas || 'belirtmedi'}. Sevdiği türler: ${mangaTuru || 'belirtmedi'}.\n` +
+    `Kendini şöyle anlattı:\n"""${hakkinda}"""\n\n` +
+    'Sadece şu JSON\'u döndür:\n' +
+    '{"karakter":"anlattığından çıkan, onu en iyi yansıtan tek bir anime/manga karakteri (kendisi söylediyse o)",' +
+    '"motto":"ona yakışan, en fazla 8 kelimelik kısa bir samuray mottosu",' +
+    '"ilgiAlanlari":["en fazla 5 kısa ilgi alanı"],' +
+    '"favoriMangalar":["adını andığı manga/animeler"],' +
+    '"ozet":"onu tanıtan tek cümle, üçüncü şahıs",' +
+    '"selam":"ona doğrudan hitap eden, anlattığı bir ayrıntıya değinen 1-2 cümlelik sıcak karşılama",' +
+    '"sahibeNot":"sunucu sahibinin bilmesi işine yarayacak bir şey varsa (çizer, yazılımcı, çevirmen, mod olmak istiyor, iş birliği, şikayet, yardım ihtiyacı) tek cümle; yoksa boş string"}';
+
+  const istek = akilliAiUret({
+    prompt,
+    system: 'Kage-95 sunucusunun kayıt görevlisi Kage\'sin. Kısa, samimi ve saygılı yazarsın. Aile, din, dil veya ırk hakkında asla aşağılayıcı bir şey söylemezsin. Sadece istenen JSON\'u döndürürsün.',
+    gorevTipi: 'hizli_sohbet',
+    userId,
+    userName: isim
+  });
+  const zamanAsimi = new Promise(resolve => setTimeout(() => resolve(null), AI_SURE_SINIRI_MS));
+  const sonuc = await Promise.race([istek.catch(() => null), zamanAsimi]);
+  const veri = jsonAyikla(sonuc?.metin);
+  if (!veri) return null;
+
+  const kisa = (deger, sinir) => (typeof deger === 'string' ? deger.replace(/["\n]/g, ' ').trim().slice(0, sinir) : '');
+  const liste = deger => (Array.isArray(deger) ? deger.map(x => kisa(x, 40)).filter(Boolean).slice(0, 5) : []);
+  return {
+    karakter: kisa(veri.karakter, 50),
+    motto: kisa(veri.motto, 100),
+    ilgiAlanlari: liste(veri.ilgiAlanlari),
+    favoriMangalar: liste(veri.favoriMangalar),
+    ozet: kisa(veri.ozet, 250),
+    selam: kisa(veri.selam, 300),
+    sahibeNot: kisa(veri.sahibeNot, 250)
+  };
+}
 /**
  * Kayıt kapısı kanallarına kurulacak butonlu görsel paneli hazırlar
  * @returns {{ embed: import('discord.js').EmbedBuilder, row: ActionRowBuilder }}
@@ -227,24 +330,32 @@ export function kayitPaneliKartiOlustur() {
 /**
  * Kayıt veya profil güncelleme işlemini eksiksiz şekilde yürütür
  * @param {import('discord.js').ModalSubmitInteraction|import('discord.js').ChatInputCommandInteraction} interaction 
- * @param {Object} veriler { isimYas, cinsiyet, mangaTuru, karakter, yemin, hedefUye }
+ * @param {Object} veriler { isim, yas, hakkinda, isimYas, cinsiyet, mangaTuru, karakter, yemin, hedefUye }
  */
 export async function kayitIsleminiTamamla(interaction, veriler) {
   const guild = interaction.guild;
   const member = veriler.hedefUye || interaction.member;
 
-  const rawIsimYas = (veriler.isimYas || member.displayName).trim();
+  const isim = (veriler.isim || veriler.isimYas || member.displayName).trim();
+  const yas = (veriler.yas || '').trim();
+  const hakkinda = (veriler.hakkinda || '').replace(/"/g, "'").replace(/\s+/g, ' ').trim();
+  const rawIsimYas = yas ? `${isim} (${yas})` : isim;
   const rawCinsiyet = (veriler.cinsiyet || 'Erkek').trim();
   const mangaTuru = (veriler.mangaTuru || 'Genel').trim();
-  const karakter = (veriler.karakter || 'Gölge Savaşçısı').trim();
-  const yemin = (veriler.yemin || 'Kılıcım klanıma emanettir').trim();
 
   const isFemale = cinsiyetKizMi(rawCinsiyet);
   const yolAdi = isFemale ? 'Gölge Kunoichisi' : 'Gölge Samurayı';
   const prefix = isFemale ? '🌸 ' : '🗡️ ';
 
+  // Kullanıcı kendinden bahsettiyse boş kalan karakter ve yemini yapay zeka doldurur.
+  const yorum = hakkinda
+    ? await hakkindaYorumla(hakkinda, { isim, yolAdi, yas, mangaTuru, userId: member.id })
+    : null;
+  const karakter = (veriler.karakter || yorum?.karakter || 'Gölge Savaşçısı').trim();
+  const yemin = (veriler.yemin || yorum?.motto || 'Kılıcım klanıma emanettir').trim();
+
   // 1. Yeni Takma Adı Biçimlendir
-  let temizIsim = rawIsimYas.replace(/[🌸🗡️]/g, '').trim();
+  let temizIsim = isim.replace(/[🌸🗡️]/g, '').trim();
   let yeniNick = `${prefix}${temizIsim}`;
   if (yeniNick.length > 32) yeniNick = yeniNick.slice(0, 32);
 
@@ -322,8 +433,21 @@ export async function kayitIsleminiTamamla(interaction, veriler) {
   const yeniRyo = odul ? ryoEkle(member.id, odul, 'kayıt ödülü') : bakiyeGetir(member.id).ryo;
 
   // 4. Kage AI Derin Hafızasına Kalıcı Olarak Kaydet!
-  const hafizaNotu = `Karakter Yolu: ${yolAdi} (${isFemale ? 'Kız' : 'Erkek'}), İsim/Yaş: ${rawIsimYas}, Favori Türü: ${mangaTuru}, Ruh Karakteri: ${karakter}, Yemin: "${yemin}"`;
+  const hafizaNotu = `Karakter Yolu: ${yolAdi} (${isFemale ? 'Kız' : 'Erkek'}), İsim/Yaş: ${rawIsimYas}` +
+    (yas ? `, Yaş: ${yas}` : '') +
+    `, Favori Türü: ${mangaTuru}, Ruh Karakteri: ${karakter}, Yemin: "${yemin}"` +
+    (hakkinda ? `, Hakkında: "${hakkinda}"` : '');
   kullaniciNotuEkle(member.id, member.displayName, hafizaNotu);
+  if (yorum) {
+    profilGuncelle(member.id, {
+      kisaOzet: yorum.ozet || undefined,
+      ilgiAlanlari: yorum.ilgiAlanlari,
+      favoriMangalar: yorum.favoriMangalar
+    });
+    if (yorum.sahibeNot) {
+      sahibeBildir(guild, `📝 kayıttan not • ${member} (${isim})\n> ${yorum.sahibeNot}`).catch(() => {});
+    }
+  }
 
   // 5. Uygun Piksel Çıkartmasını Hazırla
   const stickerPath = isFemale
@@ -336,23 +460,21 @@ export async function kayitIsleminiTamamla(interaction, veriler) {
     files.push(new AttachmentBuilder(stickerPath, { name: 'kayit_zafer.png' }));
   }
 
-  // 6. Şık ve Detaylı Samuray / Kunoichi Kimlik Kartı
+  // 6. Kimlik Kartı: önce Kage'nin kişiye özel selamı, altında kısa künye
+  const kunye = [
+    `${isFemale ? '🌸' : '🗡️'} **${yolAdi}** • \`${yeniNick}\`${yas ? ` • ${yas}` : ''}`,
+    `📖 ${mangaTuru}`,
+    `🥷 ${karakter}`,
+    `📜 *${yemin}*`,
+    odul ? `💰 +${odul} Ryo • bakiye ${yeniRyo}` : `💰 bakiye ${yeniRyo}`
+  ].join('\n');
   const embed = kageEmbed({
-    baslik: isFemale ? '🌸 KUNOICHI MÜHRÜ VE KİMLİK KARTI ONAYLANDI!' : '🗡️ SAMURAY MÜHRÜ VE KİMLİK KARTI ONAYLANDI!',
+    baslik: isFemale ? '🌸 Kunoichi mührü basıldı' : '🗡️ Samuray mührü basıldı',
     renk: isFemale ? 0xff66b2 : TEMA.RENKLER.BASARI,
-    aciklama: `Tebrikler **${member}**! Kage Kalesi'ne kaydın başarıyla onaylandı ve mühürlendi!\n\n` +
-      `🎎 **Karakter Yolu:** **${yolAdi}** (${isFemale ? 'Kız' : 'Erkek'})\n` +
-      `👤 **Sunucu Kimliği:** \`${yeniNick}\`\n` +
-      `🥷 **Ruh Karakteri / Usta:** \`${karakter}\`\n` +
-      `📖 **Favori Manga Türü:** \`${mangaTuru}\`\n` +
-      `📜 **Klan Mottosu:** *" ${yemin} "*\n\n` +
-      `🛡️ **Bahşedilen Roller:** ${genderRole || '`' + yolAdi + '`'}, ${shinobiRole || '`Shinobi`'}, ${mangaRole || '`Manga Okuru`'}\n` +
-      (odul
-        ? `💰 **Kese Ödülü:** \`+${odul} Ryo\` cüzdanına aktarıldı! (Toplam Bakiye: \`${yeniRyo} Ryo\`)\n`
-        : `💰 **Bakiye:** \`${yeniRyo} Ryo\` (kayıt ödülü yalnız ilk kayıtta verilir)\n`) +
-      `🧠 **Kage AI Entegrasyonu:** Bot ve yapay zeka veziri seni artık bu kimliğinle tanıdı!`,
+    aciklama: `${yorum?.selam || `Hoş geldin ${isim}. Kale seni tanıdı.`}\n\n${kunye}` +
+      (yorum?.ilgiAlanlari?.length ? `\n\n-# Kage seni şöyle tanıdı: ${yorum.ilgiAlanlari.join(' • ')}` : ''),
     thumbnail: stickerVar ? 'attachment://kayit_zafer.png' : member.user.displayAvatarURL({ dynamic: true }),
-    footer: `Kage-95 Kayıt ve Kimlik Sistemi • ${guild.name}`
+    footer: `Kage-95 Kayıt • ${guild.name}`
   });
 
   // Hızlı Aksiyon Butonları

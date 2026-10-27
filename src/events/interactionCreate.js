@@ -2,7 +2,7 @@ import { Events, MessageFlags } from 'discord.js';
 import { onayButonuMu, onayButonunuIsle } from '../services/ai/onayServisi.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { ryoEkle } from '../services/ekonomiServisi.js';
-import { kayitModaliOlustur, kayitIsleminiTamamla, kullaniciKayitBilgileriniGetir } from '../services/kayitServisi.js';
+import { kayitModaliOlustur, kayitModalVerileriniOku, kayitIsleminiTamamla, kullaniciKayitBilgileriniGetir } from '../services/kayitServisi.js';
 
 export const name = Events.InteractionCreate;
 
@@ -150,23 +150,10 @@ export async function execute(interaction) {
     if (interaction.customId === 'kage_kayit_modal') {
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-      const isimYas = interaction.fields.getTextInputValue('kayit_isim_yas');
-      const cinsiyet = interaction.fields.getTextInputValue('kayit_cinsiyet');
-      const mangaTuru = interaction.fields.getTextInputValue('kayit_manga_turu') || 'Genel';
-      let karakter = '';
-      try {
-        karakter = interaction.fields.getTextInputValue('kayit_karakter') || '';
-      } catch {}
-      const yemin = interaction.fields.getTextInputValue('kayit_yemin') || 'Kage Kalesi Onuru';
-
       try {
         const { embed, files, row } = await kayitIsleminiTamamla(interaction, {
           hedefUye: interaction.member,
-          isimYas,
-          cinsiyet,
-          mangaTuru,
-          karakter,
-          yemin
+          ...kayitModalVerileriniOku(interaction)
         });
 
         return interaction.editReply({
