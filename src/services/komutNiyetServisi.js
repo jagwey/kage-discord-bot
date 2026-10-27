@@ -580,6 +580,18 @@ function butondanKomutEtkilesimi(buton, niyet) {
       if (ozellik === 'commandName') return niyet.komut;
       if (ozellik === 'isChatInputCommand' || ozellik === 'isCommand') return () => true;
       if (ozellik === 'isButton' || ozellik === 'isMessageComponent') return () => false;
+      // Buton etkileşiminin reply() sonucu InteractionResponse olur; komutların collector'ı
+      // mesaja bağlanabilsin diye her zaman gerçek mesajı döndür.
+      if (ozellik === 'reply') {
+        return async girdi => {
+          const veri = typeof girdi === 'string' ? { content: girdi } : { ...(girdi || {}) };
+          const istedi = veri.withResponse;
+          delete veri.fetchReply;
+          veri.withResponse = true;
+          const yanit = await hedef.reply(veri);
+          return istedi ? yanit : (yanit.resource?.message ?? yanit);
+        };
+      }
       const v = Reflect.get(hedef, ozellik, hedef);
       return typeof v === 'function' ? v.bind(hedef) : v;
     }

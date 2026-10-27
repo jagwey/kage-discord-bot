@@ -2,69 +2,82 @@ import { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, Comp
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { KILIC_SEVIYELERI, kilicGelistir, bakiyeGetir } from '../services/ekonomiServisi.js';
 
+const SURE_MS = 120_000;
+
 export const data = new SlashCommandBuilder()
   .setName('demirci')
   .setDescription('Katananızı Ryo ile demircide dövüp geliştirir; düello gücünüzü artırırsınız.');
 
-export async function execute(interaction) {
-  const userId = interaction.user.id;
+function seviyeCubugu(seviye) {
+  return KILIC_SEVIYELERI.map(k => (k.seviye <= seviye ? '🟥' : '⬛')).join('');
+}
+
+function ocakEkrani(userId, { not = null, kapali = false } = {}) {
   const bakiye = bakiyeGetir(userId);
-  const mevcutKilic = bakiye.kilic;
-  const sonrakiKilic = KILIC_SEVIYELERI.find(k => k.seviye === mevcutKilic.seviye + 1);
+  const mevcut = bakiye.kilic;
+  const sonraki = KILIC_SEVIYELERI.find(k => k.seviye === mevcut.seviye + 1);
+  const yeter = sonraki && bakiye.ryo >= sonraki.maliyet;
 
-  let aciklama = `**Usta Demircinin Ocağına Hoş Geldiniz!**\n\n` +
-    `🗡️ **Mevcut Katananız:** **${mevcutKilic.ad}** (Seviye ${mevcutKilic.seviye}/${KILIC_SEVIYELERI.length})\n` +
-    `⚡ **Kazanma Bonusu:** \`+%${mevcutKilic.bonus}\`\n` +
-    `💰 **Cüzdanınız:** \`${bakiye.ryo} Ryo\`\n\n`;
+  let aciklama = (not ? `${not}\n\n` : '') +
+    `${seviyeCubugu(mevcut.seviye)} **${mevcut.seviye}/${KILIC_SEVIYELERI.length}**\n\n` +
+    `🗡️ **Katanan:** ${mevcut.ad}\n` +
+    `⚡ **Bonus:** \`+%${mevcut.bonus}\`  •  💰 **Cüzdan:** \`${bakiye.ryo} Ryo\`\n`;
 
-  if (sonrakiKilic) {
-    aciklama += `🔥 **Sonraki Seviye:** **${sonrakiKilic.ad}**\n` +
-      `📈 **Yeni Bonus:** \`+%${sonrakiKilic.bonus}\`\n` +
-      `🪙 **Gereken Maliyet:** \`${sonrakiKilic.maliyet} Ryo\`\n\n` +
-      `*Kılıcınızı bir üst kademeye dövmek için aşağıdaki butona basın!*`;
+  if (sonraki) {
+    aciklama += `\n🔥 **Sonraki:** ${sonraki.ad}\n` +
+      `📈 \`+%${mevcut.bonus}\` → \`+%${sonraki.bonus}\`  •  🪙 \`${sonraki.maliyet} Ryo\`\n` +
+      `-# ${sonraki.desc}` +
+      (yeter ? '' : `\n\n❌ **${sonraki.maliyet - bakiye.ryo} Ryo** eksik.`);
   } else {
-    aciklama += `👑 **Tebrikler Efsanevi Usta!** Katananız ulaşılabilecek en yüce kozmik kademede (**${mevcutKilic.ad}**) parlıyor!`;
+    aciklama += `\n👑 Katanan en yüce kademede. Örs artık sana bir şey öğretemez.`;
   }
 
   const embed = kageEmbed({
-    baslik: '🔨 KAGE DEMİRCİ OCAĞI • KILIÇ GELİŞTİRME',
-    renk: TEMA.RENKLER.KAN_KIRMIZISI,
+    baslik: '⛩️🔨 KAGE DEMİRCİ OCAĞI',
+    renk: sonraki ? TEMA.RENKLER.KAN_KIRMIZISI : TEMA.RENKLER.ALTIN,
     aciklama,
-    altMetin: `Kılıcınız düello ve zindanlarda zafer şansınızı artırır!`
+    altMetin: kapali ? 'Ocak soğudu. Tekrar dövmek için /demirci yaz.' : 'Kılıcın düello ve zindanlarda zafer şansını artırır.'
   });
 
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId('kilic_dov_btn')
-      .setLabel(sonrakiKilic ? `Kılıcı Döv (${sonrakiKilic.maliyet} Ryo)` : 'En Yüksek Seviye')
-      .setStyle(sonrakiKilic ? ButtonStyle.Danger : ButtonStyle.Secondary)
-      .setDisabled(!sonrakiKilic)
+      .setLabel(sonraki ? `Kılıcı Döv (${sonraki.maliyet} Ryo)` : 'En Yüksek Seviye')
+      .setStyle(sonraki && yeter ? ButtonStyle.Danger : ButtonStyle.Secondary)
+      .setDisabled(kapali || !yeter)
       .setEmoji('🔨')
   );
 
-  const yanit = await interaction.reply({ embeds: [embed], components: [row] });
+  return { embeds: [embed], components: [row] };
+}
 
-  if (!sonrakiKilic) return;
+export async function execute(interaction) {
+  const userId = interaction.user.id;
+  const yanit = await interaction.reply({ ...ocakEkrani(userId), withResponse: true });
+  const mesaj = yanit.resource?.message ?? yanit;
+  if (!mesaj?.createMessageComponentCollector) return;
 
-  const collector = yanit.createMessageComponentCollector({
-    componentType: ComponentType.Button,
-    time: 45000
-  });
+  const collector = mesaj.createMessageComponentCollector({ componentType: ComponentType.Button, time: SURE_MS });
 
   collector.on('collect', async i => {
-    if (i.user.id !== interaction.user.id) {
-      return i.reply({ content: 'Bu demirci ocağı sadece komutu yazan samuraya aittir.', flags: MessageFlags.Ephemeral });
+    try {
+      if (i.user.id !== userId) {
+        return await i.reply({ content: 'Bu demirci ocağı sadece komutu yazan samuraya aittir.', flags: MessageFlags.Ephemeral });
+      }
+      const sonuc = kilicGelistir(userId);
+      if (!sonuc.basarili) {
+        return await i.reply({ content: `❌ ${sonuc.mesaj}`, flags: MessageFlags.Ephemeral });
+      }
+      collector.resetTimer();
+      await i.update(ocakEkrani(userId, {
+        not: `🔥 **ÖRSTEN KIVILCIMLAR SAÇILDI!** Katanan **${sonuc.yeniKilic.ad}** oldu. Yeni bonus \`+%${sonuc.yeniKilic.bonus}\`.`
+      }));
+    } catch (err) {
+      console.error('[Demirci] buton hatası:', err.message);
     }
+  });
 
-    const sonuc = kilicGelistir(userId);
-    if (!sonuc.basarili) {
-      return i.reply({ content: `❌ ${sonuc.mesaj}`, flags: MessageFlags.Ephemeral });
-    }
-
-    await i.update({
-      content: `🔥 **BAŞARILI!** Demircinin örsünden kıvılcımlar saçıldı!\nKatananız **${sonuc.yeniKilic.ad}** kademesine yükseltildi!\n⚡ Yeni Güç Bonusu: \`+%${sonuc.yeniKilic.bonus}\`\n💰 Kalan Bakiye: \`${sonuc.kalanRyo} Ryo\``,
-      embeds: [],
-      components: []
-    });
+  collector.on('end', () => {
+    mesaj.edit(ocakEkrani(userId, { kapali: true })).catch(() => null);
   });
 }

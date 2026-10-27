@@ -333,8 +333,8 @@ export function esyaHarca(userId, esyaParcasi) {
 export function kilicGelistir(userId) {
   const h = kullaniciHesabi(userId);
   const mevcutSeviye = h.kilicSeviye || 1;
-  if (mevcutSeviye >= 5) {
-    return { basarili: false, mesaj: 'Kılıcınız zaten en üst seviye olan **Efsanevi Gölge Kılıcı** kademesindedir!' };
+  if (mevcutSeviye >= KILIC_SEVIYELERI.length) {
+    return { basarili: false, mesaj: `Kılıcınız zaten en üst seviye olan **${KILIC_SEVIYELERI.at(-1).ad}** kademesindedir!` };
   }
 
   const sonrakiKilic = KILIC_SEVIYELERI.find(k => k.seviye === mevcutSeviye + 1);
