@@ -94,22 +94,32 @@ function sohbetMetni(metin) {
     .replace(/^#{1,6}\s+/gm, '')
     .replace(/\*\*(.+?)\*\*/g, (_, ic) => ic)
     .replace(/^\s*[-*•]\s+/gm, '')
-    .replace(/\n{3,}/g, '\n\n')
+    .replace(/\n{2,}/g, '\n')
     .trim();
 }
 
-// Kısa cevapları bir insan gibi ardışık mesajlara böler; uzun cevaplar 1900 karakterlik parçalara.
+// Cevabı veren motorun kısa adı; mesajın altına küçük gri yazı olarak eklenir.
+function motorEtiketi(saglayici = '', isAi = true) {
+  const s = String(saglayici).toLowerCase();
+  if (!isAi || s.includes('kural')) return 'KageAI';
+  if (s.includes('gemini') || s.includes('google')) return 'Kage-Gemini';
+  if (s.includes('groq')) return 'Kage-Groq';
+  if (s.includes('deepseek')) return 'Kage-DeepSeek';
+  if (s.includes('openrouter') || s.includes('llama') || s.includes('gemma')) return 'Kage-OpenRouter';
+  if (s.includes('pollinations')) return 'Kage-Pollinations';
+  return 'KageAI';
+}
+
+// Ekranı kaplamasın diye cevap tek mesaj olarak gider; yalnızca 1900 karakteri aşarsa bölünür.
 function mesajBalonlari(metin) {
-  const satirlar = metin.split(/\n+/).map(x => x.trim()).filter(Boolean);
-  const kisaMi = metin.length <= 600 && satirlar.length > 1 && satirlar.length <= 5
-    && satirlar.every(x => x.length <= 300 && !x.startsWith('```'));
-  return kisaMi ? satirlar : parcala(metin);
+  return parcala(metin);
 }
 
 const bekle = (ms) => new Promise(r => setTimeout(r, ms));
 
-async function insanGibiGonder(message, metin, { yanitla = true, onaylar = [] } = {}) {
-  const balonlar = mesajBalonlari(sohbetMetni(metin));
+async function insanGibiGonder(message, metin, { yanitla = true, onaylar = [], motor = null } = {}) {
+  const balonlar = mesajBalonlari(sohbetMetni(metin) || '...');
+  if (motor) balonlar[balonlar.length - 1] += `\n-# ${motor}`;
   for (let i = 0; i < balonlar.length; i++) {
     const secenek = { content: balonlar[i], allowedMentions: { parse: [], repliedUser: false } };
     if (i > 0) {
@@ -133,7 +143,7 @@ async function insanGibiGonder(message, metin, { yanitla = true, onaylar = [] } 
 }
 
 async function cevabiGonder(message, sonuc, yanitla = true) {
-  await insanGibiGonder(message, sonuc.cevap, { yanitla, onaylar: sonuc.onaylar || [] });
+  await insanGibiGonder(message, sonuc.cevap, { yanitla, onaylar: sonuc.onaylar || [], motor: 'Kage-Gemini' });
 }
 
 // Cevaptan sonra duyguya/öğretilen kurala uygun sticker gönderir (gerçek sunucu stickerı, yoksa dosya).
@@ -340,7 +350,7 @@ export async function execute(message) {
         userName: yazarAdi
       });
 
-      await insanGibiGonder(message, vizyonSonuc.metin);
+      await insanGibiGonder(message, vizyonSonuc.metin, { motor: motorEtiketi(vizyonSonuc.saglayici) });
       adminAiLog(message, vizyonSonuc.saglayici, true, metin);
       return;
     } catch (err) {
@@ -365,7 +375,7 @@ export async function execute(message) {
         // AI anahtarı yoksa veya hata verirse ChatBot motoruna düş
         const yanit = await chatBotYanitla(metin, message.author, message.guild, message.member, message);
         const { metin: cevapMetni, saglayici = 'Kural Tabanlı ChatBot', isAi = false } = yanit;
-        await insanGibiGonder(message, cevapMetni);
+        await insanGibiGonder(message, cevapMetni, { motor: motorEtiketi(saglayici, isAi) });
 
         adminAiLog(message, saglayici, isAi, metin);
         return TUM_STICKER_ISTEGI.test(metin) ? tumStickerlariGonder(message) : stickerGonder(message, metin, 0);
@@ -387,7 +397,7 @@ export async function execute(message) {
     try {
       const yanit = await chatBotYanitla(metin, message.author, message.guild, message.member, message);
       const { metin: cevapMetni, saglayici = 'Kural Tabanlı ChatBot', isAi = false } = yanit;
-      await insanGibiGonder(message, cevapMetni);
+      await insanGibiGonder(message, cevapMetni, { motor: motorEtiketi(saglayici, isAi) });
 
       adminAiLog(message, saglayici, isAi, metin);
 

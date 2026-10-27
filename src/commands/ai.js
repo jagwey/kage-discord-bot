@@ -1,5 +1,5 @@
 import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from 'discord.js';
-import { TEMA, kageEmbed } from '../config/tema.js';
+import { TEMA } from '../config/tema.js';
 import { aiDanis } from '../services/aiServisi.js';
 
 export const data = new SlashCommandBuilder()
@@ -26,38 +26,20 @@ export async function execute(interaction) {
   const talimat = interaction.options.getString('talimat');
 
   try {
-    const { cevap, saglayici } = await aiDanis(talimat, {
+    const { cevap } = await aiDanis(talimat, {
       guild: interaction.guild,
       channel: interaction.channel,
       member: interaction.member,
       client: interaction.client
     });
 
-    // Discord embed açıklama sınırı 4096 karakterdir
-    const formatliCevap = cevap.length > 4000 ? cevap.slice(0, 3990) + '...\n*(Uzun metin kesildi)*' : cevap;
-
-    const embed = kageEmbed({
-      baslik: `⛩️ GÖLGE VEZİRİ CEVABI • Kage-95`,
-      renk: TEMA.RENKLER.KAN_KIRMIZISI,
-      aciklama: formatliCevap,
-      alanlar: [
-        {
-          name: `${TEMA.EMOJILER.PARSOMEN} Danışılan Konu`,
-          value: `*${talimat.length > 250 ? talimat.slice(0, 247) + '...' : talimat}*`,
-          inline: false
-        }
-      ],
-      altMetin: `Kage-95 AI Danışmanı • İsteyen: ${interaction.user.tag}`
-    });
-
-    return interaction.editReply({ embeds: [embed] });
+    // Sohbetteki gibi düz mesaj; uzun cevap 2000 karakterlik parçalara bölünür
+    const parcalar = (cevap || '...').match(/[\s\S]{1,1970}/g);
+    parcalar[parcalar.length - 1] += '\n-# Kage-Gemini';
+    await interaction.editReply({ content: parcalar[0] });
+    for (const parca of parcalar.slice(1)) await interaction.followUp({ content: parca });
   } catch (err) {
     console.error('[AI Komutu] Hata:', err.message);
-    const hataEmbed = kageEmbed({
-      baslik: 'Yapay Zeka Bağlantı Hatası',
-      renk: TEMA.RENKLER.HATA,
-      aciklama: `Gölge veziriyle iletişim kurulurken bir aksaklık yaşandı:\n\`\`\`${err.message}\`\`\``
-    });
-    return interaction.editReply({ embeds: [hataEmbed] });
+    return interaction.editReply({ content: 'şu an bağlanamadım, birazdan tekrar dene' });
   }
 }

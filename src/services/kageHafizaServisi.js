@@ -136,7 +136,7 @@ export function kullaniciNotuEkle(userId, userName, notMetni) {
   // Mükerrer kaydı önle
   if (!kHafiza.notlar.includes(notMetni.trim())) {
     kHafiza.notlar.push(notMetni.trim());
-    if (kHafiza.notlar.length > 25) {
+    if (kHafiza.notlar.length > 100) {
       kHafiza.notlar.shift();
     }
   }
@@ -351,33 +351,65 @@ export function bilgiOgren(kategori, baslik, icerik, ekleyen = 'Kage AI') {
   return yeniBilgi;
 }
 
+// Türkçe karakterleri sadeleştirir: "Yükop" ile "yukop" aynı sayılır.
+function sadelestir(metin = '') {
+  return String(metin).toLocaleLowerCase('tr')
+    .replace(/ı/g, 'i').replace(/ş/g, 's').replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ç/g, 'c');
+}
+
+function duzenlemeMesafesi(a, b) {
+  if (Math.abs(a.length - b.length) > 2) return 3;
+  let onceki = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const satir = [i];
+    for (let j = 1; j <= b.length; j++) {
+      satir[j] = Math.min(onceki[j] + 1, satir[j - 1] + 1, onceki[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+    onceki = satir;
+  }
+  return onceki[b.length];
+}
+
+// Kelime ekleri ("yukop'un", "yukopa") ve küçük yazım hataları da eşleşir.
+function kelimeBenzer(kelime, aranan) {
+  if (kelime.startsWith(aranan) || aranan.startsWith(kelime) && kelime.length >= 4) return true;
+  if (aranan.length < 4) return false;
+  const tolerans = aranan.length >= 7 ? 2 : 1;
+  return duzenlemeMesafesi(kelime.slice(0, aranan.length + 1), aranan) <= tolerans
+    || duzenlemeMesafesi(kelime, aranan) <= tolerans;
+}
+
+function eslesmePuani(alan, arananKelime, tokens) {
+  const metin = sadelestir(alan);
+  if (!metin) return 0;
+  let puan = metin.includes(arananKelime) ? 5 : 0;
+  const kelimeler = metin.split(/[^a-z0-9]+/).filter(Boolean);
+  for (const t of tokens) {
+    if (metin.includes(t)) puan += 2;
+    else if (kelimeler.some(k => kelimeBenzer(k, t))) puan += 1;
+  }
+  return puan;
+}
+
 /**
- * Hafıza içinde anahtar kelime veya anlamsal eşleşmeyle arama yapar
- * @param {string} sorgu 
- * @param {number} limit 
+ * Hafıza içinde bulanık arama yapar: tam eşleşme gerekmez,
+ * Türkçe karakter farkı, ekler ve küçük yazım hataları tolere edilir.
+ * @param {string} sorgu
+ * @param {number} limit
  */
 export function hafizaArama(sorgu, limit = 5) {
   if (!sorgu || typeof sorgu !== 'string') return [];
   const hafiza = hafizaYukle();
-  const arananKelime = sorgu.trim().toLowerCase();
-  const tokens = arananKelime.split(/[\s.,!?:;]+/).filter(t => t.length > 2);
+  const arananKelime = sadelestir(sorgu.trim());
+  const tokens = arananKelime.split(/[^a-z0-9]+/).filter(t => t.length > 2);
+  if (tokens.length === 0 && arananKelime) tokens.push(arananKelime);
 
   const sonuclar = [];
 
   // 1. Genel Bilgilerde Ara
   for (const b of hafiza.ogrenilenBilgiler) {
-    let puan = 0;
-    const bBaslik = (b.baslik || '').toLowerCase();
-    const bIcerik = (b.icerik || '').toLowerCase();
-
-    if (bBaslik.includes(arananKelime)) puan += 10;
-    if (bIcerik.includes(arananKelime)) puan += 5;
-
-    for (const t of tokens) {
-      if (bBaslik.includes(t)) puan += 3;
-      if (bIcerik.includes(t)) puan += 2;
-    }
-
+    const puan = eslesmePuani(b.baslik, arananKelime, tokens) * 2 + eslesmePuani(b.icerik, arananKelime, tokens);
     if (puan > 0) {
       sonuclar.push({
         tur: 'ogrenilen_bilgi',
@@ -391,34 +423,25 @@ export function hafizaArama(sorgu, limit = 5) {
 
   // 2. Kullanıcı Notlarında Ara
   for (const [uId, uVeri] of Object.entries(hafiza.kullaniciNotlari)) {
-    const uAd = (uVeri.kullaniciAdi || '').toLowerCase();
     const notlar = uVeri.notlar || [];
-    let puan = 0;
-
-    if (uAd.includes(arananKelime)) puan += 8;
-    for (const t of tokens) {
-      if (uAd.includes(t)) puan += 3;
-    }
+    let puan = eslesmePuani(uVeri.kullaniciAdi, arananKelime, tokens) * 2;
 
     const eslesenNotlar = [];
     for (const not of notlar) {
-      const notLow = not.toLowerCase();
-      let notPuan = 0;
-      if (notLow.includes(arananKelime)) notPuan += 6;
-      for (const t of tokens) {
-        if (notLow.includes(t)) notPuan += 2;
-      }
+      const notPuan = eslesmePuani(not, arananKelime, tokens);
       if (notPuan > 0) {
         eslesenNotlar.push(not);
         puan += notPuan;
       }
     }
 
-    if (puan > 0 && eslesenNotlar.length > 0) {
+    // İsim eşleştiyse notlarda kelime geçmese de kişinin son notları gösterilir
+    const gosterilecek = eslesenNotlar.length > 0 ? eslesenNotlar : notlar.slice(-5);
+    if (puan > 0 && gosterilecek.length > 0) {
       sonuclar.push({
         tur: 'kullanici_hafizasi',
         baslik: `Kullanıcı: ${uVeri.kullaniciAdi}`,
-        detay: eslesenNotlar.join(' • '),
+        detay: gosterilecek.join(' • '),
         kullaniciId: uId,
         puan
       });
@@ -428,8 +451,7 @@ export function hafizaArama(sorgu, limit = 5) {
   // 3. Site Trendlerinde Ara
   const trendler = hafiza.siteVerileri.trendMangalar || [];
   for (const m of trendler) {
-    const mAd = (m.mangaAdi || '').toLowerCase();
-    if (mAd.includes(arananKelime) || tokens.some(t => mAd.includes(t))) {
+    if (eslesmePuani(m.mangaAdi, arananKelime, tokens) > 0) {
       sonuclar.push({
         tur: 'site_verisi',
         baslik: `Manga: ${m.mangaAdi}`,

@@ -2,6 +2,33 @@ import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from 'discord.
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { saygiIhlaliVarMi } from '../services/egitimServisi.js';
 import { hafizaYukle, hafizaArama, bilgiOgren, gunlukDerinOgrenme, profilGetir, kullaniciHafizasiGetir, kullaniciUnut } from '../services/kageHafizaServisi.js';
+import { akilliAiUret } from '../services/aiRouterServisi.js';
+
+// Hafızanın tamamını kısa satırlar halinde modele verip sorguya anlamca en yakın kayıtları seçtirir.
+async function hafizadanYapayZekaSec(sorgu, kullanici) {
+  const h = hafizaYukle();
+  const satirlar = [
+    ...h.ogrenilenBilgiler.map(b => `[${b.kategori}] ${b.baslik}: ${b.icerik}`),
+    ...Object.values(h.kullaniciNotlari).map(u => `[kişi] ${u.kullaniciAdi}: ${(u.notlar || []).join(' • ')}`)
+  ];
+  if (satirlar.length === 0) return null;
+
+  const { metin, saglayici } = await akilliAiUret({
+    system: 'Sen Kage\'nin hafıza arama yardımcısısın. Sadece verilen kayıtlara dayan, uydurma. ' +
+      'Sorguyla anlamca ilgili olan kayıtları seç (yazım hatası, takma ad, eş anlam olabilir) ve 1-4 kısa düz satırla aktar. ' +
+      'Başlık, liste işareti, kalın yazı kullanma. Hiçbiri ilgili değilse sadece YOK yaz.',
+    prompt: `Sorgu: ${sorgu}\n\nKayıtlar:\n${satirlar.join('\n').slice(0, 12000)}`,
+    gorevTipi: 'hizli_sohbet',
+    userId: kullanici.id,
+    userName: kullanici.username
+  });
+  const temiz = String(metin || '').trim();
+  if (!temiz || /^YOK\b/i.test(temiz)) return null;
+  const s = String(saglayici).toLowerCase();
+  const motor = s.includes('groq') ? 'Kage-Groq' : s.includes('gemini') ? 'Kage-Gemini'
+    : s.includes('openrouter') ? 'Kage-OpenRouter' : s.includes('pollinations') ? 'Kage-Pollinations' : 'KageAI';
+  return { metin: temiz, motor };
+}
 
 export const data = new SlashCommandBuilder()
   .setName('hafiza')
@@ -109,25 +136,23 @@ export async function execute(interaction) {
     const sorgu = interaction.options.getString('sorgu');
     const sonuclar = hafizaArama(sorgu, 5);
 
-    if (sonuclar.length === 0) {
+    if (sonuclar.length > 0) {
+      const liste = sonuclar.map(s => `**${s.baslik}**: ${s.detay}`.slice(0, 380)).join('\n');
       return interaction.reply({
-        content: `🔍 Hafıza bankamda **"${sorgu}"** ile eşleşen bir kayıt bulunamadı.`,
-        flags: MessageFlags.Ephemeral
+        content: `${liste}\n-# hafıza • ${sonuclar.length} kayıt`.slice(0, 2000),
+        allowedMentions: { parse: [] }
       });
     }
 
-    const liste = sonuclar.map((s, i) => 
-      `**${i + 1}. [${s.tur.toUpperCase()}] ${s.baslik}**\n${s.detay}`
-    ).join('\n\n');
-
-    const embed = kageEmbed({
-      baslik: `🔍 HAFIZA ARAMA SONUÇLARI • "${sorgu.toUpperCase()}"`,
-      renk: TEMA.RENKLER.BASARI,
-      aciklama: `Kage derin hafıza bankasında arandı ve en alakalı kayıtlar bulundu:\n\n${liste}`,
-      altMetin: `Toplam ${sonuclar.length} kayıt eşleşti`
+    // Kelime eşleşmedi: yapay zeka tüm hafızaya bakıp anlamca en yakın kaydı seçer
+    await interaction.deferReply();
+    const cevap = await hafizadanYapayZekaSec(sorgu, interaction.user).catch(() => null);
+    return interaction.editReply({
+      content: cevap
+        ? `${cevap.metin.slice(0, 1900)}\n-# ${cevap.motor}`
+        : `"${sorgu}" ile ilgili hafızamda bir şey yok`,
+      allowedMentions: { parse: [] }
     });
-
-    return interaction.reply({ embeds: [embed] });
   }
 
   // 3. ÖĞREN

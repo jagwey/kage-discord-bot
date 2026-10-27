@@ -35,9 +35,11 @@ const HERKESE_ACIK = [
     tur: S('erkek | kunoichi; boşsa konuşan kişiye göre')
   }, ['duygu']),
   arac('hafiza_ara', 'Kage\'nin kalıcı hafızasında arama yapar.', { sorgu: S('aranacak kelime') }, ['sorgu']),
-  arac('hafiza_kaydet', 'Konuşan kişi hakkında hatırlanması gereken bir bilgiyi kalıcı hafızaya yazar.', {
+  arac('hafiza_kaydet', 'Hatırlanması gereken bir bilgiyi kalıcı hafızaya yazar. "Öğren", "unutma", "aklında tut" denince çağır; bilgiyi eksiksiz ve kimin hakkında olduğunu belirterek yaz.', {
     baslik: S('kısa başlık'),
-    icerik: S('kaydedilecek bilgi')
+    icerik: S('kaydedilecek bilgi, tam haliyle'),
+    kullanici: S('bilgi başka bir üye hakkındaysa onun adı veya etiketi; konuşan kişi hakkındaysa boş bırak'),
+    kategori: S('kullanici | genel | kural | sunucu (kişiye ait değilse genel/kural/sunucu)')
   }, ['icerik']),
   arac('bakiye', 'Konuşan kişinin (ya da belirtilen kullanıcının) Ryo bakiyesi, kılıç seviyesi ve unvanı.', {
     kullanici_id: S('boşsa konuşan kişi')

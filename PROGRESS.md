@@ -104,6 +104,14 @@ Hedefler: docs/PROJE_HEDEFLERI.md. Kullanıcı istemeden commit atılmaz.
   - `messageCreate.js`: AI, chatbot, görsel analizi ve model geçişi cevapları embed/buton paneli olmadan düz mesaj. Kısa çok satırlı cevap (≤600 karakter, ≤5 satır) ayrı ardışık mesajlara bölünür, araya yazıyor göstergesi girer. Başlık, kalın, madde işaretleri temizlenir. Motor etiketi sohbetten kalktı (admin AI log kanalı aynen gösterir). Onay butonları duruyor.
   - Yetkisi olmayan kullanıcı "ai ...", "kage ..." veya AI kanalıyla çağırırsa ret mesajı yerine `chatBotYanitla` cevap verir. Eylem niyeti, model geçişi, görsel analizi ve otonom vezir kapalı kalır.
   - `chatBotYanitla` dönüşüne `metin` eklendi. Chatbot ve `kageBeyin` sistem metinlerine "sunucudaki biri gibi kısa düz satır yaz" kuralı girdi. Sticker artık panel içinde değil, ara sıra ayrı mesaj.
+47. **Kalıcı hafıza, bulanık arama, sade mesaj (2026-10-27):**
+  - Neden: Render diski geçici, `data/` her deploy/restart'ta siliniyordu. Eski hafıza geri gelmez.
+  - `kalicilikServisi.js`: `data/*.json` gizli `#kage-yedek` kanalına `kage-yedek.json` eki olarak yedeklenir (60 sn'de bir, değişince; kapanışta da). Açılışta en son yedekten geri yüklenir. Son 5 yedek tutulur. Geri yükleme hata verirse yedekleme kapanır. REST istemcisi `ag.js` ajanını kullanır.
+  - `src/index.js` artık sarmalayıcı: geri yükle, `bot.js`'i yükle, yedeklemeyi başlat. Eski `index.js` → `bot.js`.
+  - `hafizaArama` bulanık: Türkçe karakter sadeleştirme, ek ve yazım hatası toleransı, puanlama. Kişi notu sınırı 25 → 100.
+  - `/hafiza ara`: sonuçlar düz kısa liste. Kelime eşleşmezse yapay zeka tüm hafızadan anlamca yakın kaydı seçer.
+  - `hafiza_kaydet` aracı "öğren/unutma" denince bilgiyi tam kaydeder, yönetici başka üyeye de not ekleyebilir.
+  - Sohbet cevapları tek mesaj, altında küçük motor etiketi (`-# Kage-Gemini`, `Kage-Groq`, `KageAI` ...). `/ai` de aynı.
 
 ## Sürüyor
 
