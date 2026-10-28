@@ -195,11 +195,14 @@ export async function execute(interaction) {
 
   // 4. ChatInputCommand (Eğik çizgi komutu) etkileşimi
   if (interaction.isChatInputCommand()) {
+    console.log(`[InteractionCreate] /${interaction.commandName} alındı.`);
     const komut = interaction.client.commands.get(interaction.commandName);
 
     if (!komut) {
       console.warn(`[InteractionCreate] Tanımlanmamış komut tetiklendi: ${interaction.commandName}`);
-      return;
+      return interaction.reply({ content: '❌ Bu komut şu an yüklenemedi. Lütfen daha sonra tekrar dene.', flags: MessageFlags.Ephemeral }).catch(err => {
+        console.error('[InteractionCreate] Bilinmeyen komuta yanıt gönderilemedi:', err.message);
+      });
     }
 
     if (hizSiniriAsildiMi(interaction.user.id)) {

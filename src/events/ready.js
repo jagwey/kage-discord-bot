@@ -27,18 +27,12 @@ async function komutlariEslestir(client) {
       console.warn(`[Kage] GUILD_ID=${hedefGuildId} botun bağlı olduğu sunucular arasında bulunamadı.`);
       return;
     }
-    await Promise.race([
-      client.application.commands.set(komutlar, hedefGuildId),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Guild komut sync 90 saniyede tamamlanmadı.')), 90_000))
-    ]);
+    await client.application.commands.set(komutlar, hedefGuildId);
     console.log(`[Kage] ${komutlar.length} komut "${guild.name}" sunucusuna yüklendi.`);
     return;
   }
 
-  await Promise.race([
-    client.application.commands.set(komutlar),
-    new Promise((_, reject) => setTimeout(() => reject(new Error('Global komut sync 90 saniyede tamamlanmadı.')), 90_000))
-  ]);
+  await client.application.commands.set(komutlar);
   console.log(`[Kage] ${komutlar.length} komut global olarak eşitlendi.`);
 }
 
@@ -79,7 +73,7 @@ export async function execute(client) {
     status: 'online'
   });
 
-  // Komut eşitlemesi Gateway hazır olmasını bloklamaz; Discord REST 429 verirse arka planda tekrar denenir.
+  // Devam eden istek bitmeden yenisini başlatma; discord.js 429 beklemesini yönetir.
   const komutSyncBaslat = () => {
     if (komutSyncCalisiyor) return;
     komutSyncCalisiyor = true;
