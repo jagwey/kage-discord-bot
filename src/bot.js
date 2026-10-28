@@ -29,6 +29,11 @@ const client = new Client({
   partials: [Partials.Message, Partials.Channel, Partials.Reaction]
 });
 
+client.rest.on('rateLimited', info => {
+  const rota = info.route?.startsWith('/interactions/') ? 'interaction callback' : 'diğer API';
+  console.warn(`[Discord REST] Hız sınırı: ${rota}, kapsam=${info.scope}, bekleme=${info.retryAfter}ms.`);
+});
+
 const discordRestGet = client.rest.get.bind(client.rest);
 client.rest.get = async (route, options) => {
   if (route === '/gateway/bot') {
@@ -395,6 +400,10 @@ async function girisYap() {
         ? 'DISCORD_TOKEN geçersiz veya yetkisiz.'
         : `Discord REST HTTP ${preflight.status}.`;
       console.error(`[Discord] Login öncesi REST kontrolü başarısız: ${detay}`);
+      if (preflight.status === 429) {
+        const tur = /cloudflare|<!doctype|<html/i.test(preflightBody) ? 'Cloudflare' : 'Discord/API';
+        console.warn(`[Discord] 429 kaynağı: ${tur}; retry-after=${preflight.headers.get('retry-after') || 'belirtilmedi'}.`);
+      }
       if (preflight.status === 401) {
         durumGuncelle('error', detay);
         process.exit(1);
