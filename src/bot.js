@@ -10,8 +10,10 @@ import { Client, Collection, Events, GatewayIntentBits, Partials } from 'discord
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const DISCORD_TOKEN = String(process.env.DISCORD_TOKEN || '').trim();
+
 // Token kontrolü
-if (!process.env.DISCORD_TOKEN) {
+if (!DISCORD_TOKEN) {
   console.error('\n❌ [Kritik Hata] DISCORD_TOKEN bulunamadı!');
   console.error('Lütfen .env dosyasını oluşturun ve bot tokeninizi girin. Örnek: .env.example dosyasını inceleyin.\n');
   process.exit(1);
@@ -315,16 +317,14 @@ const cikisYap = async () => {
 process.on('SIGINT', cikisYap);
 process.on('SIGTERM', cikisYap);
 
-// Botu sınırlı retry ile başlat. Kalıcı kimlik hatasında platformun yeniden
-// başlatması için process sonlandırılır; health endpoint'i sahte online kalmaz.
+// Botu sınırsız retry ile başlat. Kalıcı kimlik hatasında process sonlandırılır.
 async function girisYap() {
-  const maxDeneme = 3;
-  const loginTimeoutMs = 15000;
-  for (let deneme = 1; deneme <= maxDeneme; deneme++) {
-    durumGuncelle('starting', `Discord'a bağlanılıyor (${deneme}/${maxDeneme}).`);
+  const loginTimeoutMs = Math.max(10000, Number(process.env.DISCORD_LOGIN_TIMEOUT_MS || 30000));
+  for (let deneme = 1; ; deneme++) {
+    durumGuncelle('starting', `Discord'a bağlanılıyor (deneme ${deneme}).`);
     try {
       await Promise.race([
-        client.login(process.env.DISCORD_TOKEN),
+        client.login(DISCORD_TOKEN),
         new Promise((_, reject) => {
           setTimeout(() => reject(new Error(`Discord login ${loginTimeoutMs / 1000} saniyede tamamlanmadı.`)), loginTimeoutMs);
         })
@@ -332,18 +332,17 @@ async function girisYap() {
       return;
     } catch (err) {
       const mesaj = String(err?.message || err);
-      console.error(`[Giriş Hatası] Deneme ${deneme}/${maxDeneme}:`, mesaj);
-      if (/invalid token|incorrect login details|401|unauthorized/i.test(mesaj)) {
+      console.error(`[Giriş Hatası] Deneme ${deneme}:`, mesaj);
+      if (/invalid token|tokeninvalid|incorrect login details|401|unauthorized/i.test(mesaj)) {
         durumGuncelle('error', 'DISCORD_TOKEN geçersiz veya yetkisiz.');
         process.exit(1);
       }
       client.destroy();
-      if (deneme < maxDeneme) await new Promise(resolve => setTimeout(resolve, deneme * 2000));
+      const beklemeMs = Math.min(30000, 2000 * Math.max(1, deneme));
+      durumGuncelle('offline', `Discord bağlantısı kurulamadı; ${Math.round(beklemeMs / 1000)} sn sonra tekrar denenecek.`);
+      await new Promise(resolve => setTimeout(resolve, beklemeMs));
     }
   }
-  durumGuncelle('error', 'Discord bağlantısı kurulamadı; process yeniden başlatılmalı.');
-  process.exitCode = 1;
-  process.exit(1);
 }
 
 girisYap().catch(err => {

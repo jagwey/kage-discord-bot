@@ -4,6 +4,10 @@ import 'dotenv/config';
 import http from 'http';
 import { yedektenGeriYukle, yedeklemeyiBaslat } from './services/kalicilikServisi.js';
 
+if (typeof process.env.DISCORD_TOKEN === 'string') {
+  process.env.DISCORD_TOKEN = process.env.DISCORD_TOKEN.trim();
+}
+
 globalThis.__kageDurum = {
   durum: 'starting',
   detay: 'Bot başlatılıyor.',
