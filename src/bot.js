@@ -317,14 +317,17 @@ process.on('SIGTERM', cikisYap);
 // başlatması için process sonlandırılır; health endpoint'i sahte online kalmaz.
 async function girisYap() {
   const maxDeneme = 3;
-  const loginTimeoutMs = 15000;
+  const loginTimeoutMs = 45000;
   const preflightTimeoutMs = 8000;
   const token = process.env.DISCORD_TOKEN;
 
   console.log(`[Discord] Login öncesi ağ kontrolü başlıyor (Node ${process.version}).`);
   try {
-    const preflight = await fetch('https://discord.com/api/v10/gateway/bot', {
-      headers: { Authorization: `Bot ${token}` },
+    const preflight = await fetch('https://discord.com/api/v10/users/@me', {
+      headers: {
+        Authorization: `Bot ${token}`,
+        'User-Agent': 'DiscordBot (https://github.com/jagwey/kage-discord-bot, 1.0.0)'
+      },
       signal: AbortSignal.timeout(preflightTimeoutMs)
     });
     const preflightBody = await preflight.text();
@@ -337,7 +340,7 @@ async function girisYap() {
         durumGuncelle('error', detay);
         process.exit(1);
       }
-      console.error('[Discord] REST yanıt gövdesi:', preflightBody.slice(0, 300));
+      if (preflight.status !== 429) console.error('[Discord] REST yanıt gövdesi:', preflightBody.slice(0, 300));
     } else {
       console.log('[Discord] Login öncesi REST kontrolü başarılı; Gateway bağlantısı deneniyor.');
     }
