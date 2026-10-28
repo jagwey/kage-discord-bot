@@ -9,6 +9,8 @@ import { ortakHafizaBaglamiGetir, ogrenilenleriAyiklaVeKaydet } from './kageHafi
  * 2. Groq Cloud / Llama 3.3 70B (Ultra hızlı metin & sohbet - varsa GROQ_API_KEY)
  * 3. OpenRouter (DeepSeek / Llama :free modelleri - varsa OPENROUTER_API_KEY)
  * 4. Pollinations AI (%100 ÜCRETSİZ, SIFIR KEY - Metin ve Görsel Üretimi)
+ *    Moderasyon, Gölge Göz ve özel bağlam görevlerinde yedek olarak kullanılmaz
+ *    (sistem + hafıza + sohbet GET URL'ine gitmesin).
  */
 
 /** Sağlayıcı HTTP zaman aşımı: 10 sn (AbortSignal.timeout, 8–12 sn aralığı). */
@@ -259,6 +261,51 @@ async function openRouterMetinUret(prompt, systemInstruction = '', ozelModel = n
   throw sonHata || new Error('OpenRouter modelleri yanıt veremedi');
 }
 
+/** Moderasyon, Gölge Göz ve özel bağlam: Pollinations yedek zincirine girmez. */
+const OZEL_BAGLAM_ANAHTARLARI = ['moderasyon', 'moderation', 'golge_goz', 'golgegoz', 'ozel_baglam', 'private'];
+
+function gorevAnahtari(gorevTipi) {
+  return String(gorevTipi || '')
+    .toLocaleLowerCase('tr')
+    .replace(/ğ/g, 'g')
+    .replace(/ö/g, 'o')
+    .replace(/ü/g, 'u')
+    .replace(/ş/g, 's')
+    .replace(/ı/g, 'i')
+    .replace(/ç/g, 'c')
+    .trim()
+    .replace(/[\s-]+/g, '_');
+}
+
+/** gorevTipi moderasyon, Gölge Göz veya özel bağlam mı? */
+export function ozelBaglamGoreviMi(gorevTipi = '') {
+  const t = gorevAnahtari(gorevTipi);
+  return OZEL_BAGLAM_ANAHTARLARI.some(anahtar => t === anahtar || t.startsWith(`${anahtar}_`) || t.includes(anahtar));
+}
+
+/**
+ * Görev tipine göre sağlayıcı sırası.
+ * Özel bağlam: Groq → Gemini → OpenRouter. Diğer görevlerde mevcut sıra + Pollinations.
+ * @param {string} gorevTipi
+ * @param {{ groq?: boolean, gemini?: boolean, openrouter?: boolean }} durum
+ * @returns {string[]}
+ */
+export function saglayiciZinciri(gorevTipi, durum) {
+  const ozel = ozelBaglamGoreviMi(gorevTipi);
+  const sira = [];
+  if (ozel || gorevTipi === 'hizli_sohbet') {
+    if (durum.groq) sira.push('groq');
+    if (durum.gemini) sira.push('gemini');
+    if (durum.openrouter) sira.push('openrouter');
+  } else {
+    if (durum.gemini) sira.push('gemini');
+    if (durum.groq) sira.push('groq');
+    if (durum.openrouter) sira.push('openrouter');
+  }
+  if (!ozel) sira.push('pollinations');
+  return sira;
+}
+
 /**
  * Göreve göre en uygun yapay zekayı akıllıca seçer, hata durumunda sıradakine otomatik geçer.
  * Tüm modeller merkezi ortak hafızayı (kage_hafiza.json) kullanır ve kullanıcıyı hatırlar.
@@ -266,7 +313,7 @@ async function openRouterMetinUret(prompt, systemInstruction = '', ozelModel = n
  * @param {Object} secenekler
  * @param {string} secenekler.prompt Kullanıcı girdisi
  * @param {string} [secenekler.system] Sistem talimatı
- * @param {'hizli_sohbet'|'derin_analiz'|'yaratici'|'varsayilan'} [secenekler.gorevTipi]
+ * @param {'hizli_sohbet'|'derin_analiz'|'yaratici'|'varsayilan'|'golge_goz'|'moderasyon'|'ozel_baglam'} [secenekler.gorevTipi]
  * @param {string} [secenekler.userId]
  * @param {string} [secenekler.userName]
  * @returns {Promise<{ metin: string, saglayici: string }>}
@@ -275,25 +322,12 @@ export async function akilliAiUret({ prompt, system = '', gorevTipi = 'varsayila
   const butce = butceKontrolcusu();
   try {
     const durum = saglayiciDurumu();
-    const saglayiciSirasi = [];
+    const ozel = ozelBaglamGoreviMi(gorevTipi);
+    const saglayiciSirasi = saglayiciZinciri(gorevTipi, durum);
 
     // Merkezi ortak hafıza bağlamını hazırla
     const ortakBaglam = ortakHafizaBaglamiGetir({ userId, userName, prompt, ekBaglam: system });
     const nihaiSistem = system ? `${ortakBaglam}\n\n${system}` : ortakBaglam;
-
-    // Göreve göre öncelik sıralaması belirle
-    if (gorevTipi === 'hizli_sohbet') {
-      if (durum.groq) saglayiciSirasi.push('groq');
-      if (durum.gemini) saglayiciSirasi.push('gemini');
-      if (durum.openrouter) saglayiciSirasi.push('openrouter');
-      saglayiciSirasi.push('pollinations');
-    } else {
-      // derin analiz / varsayılan
-      if (durum.gemini) saglayiciSirasi.push('gemini');
-      if (durum.groq) saglayiciSirasi.push('groq');
-      if (durum.openrouter) saglayiciSirasi.push('openrouter');
-      saglayiciSirasi.push('pollinations');
-    }
 
     const hatalar = [];
 
@@ -316,6 +350,7 @@ export async function akilliAiUret({ prompt, system = '', gorevTipi = 'varsayila
           if (ham) {
             say('gemini', true);
             const { temizMetin } = ogrenilenleriAyiklaVeKaydet(userId, userName, ham);
+            if (ozel) console.info(`[AI Router] görev=${gorevTipi} sağlayıcı=Gemini`);
             return { metin: ciktiyiDenetle(temizMetin), saglayici: 'Gemini' };
           }
         } else if (saglayici === 'groq') {
@@ -323,6 +358,7 @@ export async function akilliAiUret({ prompt, system = '', gorevTipi = 'varsayila
           if (metin) {
             say('groq', true);
             const { temizMetin } = ogrenilenleriAyiklaVeKaydet(userId, userName, metin);
+            if (ozel) console.info(`[AI Router] görev=${gorevTipi} sağlayıcı=Groq`);
             return { metin: ciktiyiDenetle(temizMetin), saglayici: 'Groq' };
           }
         } else if (saglayici === 'openrouter') {
@@ -330,9 +366,11 @@ export async function akilliAiUret({ prompt, system = '', gorevTipi = 'varsayila
           if (metin) {
             say('openrouter', true);
             const { temizMetin } = ogrenilenleriAyiklaVeKaydet(userId, userName, metin);
+            if (ozel) console.info(`[AI Router] görev=${gorevTipi} sağlayıcı=OpenRouter`);
             return { metin: ciktiyiDenetle(temizMetin), saglayici: 'OpenRouter' };
           }
         } else if (saglayici === 'pollinations') {
+          if (ozel) continue;
           const metin = await pollinationsMetinUret(prompt, nihaiSistem, butce.signal);
           if (metin) {
             say('pollinations', true);
@@ -355,6 +393,10 @@ export async function akilliAiUret({ prompt, system = '', gorevTipi = 'varsayila
     if (butce.doldu()) {
       butceAsildiLogla(`görev=${gorevTipi}`);
       return { metin: '', saglayici: '', hata: 'zaman_butcesi' };
+    }
+
+    if (ozel) {
+      console.warn(`[AI Router] görev=${gorevTipi} güvenli zincir tükendi; Pollinations atlandı.`);
     }
 
     throw new Error(`Tüm yapay zeka servisleri başarısız oldu:\n${hatalar.join('\n')}`);

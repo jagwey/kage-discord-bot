@@ -259,7 +259,7 @@ async function hakkindaYorumla(hakkinda, { isim, yolAdi, yas, mangaTuru, userId 
   const istek = akilliAiUret({
     prompt,
     system: 'Kage-95 sunucusunun kayıt görevlisi Kage\'sin. Kısa, samimi ve saygılı yazarsın. Aile, din, dil veya ırk hakkında asla aşağılayıcı bir şey söylemezsin. Sadece istenen JSON\'u döndürürsün.',
-    gorevTipi: 'hizli_sohbet',
+    gorevTipi: 'ozel_baglam',
     userId,
     userName: isim
   });

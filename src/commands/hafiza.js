@@ -18,7 +18,7 @@ async function hafizadanYapayZekaSec(sorgu, kullanici) {
       'Sorguyla anlamca ilgili olan kayıtları seç (yazım hatası, takma ad, eş anlam olabilir) ve 1-4 kısa düz satırla aktar. ' +
       'Başlık, liste işareti, kalın yazı kullanma. Hiçbiri ilgili değilse sadece YOK yaz.',
     prompt: `Sorgu: ${sorgu}\n\nKayıtlar:\n${satirlar.join('\n').slice(0, 12000)}`,
-    gorevTipi: 'hizli_sohbet',
+    gorevTipi: 'ozel_baglam',
     userId: kullanici.id,
     userName: kullanici.username
   });
