@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { kullaniciNotuEkle, profilGuncelle, bilgiOgren, hafizaKaydet } from './kageHafizaServisi.js';
-import { akilliAiUret, motorEtiketi } from './aiRouterServisi.js';
+import { akilliAiUret, motorEtiketi, AI_TOPLAM_BUTCE_MS } from './aiRouterServisi.js';
 import { sunucuAyarGetir } from './veritabaniServisi.js';
 import { yasakliBul, otomodAyarGetir, yetkiliMi } from './otomodServisi.js';
 import { sahipNotuKaydet } from './toplulukServisi.js';
@@ -395,14 +395,24 @@ function jsonCoz(metin) {
   try { return JSON.parse(parca[0]); } catch { return null; }
 }
 
+const ANALIZ_WATCHDOG_MS = AI_TOPLAM_BUTCE_MS + 5_000;
+
 /**
  * Gerilim eşiği aşılan kanalı yapay zekaya okutur: şaka mı kavga mı?
  * Hafif gerginlikte sakinleştirir, gerçek kavgada yetkiliyi çağırır ve Yargıç modunu açar.
  */
 async function kavgaAnalizEt(kanal, ayar) {
   const durum = kanalDurumu(kanal.id);
+  const nesil = (durum.analizNesil || 0) + 1;
+  durum.analizNesil = nesil;
   durum.analizSuruyor = true;
   durum.sonAnaliz = Date.now();
+  // Toplam AI bütçesi + pay: takılan çağrı bayrağı sonsuza dek kilitlemesin.
+  const watchdog = setTimeout(() => {
+    if (durum.analizNesil !== nesil || !durum.analizSuruyor) return;
+    durum.analizSuruyor = false;
+    console.warn(`[GolgeGoz] analizSuruyor zaman aşımıyla temizlendi (${ANALIZ_WATCHDOG_MS}ms, kanal=${kanal.id}).`);
+  }, ANALIZ_WATCHDOG_MS);
   try {
     const { metin, saglayici } = await akilliAiUret({
       system: 'Şu an Gölge Göz olarak bir Discord kanalındaki gerilimi değerlendiriyorsun. Sadece JSON döndür, başka hiçbir şey yazma.',
@@ -446,7 +456,8 @@ async function kavgaAnalizEt(kanal, ayar) {
     await kanal.send({ content: `${satirlar.join('\n')}\n-# Gölge Göz • ${motor}`, allowedMentions: izin });
     durum.gerilim = [];
   } finally {
-    durum.analizSuruyor = false;
+    clearTimeout(watchdog);
+    if (durum.analizNesil === nesil) durum.analizSuruyor = false;
   }
 }
 
