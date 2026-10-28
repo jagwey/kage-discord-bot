@@ -14,17 +14,29 @@ export const once = true;
 async function komutlariEslestir(client) {
   const komutlar = client.commands.map(cmd => cmd.data.toJSON());
   const guildId = process.env.GUILD_ID;
-  if (guildId) {
-    const guild = client.guilds.cache.get(guildId);
+  const otomatikGuildId = !guildId && client.guilds.cache.size === 1
+    ? client.guilds.cache.first().id
+    : null;
+  const hedefGuildId = guildId || otomatikGuildId;
+
+  if (hedefGuildId) {
+    const guild = client.guilds.cache.get(hedefGuildId);
     if (!guild) {
-      console.warn(`[Kage] GUILD_ID=${guildId} botun bağlı olduğu sunucular arasında bulunamadı.`);
+      console.warn(`[Kage] GUILD_ID=${hedefGuildId} botun bağlı olduğu sunucular arasında bulunamadı.`);
       return;
     }
-    await client.application.commands.set(komutlar, guildId);
+    await Promise.race([
+      client.application.commands.set(komutlar, hedefGuildId),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Guild komut sync 15 saniyede tamamlanmadı.')), 15_000))
+    ]);
     console.log(`[Kage] ${komutlar.length} komut "${guild.name}" sunucusuna yüklendi.`);
     return;
   }
-  await client.application.commands.set(komutlar);
+
+  await Promise.race([
+    client.application.commands.set(komutlar),
+    new Promise((_, reject) => setTimeout(() => reject(new Error('Global komut sync 15 saniyede tamamlanmadı.')), 15_000))
+  ]);
   console.log(`[Kage] ${komutlar.length} komut global olarak eşitlendi.`);
 }
 
