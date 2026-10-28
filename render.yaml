@@ -1,0 +1,38 @@
+services:
+  - type: web
+    name: kage-discord-bot
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: DISCORD_TOKEN
+        sync: false
+      - key: CLIENT_ID
+        sync: false
+      - key: GUILD_ID
+        sync: false
+      - key: WEBHOOK_SECRET
+        sync: false
+      - key: SITE_API_KEY
+        sync: false
+      - key: YEDEK_KANAL_ID
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
+      - key: GEMINI_RPM
+        value: "12"
+      - key: API_BASE_URL
+        value: https://kage95.com/api
+      - key: SITE_URL
+        value: https://kage95.com
+      - key: CHECK_INTERVAL_MINUTES
+        value: "5"

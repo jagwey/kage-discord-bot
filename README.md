@@ -508,12 +508,17 @@ npm run dev
 
 ### Render dağıtım kontrol listesi
 
+- Bu repo kökündeki `render.yaml`, Render Blueprint için web servisini, `npm start`
+  komutunu ve `/health` kontrolünü hazırlar. Render Dashboard'da **New > Blueprint**
+  ile bu repoyu seçip Blueprint'i uygulatın.
 - Start command: `npm start`
 - Environment: `DISCORD_TOKEN`, `CLIENT_ID`; geliştirme sunucusu komutları için `GUILD_ID`
 - Discord Developer Portal: **Server Members Intent** ve **Message Content Intent** açık
 - Health check path: `/health`
 - Kalıcı yedek kullanılacaksa `WEBHOOK_SECRET` ve botun gizli yedek kanalını görebilme/gönderme izinleri
 - Deploy sonrası `/health` HTTP 200 ve JSON içinde `status: "online"` görülmeli
+- Blueprint'teki `sync: false` değişkenlerine gerçek secret değerlerini yalnızca Render
+  Environment ekranından girin; tokenları GitHub'a veya `render.yaml` dosyasına yazmayın.
 
 ### 5. Sunucuyu Otomatik Kurun
 Bot sunucunuza katıldıktan sonra:
