@@ -351,6 +351,16 @@ http.createServer(async (req, res) => {
   console.log(`[HTTP API] Entegrasyon ve canlılık sunucusu 0.0.0.0:${PORT} portunda dinlemede.`);
 });
 
+// Render free plan 15 dk gelen HTTP trafiği yoksa servisi uyutur; Gateway bağlantısı sayılmaz.
+const disAdres = process.env.RENDER_EXTERNAL_URL;
+if (disAdres) {
+  setInterval(() => {
+    fetch(`${disAdres}/health`, { signal: AbortSignal.timeout(10_000) })
+      .catch(err => console.warn('[KeepAlive] Ping başarısız:', err.message));
+  }, 10 * 60_000).unref();
+  console.log(`[KeepAlive] ${disAdres}/health her 10 dakikada pinglenecek.`);
+}
+
 // Beklenmeyen Hataları Yakalama (Çökme Koruması)
 process.on('unhandledRejection', (reason, promise) => {
   console.error('[Hata Koruması] Yakalanmamış Promise Reddi:', reason);
