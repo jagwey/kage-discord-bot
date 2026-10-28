@@ -37,7 +37,12 @@ export function yardimKartiOlustur() {
           '`• /hatirlatici [kur|liste|iptal]` : Zamanlı hatırlatıcılar.\n' +
           '`• /cekilis [baslat|bitir|liste]` : Butonlu çekiliş (yönetici).\n' +
           '`• /seviye [bak|siralama]` : Sohbet seviyesi; seviye atlayınca Ryo ödülü.\n' +
-          '`• /ekonomi-log [üye] [adet]` : Son Ryo hareketleri (yönetici).\n' +
+          '`• /ekonomi-log [üye] [adet]` : Son Ryo hareketleri (yönetici).',
+        inline: false
+      },
+      {
+        name: `⚔️ Görevler & Sunucu Sistemleri`,
+        value:
           '`• /gorev` : Günlük 3 görev; bitirince Ryo ödülü ve tamamlama bonusu.\n' +
           '`• /dojo` : Kendi dojonu kur; sen yokken saat başı Ryo üretir, topla ve yükselt.\n' +
           '`• /balik` : Olta at, şamandıra batınca Çek!, gece ve mevsim balıkları, akvaryum geliri, haftalık en ağır balık turnuvası.\n' +
