@@ -55,13 +55,15 @@ function kotaIsle(userId) {
  * Gemini generateContent çağrısı (model yedekli, anahtar header'da).
  * @returns {Promise<{parts: object[], model: string}>}
  */
-export async function geminiUret({ systemInstruction, contents, functionDeclarations = [], userId = null, temperature = 0.7, maxOutputTokens = 1500, signal = null, zamanAsimiMs = null }) {
+export async function geminiUret({ systemInstruction, contents, functionDeclarations = [], userId = null, temperature = 0.7, maxOutputTokens = 1500, signal = null, zamanAsimiMs = null, responseMimeType = null, responseSchema = null }) {
   if (!anahtarVarMi()) throw new Error('GEMINI_API_KEY tanımlı değil.');
 
   const govde = {
     contents,
     generationConfig: { temperature, maxOutputTokens }
   };
+  if (responseMimeType) govde.generationConfig.responseMimeType = responseMimeType;
+  if (responseSchema) govde.generationConfig.responseSchema = responseSchema;
   if (systemInstruction) {
     govde.systemInstruction = { parts: [{ text: String(systemInstruction) }] };
   }
