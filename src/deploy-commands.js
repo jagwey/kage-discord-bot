@@ -11,8 +11,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const token = process.env.DISCORD_TOKEN;
-const clientId = process.env.CLIENT_ID || '1563951364466540584';
-const guildId = process.env.GUILD_ID || '1563941845367787682';
+const clientId = process.env.CLIENT_ID;
+const guildId = process.env.GUILD_ID;
 
 if (!token || !clientId) {
   console.error('❌ Hata: DISCORD_TOKEN ve CLIENT_ID .env dosyasında tanımlı olmalıdır!');
@@ -40,11 +40,6 @@ const rest = new REST({ version: '10', agent: ajan }).setToken(token);
     console.log(`⛩️ ${commands.length} adet eğik çizgi (/) komutu Discord API'ye yükleniyor...`);
 
     if (guildId) {
-      // Önce genel (global) komutları temizle (Çift görünmeyi engellemek için)
-      await rest.put(Routes.applicationCommands(clientId), { body: [] });
-      console.log('🧹 Eski genel komutlar temizlendi (çift liste engellendi).');
-
-      // Sadece sunucuya yükle
       const data = await rest.put(
         Routes.applicationGuildCommands(clientId, guildId),
         { body: commands }

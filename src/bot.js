@@ -5,7 +5,7 @@ import { ajan } from './ag.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { Client, Collection, GatewayIntentBits, Partials } from 'discord.js';
+import { Client, Collection, Events, GatewayIntentBits, Partials } from 'discord.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -29,6 +29,36 @@ const client = new Client({
   ],
   partials: [Partials.Message, Partials.Channel, Partials.Reaction],
   rest: { agent: ajan }
+});
+
+console.warn('[Discord] Gerekli privileged intentler: Message Content Intent ve Server Members Intent.');
+console.warn('[Discord] Bu intentler Developer Portal > Bot > Privileged Gateway Intents bölümünde açık değilse mesaj olayları, AI, karşılama ve oto-rol çalışmaz.');
+
+function durumGuncelle(durum, detay) {
+  globalThis.__kageDurum = {
+    ...(globalThis.__kageDurum || {}),
+    durum,
+    detay,
+    sonDegisim: new Date().toISOString()
+  };
+}
+
+client.on(Events.Error, err => {
+  console.error('[Discord Gateway Hatası]', err);
+  durumGuncelle('error', `Discord Gateway hatası: ${err.message}`);
+});
+client.on(Events.Warn, mesaj => console.warn('[Discord Gateway Uyarısı]', mesaj));
+client.on(Events.ShardDisconnect, (closeEvent, shardId) => {
+  console.error(`[Discord] Shard ${shardId} bağlantısı koptu:`, closeEvent?.code, closeEvent?.reason || '');
+  durumGuncelle('offline', `Gateway bağlantısı koptu (kod ${closeEvent?.code ?? 'bilinmiyor'}).`);
+});
+client.on(Events.ShardReconnecting, shardId => {
+  console.warn(`[Discord] Shard ${shardId} yeniden bağlanıyor...`);
+  durumGuncelle('starting', 'Discord Gateway yeniden bağlanıyor.');
+});
+client.on(Events.Invalidated, () => {
+  console.error('[Discord] Gateway oturumu geçersiz kılındı; process yeniden başlatılmalı.');
+  durumGuncelle('error', 'Discord Gateway oturumu geçersiz.');
 });
 
 client.commands = new Collection();
@@ -61,10 +91,14 @@ if (fs.existsSync(eventsPath)) {
     const filePath = path.join(eventsPath, file);
     try {
       const event = await import(`file://${filePath}`);
+      const handler = (...args) => Promise.resolve(event.execute(...args)).catch(err => {
+        console.error(`[Olay Hatası] ${event.name} (${file})`, err);
+        durumGuncelle('error', `${event.name} olayı hata verdi: ${err.message}`);
+      });
       if (event.once) {
-        client.once(event.name, (...args) => event.execute(...args));
+        client.once(event.name, handler);
       } else {
-        client.on(event.name, (...args) => event.execute(...args));
+        client.on(event.name, handler);
       }
       console.log(`[Olay Yüklendi] ${event.name}`);
     } catch (err) {
@@ -131,9 +165,13 @@ http.createServer(async (req, res) => {
 
   // 1. Canlılık Kontrolü (Uptime / Health)
   if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/health')) {
-    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    const durum = globalThis.__kageDurum || { durum: 'starting', detay: 'Başlatılıyor.' };
+    const kod = durum.durum === 'online' || durum.durum === 'starting' ? 200 : 503;
+    res.writeHead(kod, { 'Content-Type': 'application/json; charset=utf-8' });
     res.end(JSON.stringify({
-      status: 'online',
+      status: durum.durum,
+      detail: durum.detay,
+      lastChange: durum.sonDegisim,
       bot: 'Kage',
       ping: client.ws.ping,
       guilds: client.guilds.cache.size,
@@ -254,6 +292,7 @@ process.on('unhandledRejection', (reason, promise) => {
 
 process.on('uncaughtException', (err, origin) => {
   console.error('[Hata Koruması] Yakalanmamış İstisna:', err);
+  durumGuncelle('error', `Yakalanmamış istisna: ${err.message}`);
 });
 
 // Temiz Kapanış (Graceful Shutdown)
@@ -272,9 +311,32 @@ const cikisYap = async () => {
 process.on('SIGINT', cikisYap);
 process.on('SIGTERM', cikisYap);
 
-// Botu Başlat
-client.login(process.env.DISCORD_TOKEN).catch(err => {
-  console.error('\n❌ [Giriş Hatası] Discord\'a bağlanılamadı:');
-  console.error(err.message);
-  console.error('Lütfen .env dosyasındaki DISCORD_TOKEN değerinin doğruluğunu teyit edin.\n');
+// Botu sınırlı retry ile başlat. Kalıcı kimlik hatasında platformun yeniden
+// başlatması için process sonlandırılır; health endpoint'i sahte online kalmaz.
+async function girisYap() {
+  const maxDeneme = 3;
+  for (let deneme = 1; deneme <= maxDeneme; deneme++) {
+    durumGuncelle('starting', `Discord'a bağlanılıyor (${deneme}/${maxDeneme}).`);
+    try {
+      await client.login(process.env.DISCORD_TOKEN);
+      return;
+    } catch (err) {
+      const mesaj = String(err?.message || err);
+      console.error(`[Giriş Hatası] Deneme ${deneme}/${maxDeneme}:`, mesaj);
+      if (/invalid token|incorrect login details|401|unauthorized/i.test(mesaj)) {
+        durumGuncelle('error', 'DISCORD_TOKEN geçersiz veya yetkisiz.');
+        process.exit(1);
+      }
+      if (deneme < maxDeneme) await new Promise(resolve => setTimeout(resolve, deneme * 2000));
+    }
+  }
+  durumGuncelle('error', 'Discord bağlantısı kurulamadı; process yeniden başlatılmalı.');
+  process.exitCode = 1;
+  process.exit(1);
+}
+
+girisYap().catch(err => {
+  console.error('[Kritik Giriş Hatası]', err);
+  durumGuncelle('error', err.message);
+  process.exit(1);
 });

@@ -25,7 +25,7 @@ let sonOzet = null;
 let yedeklemeAcik = false;
 let yedekleniyor = false;
 let zamanlayici = null;
-const GERI_YUKLEME_SINIRI_MS = 120 * 1000;
+const GERI_YUKLEME_SINIRI_MS = 8 * 1000;
 let geriYuklemeIptal = false;
 
 function paketHazirla() {
@@ -78,14 +78,14 @@ async function yedekMesajlari() {
  * Son yedeği data/ klasörüne yazar. Komutlar ve servisler yüklenmeden önce çağrılmalıdır,
  * çünkü bazı servisler veriyi belleğe alıp önbellekte tutar.
  */
-export async function yedektenGeriYukle() {
+export async function yedektenGeriYukle({ timeoutMs = GERI_YUKLEME_SINIRI_MS } = {}) {
   let zamanAsimi;
   const sinir = new Promise(r => {
     zamanAsimi = setTimeout(() => {
       geriYuklemeIptal = true;
-      console.error('[Kalıcılık] Geri yükleme 120 sn içinde bitmedi, bot yedeksiz açılıyor. Bu oturumda yedekleme kapalı.');
+      console.error(`[Kalıcılık] Geri yükleme ${timeoutMs / 1000} sn içinde bitmedi, bot yedeksiz açılıyor. Bu oturumda yedekleme kapalı.`);
       r();
-    }, GERI_YUKLEME_SINIRI_MS);
+    }, timeoutMs);
   });
   try {
     await Promise.race([geriYuklemeDene(), sinir]);
