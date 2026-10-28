@@ -71,12 +71,33 @@ client.on(Events.Error, err => {
 client.on(Events.Warn, mesaj => console.warn('[Discord Gateway Uyarısı]', mesaj));
 client.on(Events.ShardDisconnect, (closeEvent, shardId) => {
   console.error(`[Discord] Shard ${shardId} bağlantısı koptu:`, closeEvent?.code, closeEvent?.reason || '');
+  gatewayHazir = false;
   durumGuncelle('offline', `Gateway bağlantısı koptu (kod ${closeEvent?.code ?? 'bilinmiyor'}).`);
 });
 client.on(Events.ShardReconnecting, shardId => {
   console.warn(`[Discord] Shard ${shardId} yeniden bağlanıyor...`);
+  gatewayHazir = false;
   durumGuncelle('starting', 'Discord Gateway yeniden bağlanıyor.');
+  yenidenBaglantiZamanlayicisiniTemizle();
+  yenidenBaglantiZamanlayici = setTimeout(() => {
+    yenidenBaglantiZamanlayici = null;
+    if (gatewayHazir || yenidenGirisCalisiyor) return;
+
+    console.error('[Discord] Gateway 30 saniyede toparlanmadı; temiz login yeniden başlatılıyor.');
+    yenidenGirisCalisiyor = true;
+    client.destroy();
+    girisYap()
+      .catch(err => {
+        console.error('[Kritik Yeniden Giriş Hatası]', err);
+        durumGuncelle('error', `Yeniden giriş başarısız: ${err.message}`);
+        process.exit(1);
+      })
+      .finally(() => {
+        yenidenGirisCalisiyor = false;
+      });
+  }, 30_000);
 });
+client.on(Events.ClientReady, gatewayHazirIsaretle);
 client.on(Events.ShardError, (err, shardId) => {
   console.error(`[Discord] Shard ${shardId} Gateway hatası:`, err);
   durumGuncelle('error', `Shard ${shardId} Gateway hatası: ${err.message}`);
@@ -87,6 +108,21 @@ client.on(Events.Invalidated, () => {
 });
 
 client.commands = new Collection();
+let gatewayHazir = false;
+let yenidenBaglantiZamanlayici = null;
+let yenidenGirisCalisiyor = false;
+
+function yenidenBaglantiZamanlayicisiniTemizle() {
+  if (!yenidenBaglantiZamanlayici) return;
+  clearTimeout(yenidenBaglantiZamanlayici);
+  yenidenBaglantiZamanlayici = null;
+}
+
+function gatewayHazirIsaretle() {
+  gatewayHazir = true;
+  yenidenBaglantiZamanlayicisiniTemizle();
+  durumGuncelle('online', 'Discord Gateway bağlantısı hazır.');
+}
 
 // 1. Komutları Yükle
 const commandsPath = path.join(__dirname, 'commands');
