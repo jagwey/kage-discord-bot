@@ -9,6 +9,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const DATA_DIR = path.join(__dirname, '../../data');
 const HAFIZA_DOSYASI = path.join(DATA_DIR, 'kage_hafiza.json');
+// Yoğun olaylar 2 sn içinde tek atomik yazıma toplanır (event loop bloklanmaz).
+const KAYIT_GECIKME_MS = 2000;
 
 const VARSAYILAN_HAFIZA = {
   versiyon: '2.0.0',
@@ -61,6 +63,10 @@ const VARSAYILAN_HAFIZA = {
 };
 
 let hafizaOnbellegi = null;
+let kayitZamanlayici = null;
+let yaziliyor = false;
+let yazimSozu = Promise.resolve();
+let kirli = false;
 
 /**
  * Hafıza dosyasını diskten yükler veya varsayılanı oluşturur
@@ -96,20 +102,70 @@ export function hafizaYukle() {
   return hafizaOnbellegi;
 }
 
+function kaydiPlanla() {
+  if (kayitZamanlayici || yaziliyor) return;
+  kayitZamanlayici = setTimeout(() => {
+    kayitZamanlayici = null;
+    void hafizaDiskeYaz();
+  }, KAYIT_GECIKME_MS);
+  kayitZamanlayici.unref?.();
+}
+
 /**
- * Mevcut hafızayı diske kaydeder
+ * Mevcut hafızayı diske kaydeder. Hemen yazmaz; kısa pencerede gelen
+ * güncellemeler tek yazımda birleşir.
  */
 export function hafizaKaydet() {
   if (!hafizaOnbellegi) return;
+  kirli = true;
+  kaydiPlanla();
+}
+
+async function atomikYaz(govde) {
+  await fs.promises.mkdir(DATA_DIR, { recursive: true });
+  const gecici = `${HAFIZA_DOSYASI}.${process.pid}.tmp`;
   try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-    hafizaOnbellegi.sonGuncelleme = new Date().toISOString();
-    fs.writeFileSync(HAFIZA_DOSYASI, JSON.stringify(hafizaOnbellegi, null, 2), 'utf8');
+    await fs.promises.writeFile(gecici, govde, 'utf8');
+    await fs.promises.rename(gecici, HAFIZA_DOSYASI);
   } catch (err) {
-    console.error('[KageHafiza] Hafıza kaydedilemedi:', err.message);
+    await fs.promises.unlink(gecici).catch(() => {});
+    throw err;
   }
+}
+
+function hafizaDiskeYaz() {
+  if (yaziliyor) return yazimSozu;
+  if (!kirli || !hafizaOnbellegi) return yazimSozu;
+  yaziliyor = true;
+  yazimSozu = (async () => {
+    try {
+      while (kirli && hafizaOnbellegi) {
+        kirli = false;
+        hafizaOnbellegi.sonGuncelleme = new Date().toISOString();
+        const govde = JSON.stringify(hafizaOnbellegi, null, 2);
+        try {
+          await atomikYaz(govde);
+        } catch (err) {
+          kirli = true;
+          console.error('[KageHafiza] Hafıza kaydedilemedi:', err.message);
+          break;
+        }
+      }
+    } finally {
+      yaziliyor = false;
+      if (kirli) kaydiPlanla();
+    }
+  })();
+  return yazimSozu;
+}
+
+/** Bekleyen hafıza yazımını hemen diske alır. Kapanışta yedekten önce çağrılır. */
+export function hafizaFlush() {
+  if (kayitZamanlayici) {
+    clearTimeout(kayitZamanlayici);
+    kayitZamanlayici = null;
+  }
+  return hafizaDiskeYaz();
 }
 
 /**
