@@ -31,22 +31,23 @@ const client = new Client({
 
 const discordRestGet = client.rest.get.bind(client.rest);
 client.rest.get = async (route, options) => {
+  if (route === '/gateway/bot') {
+    console.warn('[Discord] /gateway/bot çağrısı atlandı; tek shard için güvenli Gateway metadata kullanılıyor.');
+    return {
+      url: 'wss://gateway.discord.gg',
+      shards: 1,
+      session_start_limit: {
+        total: 1000,
+        remaining: 1000,
+        reset_after: 0,
+        max_concurrency: 1
+      }
+    };
+  }
+
   try {
     return await discordRestGet(route, options);
   } catch (err) {
-    if (route === '/gateway/bot' && err?.status === 429) {
-      console.warn('[Discord] /gateway/bot rate limiti alındı; tek shard için güvenli Gateway fallback kullanılıyor.');
-      return {
-        url: 'wss://gateway.discord.gg',
-        shards: 1,
-        session_start_limit: {
-          total: 1000,
-          remaining: 1000,
-          reset_after: 0,
-          max_concurrency: 1
-        }
-      };
-    }
     throw err;
   }
 };
