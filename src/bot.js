@@ -318,11 +318,39 @@ process.on('SIGTERM', cikisYap);
 async function girisYap() {
   const maxDeneme = 3;
   const loginTimeoutMs = 15000;
+  const preflightTimeoutMs = 8000;
+  const token = process.env.DISCORD_TOKEN;
+
+  console.log(`[Discord] Login öncesi ağ kontrolü başlıyor (Node ${process.version}).`);
+  try {
+    const preflight = await fetch('https://discord.com/api/v10/gateway/bot', {
+      headers: { Authorization: `Bot ${token}` },
+      signal: AbortSignal.timeout(preflightTimeoutMs)
+    });
+    const preflightBody = await preflight.text();
+    if (!preflight.ok) {
+      const detay = preflight.status === 401
+        ? 'DISCORD_TOKEN geçersiz veya yetkisiz.'
+        : `Discord REST HTTP ${preflight.status}.`;
+      console.error(`[Discord] Login öncesi REST kontrolü başarısız: ${detay}`);
+      if (preflight.status === 401) {
+        durumGuncelle('error', detay);
+        process.exit(1);
+      }
+      console.error('[Discord] REST yanıt gövdesi:', preflightBody.slice(0, 300));
+    } else {
+      console.log('[Discord] Login öncesi REST kontrolü başarılı; Gateway bağlantısı deneniyor.');
+    }
+  } catch (err) {
+    console.error('[Discord] Login öncesi REST kontrolü başarısız:', err.message);
+    console.error('[Discord] Render dış ağ/DNS erişimini ve Discord durumunu kontrol edin.');
+  }
+
   for (let deneme = 1; deneme <= maxDeneme; deneme++) {
     durumGuncelle('starting', `Discord'a bağlanılıyor (${deneme}/${maxDeneme}).`);
     try {
       await Promise.race([
-        client.login(process.env.DISCORD_TOKEN),
+        client.login(token),
         new Promise((_, reject) => {
           setTimeout(() => reject(new Error(`Discord login ${loginTimeoutMs / 1000} saniyede tamamlanmadı.`)), loginTimeoutMs);
         })
