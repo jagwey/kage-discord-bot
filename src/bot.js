@@ -1,7 +1,6 @@
 import dns from 'dns';
 dns.setDefaultResultOrder('ipv4first');
 import 'dotenv/config';
-import { ajan } from './ag.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -27,8 +26,7 @@ const client = new Client({
     GatewayIntentBits.GuildModeration,          // Yasaklama ve cezalar için gereklidir
     GatewayIntentBits.GuildMessageReactions     // Anketler için gereklidir
   ],
-  partials: [Partials.Message, Partials.Channel, Partials.Reaction],
-  rest: { agent: ajan }
+  partials: [Partials.Message, Partials.Channel, Partials.Reaction]
 });
 
 console.warn('[Discord] Gerekli privileged intentler: Message Content Intent ve Server Members Intent.');
