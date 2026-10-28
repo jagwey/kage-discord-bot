@@ -11,6 +11,8 @@ export const BASARIMLAR = [
   { id: 'ilk_balik', ad: 'İlk Av', emoji: '🎣', sayac: 'balik', hedef: 1, odul: 50 },
   { id: 'balik_100', ad: 'Usta Balıkçı', emoji: '🐟', sayac: 'balik', hedef: 100, odul: 500 },
   { id: 'balik_1000', ad: 'Deniz Efendisi', emoji: '🌊', sayac: 'balik', hedef: 1000, odul: 2500 },
+  { id: 'ilk_hasat', ad: 'İlk Hasat', emoji: '🌱', sayac: 'bahce', hedef: 1, odul: 100 },
+  { id: 'bahce_100', ad: 'Usta Çiftçi', emoji: '🌾', sayac: 'bahce', hedef: 100, odul: 800 },
   { id: 'ilk_zindan', ad: 'İlk Zafer', emoji: '⚔️', sayac: 'zindan', hedef: 1, odul: 100 },
   { id: 'zindan_50', ad: 'Zindan Kurdu', emoji: '🏯', sayac: 'zindan', hedef: 50, odul: 1000 },
   { id: 'kat_3', ad: 'Dipsiz Kuyu', emoji: '🕳️', sayac: 'kat', hedef: 3, odul: 750 },

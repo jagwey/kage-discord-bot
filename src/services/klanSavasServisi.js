@@ -7,7 +7,7 @@ import { sayacIlerlet } from './basarimServisi.js';
 const depo = jsonDepo('klan_savasi.json', () => ({ hafta: null, puanlar: {}, gecmis: [] }));
 
 /** Oyun olayı başına klana yazılan savaş puanı. */
-export const SAVAS_PUANLARI = { balik: 1, sefer: 3, zindan: 10, boss: 5, bossOldur: 25 };
+export const SAVAS_PUANLARI = { balik: 1, bahce: 2, sefer: 3, zindan: 10, boss: 5, bossOldur: 25 };
 export const TABAN_HAVUZ = 5000;
 export const KLAN_BASINA_HAVUZ = 1000;
 export const MAKS_HAVUZ = 15000;

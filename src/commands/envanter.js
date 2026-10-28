@@ -4,6 +4,7 @@ import { gecisSatiri } from '../config/panel.js';
 import { bakiyeGetir, KILIC_SEVIYELERI } from '../services/ekonomiServisi.js';
 import { zanaatProfili, MALZEMELER, TARIFLER, esyaDayanimi, azamiDayanim, bonusMetni } from '../services/zanaatServisi.js';
 import { balikDurumu, BALIKLAR, TUR_SAYISI, akvaryumGeliri, AKVARYUM_YUVA } from '../services/balikServisi.js';
+import { ambarGetir, MAHSULLER } from '../services/bahceServisi.js';
 import { kullaniciYoldasGetir, yoldasAdi, yoldasDurumu, evrimlestiMi } from '../services/yoldasServisi.js';
 
 export const data = new SlashCommandBuilder()
@@ -39,6 +40,9 @@ export function kategoriSatirlari(kat, userId) {
     const sayac = {};
     for (const e of b.envanter) sayac[e] = (sayac[e] || 0) + 1;
     for (const [ad, n] of Object.entries(sayac)) satirlar.push(`• ${ad}${n > 1 ? ` ×${n}` : ''}`);
+    for (const [id, n] of Object.entries(ambarGetir(userId))) {
+      if (MAHSULLER[id] && n > 0) satirlar.push(`${MAHSULLER[id].altin ? '✨' : MAHSULLER[id].emoji} ${MAHSULLER[id].ad} ×${n} *(ambar)*`);
+    }
     return satirlar;
   }
   if (kat === 'zanaat') {

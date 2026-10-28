@@ -191,6 +191,6 @@ Hedefler: docs/PROJE_HEDEFLERI.md. Kullanıcı istemeden commit atılmaz.
 
 ## Sürüyor
 
-- Oyun geliştirme planı: 1 kalıcı buton (bitti), 2 yoldaş (bitti), 3 Ocak (bitti), 4 balık (bitti), 5 UI (bitti), 6 yeni oyunlar (bahçe, ticaret, açık artırma, sezon).
+- Oyun geliştirme planı: 1-5 bitti, 6 yeni oyunlar: bahçe bitti, sırada ticaret, açık artırma, sezon.
 
 ## Bekliyor

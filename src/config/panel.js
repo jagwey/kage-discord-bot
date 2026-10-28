@@ -16,6 +16,7 @@ export const GECISLER = {
   boss: { etiket: 'Boss', emoji: '👹' },
   kule: { etiket: 'Kule', emoji: '🗼' },
   balik: { etiket: 'Balık', emoji: '🎣' },
+  bahce: { etiket: 'Bahçe', emoji: '🌱' },
   dojo: { etiket: 'Dojo', emoji: '🏯' },
   demirci: { etiket: 'Ocak', emoji: '🔥' },
   yoldas: { etiket: 'Yoldaş', emoji: '🐾', alt: 'bilgi' },

@@ -78,6 +78,10 @@ const NIYETLER = [
     kur: () => ({ komut: 'balik', etiket: '🎣 Oltayı atayım mı?' })
   },
   {
+    desen: /\b(bahce\w*|tarla\w*|hasat\w*)\b/,
+    kur: () => ({ komut: 'bahce', etiket: '🌱 Bahçeni açayım mı?' })
+  },
+  {
     desen: /\bzindan\w*\b/,
     kur: t => {
       if (/\bprofil\w*\b/.test(t)) return { komut: 'zindan', secenekler: { islem: 'profil' }, etiket: '🗝️ Zindan profilini açayım mı?' };
@@ -286,6 +290,7 @@ const KISA_KOMUTLAR = [
   { adlar: ['bj', 'blackjack'], ozet: 'bj 100', aciklama: 'blackjack', kur: arg => ({ komut: 'blackjack', secenekler: { bahis: sayiBul(arg) || 100 } }) },
   { adlar: ['g', 'gunluk', 'd', 'daily'], ozet: 'g', aciklama: 'günlük ödül', kur: () => ({ komut: 'gunluk' }) },
   { adlar: ['b', 'balik', 'olta', 'h', 'hunt', 'fish'], ozet: 'b', aciklama: 'balık tut', kur: () => ({ komut: 'balik' }) },
+  { adlar: ['bahce', 'tarla', 'farm'], ozet: 'bahce', aciklama: 'bahçeni aç', kur: () => ({ komut: 'bahce' }) },
   {
     adlar: ['z', 'zindan', 'sefer', 'dungeon'], ozet: 'z', aciklama: 'zindan seferi', kur: arg => ({
       komut: 'zindan',

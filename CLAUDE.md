@@ -29,8 +29,8 @@ Tüm AI yönlendirmesi `src/services/aiRouterServisi.js` ve erişim denetimi `sr
 - **Canlı Admin AI İzleme:** Başka biri konuşurken bile admin kanalına (`aiYonetimKanalId`) hangi kullanıcının hangi soruya hangi motorla yanıt aldığı canlı düşer. Yetkililere mesaj altında motor etiketi (`-# [Motor: ...]`) gösterilir.
 
 ## 📁 Dizin Yapısı
-- `src/commands/`: 76 adet Slash komutu (`export const data`, `export async function execute`).
-- `src/services/`: 45 adet modüler servis (`oyunOlayServisi`, `aiRouterServisi`, `aiErisimServisi`, `golgeGozServisi`, `chatBotServisi`, `ekonomiServisi`, `klanServisi`, `yoldasServisi`, `sunucuMimarisiServisi`, `zindanServisi`, `bossServisi` vb.).
+- `src/commands/`: 77 adet Slash komutu (`export const data`, `export async function execute`).
+- `src/services/`: 47 adet modüler servis (`oyunOlayServisi`, `aiRouterServisi`, `aiErisimServisi`, `golgeGozServisi`, `chatBotServisi`, `ekonomiServisi`, `klanServisi`, `yoldasServisi`, `sunucuMimarisiServisi`, `zindanServisi`, `bossServisi` vb.).
 - `src/events/`: Discord olay dinleyicileri (`interactionCreate`, `messageCreate`, `ready`, `guildMemberAdd`).
 - `data/`: JSON veri depoları (`klanlar.json`, `yoldaslar.json`, `zindan.json`, `ekonomi.json`, `kullanicilar.json`, `golge_goz_istatistik.json`, `dojo.json` vb.).
 - `assets/`: Stickerlar (`assets/stickers/`), profil avatarları (`assets/avatars/`), SVG bannerlar (`assets/banner.svg`).
@@ -58,6 +58,7 @@ Tüm AI yönlendirmesi `src/services/aiRouterServisi.js` ve erişim denetimi `sr
 - `/piyango`: Haftalık bilet, pazartesi 00:00 otomatik çekiliş (`piyangoServisi.js`).
 - `/baskin`: Gölge baskını, 5 dakikalık buton savunması, otomatik baskın (`baskinServisi.js`). Baskın kanalı haftalık sonuç duyuru kanalıdır (`etkinlikServisi.js`).
 - `/basarim`: 17 Ryo ödüllü rozet (`basarimServisi.js`). Yoldaş seviye 10'da evrimleşir; `/gunluk` seri kalkanı satar.
+- `/bahce`: Bahçe paneli (`bahceServisi.js`, `data/bahce.json`). 5 tohum, 3 parselle başlar, 6 parsele çıkar (1500/3500/7500 Ryo). Sulama kalan süreyi %25 kısaltır, hasatta %7 (sulu %12) altın mahsul çıkar. Mahsuller ambarda durur, `ambariSat` Ryo verir, envanter Çanta kategorisi ambarı gösterir. Hasat `oyunOlayi(userId, 'bahce')` çağırır; ticaret ve açık artırma `mahsulEkle`/`mahsulHarca` kullanır.
 - **Geçiş butonları (`src/config/panel.js`):** `gecisSatiri('gorev','zindan',...)` "sıradaki adım" butonları kurar (`kgit:<komut>`). Tıklayan herkes için ilgili komutun `execute` fonksiyonu sahte `options` ile çalışır. Yeni komut eklenecekse `GECISLER` listesine yazılır.
 - `/envanter`: Genel, Çanta, Zanaat, Balık, Yoldaş kategorileri; 10 satırlık sayfalama, kalıcı butonlar (`envanter:`).
 - `/profil` (kendi profilin): `profilKartiServisi.js` ile `@napi-rs/canvas` üzerinden PNG samuray kartı çizer. Fontlar `assets/fonts` içindeki Noto Sans; kart metninden emoji ayıklanır, avatar 3 sn içinde gelmezse baş harf çizilir.
