@@ -29,6 +29,28 @@ const client = new Client({
   partials: [Partials.Message, Partials.Channel, Partials.Reaction]
 });
 
+const discordRestGet = client.rest.get.bind(client.rest);
+client.rest.get = async (route, options) => {
+  try {
+    return await discordRestGet(route, options);
+  } catch (err) {
+    if (route === '/gateway/bot' && err?.status === 429) {
+      console.warn('[Discord] /gateway/bot rate limiti alındı; tek shard için güvenli Gateway fallback kullanılıyor.');
+      return {
+        url: 'wss://gateway.discord.gg',
+        shards: 1,
+        session_start_limit: {
+          total: 1000,
+          remaining: 1000,
+          reset_after: 0,
+          max_concurrency: 1
+        }
+      };
+    }
+    throw err;
+  }
+};
+
 console.warn('[Discord] Gerekli privileged intentler: Message Content Intent ve Server Members Intent.');
 console.warn('[Discord] Bu intentler Developer Portal > Bot > Privileged Gateway Intents bölümünde açık değilse mesaj olayları, AI, karşılama ve oto-rol çalışmaz.');
 
