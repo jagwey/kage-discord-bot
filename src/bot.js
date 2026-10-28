@@ -159,7 +159,6 @@ if (fs.existsSync(eventsPath)) {
       const event = await import(`file://${filePath}`);
       const handler = (...args) => Promise.resolve(event.execute(...args)).catch(err => {
         console.error(`[Olay Hatası] ${event.name} (${file})`, err);
-        durumGuncelle('error', `${event.name} olayı hata verdi: ${err.message}`);
       });
       if (event.once) {
         client.once(event.name, handler);
@@ -232,7 +231,8 @@ http.createServer(async (req, res) => {
   // 1. Canlılık Kontrolü (Uptime / Health)
   if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/health')) {
     const durum = globalThis.__kageDurum || { durum: 'starting', detay: 'Başlatılıyor.' };
-    const kod = durum.durum === 'online' || durum.durum === 'starting' ? 200 : 503;
+    // Olay hataları gateway'i düşürmez; 503 yalnızca bağlantı yokken dönmeli, yoksa Render sürekli restart eder.
+    const kod = client.isReady() || durum.durum === 'starting' || durum.durum === 'online' ? 200 : 503;
     res.writeHead(kod, { 'Content-Type': 'application/json; charset=utf-8' });
     res.end(JSON.stringify({
       status: durum.durum,
