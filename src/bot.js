@@ -56,6 +56,10 @@ client.on(Events.ShardReconnecting, shardId => {
   console.warn(`[Discord] Shard ${shardId} yeniden bağlanıyor...`);
   durumGuncelle('starting', 'Discord Gateway yeniden bağlanıyor.');
 });
+client.on(Events.ShardError, (err, shardId) => {
+  console.error(`[Discord] Shard ${shardId} Gateway hatası:`, err);
+  durumGuncelle('error', `Shard ${shardId} Gateway hatası: ${err.message}`);
+});
 client.on(Events.Invalidated, () => {
   console.error('[Discord] Gateway oturumu geçersiz kılındı; process yeniden başlatılmalı.');
   durumGuncelle('error', 'Discord Gateway oturumu geçersiz.');
@@ -315,10 +319,16 @@ process.on('SIGTERM', cikisYap);
 // başlatması için process sonlandırılır; health endpoint'i sahte online kalmaz.
 async function girisYap() {
   const maxDeneme = 3;
+  const loginTimeoutMs = 15000;
   for (let deneme = 1; deneme <= maxDeneme; deneme++) {
     durumGuncelle('starting', `Discord'a bağlanılıyor (${deneme}/${maxDeneme}).`);
     try {
-      await client.login(process.env.DISCORD_TOKEN);
+      await Promise.race([
+        client.login(process.env.DISCORD_TOKEN),
+        new Promise((_, reject) => {
+          setTimeout(() => reject(new Error(`Discord login ${loginTimeoutMs / 1000} saniyede tamamlanmadı.`)), loginTimeoutMs);
+        })
+      ]);
       return;
     } catch (err) {
       const mesaj = String(err?.message || err);
@@ -327,6 +337,7 @@ async function girisYap() {
         durumGuncelle('error', 'DISCORD_TOKEN geçersiz veya yetkisiz.');
         process.exit(1);
       }
+      client.destroy();
       if (deneme < maxDeneme) await new Promise(resolve => setTimeout(resolve, deneme * 2000));
     }
   }
