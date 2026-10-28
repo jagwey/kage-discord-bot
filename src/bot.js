@@ -34,6 +34,14 @@ client.rest.on('rateLimited', info => {
   console.warn(`[Discord REST] Hız sınırı: ${rota}, kapsam=${info.scope}, bekleme=${info.retryAfter}ms.`);
 });
 
+client.rest.on('response', (istek, yanit) => {
+  if (yanit.status < 400) return;
+  console.warn(`[Discord REST] ${istek.method} ${istek.route} -> ${yanit.status} retry-after=${yanit.headers.get('retry-after') || '-'} global=${yanit.headers.get('x-ratelimit-global') || '-'} scope=${yanit.headers.get('x-ratelimit-scope') || '-'}`);
+});
+client.rest.on('restDebug', mesaj => {
+  if (/429|global|sublimit|invalid|cloudflare|wait/i.test(mesaj)) console.warn('[Discord REST Debug]', mesaj.slice(0, 300));
+});
+
 const discordRestGet = client.rest.get.bind(client.rest);
 client.rest.get = async (route, options) => {
   if (route === '/gateway/bot') {
