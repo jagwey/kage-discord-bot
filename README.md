@@ -495,8 +495,8 @@ SITE_URL=https://kage95.com
 > kapsamları bulunmalı; botun komut kanallarında mesaj gönderme, mesaj geçmişini okuma,
 > tepki ekleme, dosya ekleme ve gerekli moderasyon izinleri olmalıdır. Render'da
 > `DISCORD_TOKEN`, `CLIENT_ID` ve gerekiyorsa `GUILD_ID` değişkenlerini tanımlayın.
-> `/health` endpoint'i başlangıçta HTTP 200 ile `status: starting`, hazır olduğunda
-> `status: online` döndürür. `offline` veya `error` ve HTTP 503 görülürse Render
+> `/health` endpoint'i Discord bağlantısı kurulana kadar HTTP 503 ile `status: starting`,
+> hazır olduğunda HTTP 200 ile `status: online` döndürür. `offline` veya `error` ve HTTP 503 görülürse Render
 > loglarındaki ayrıntı asıl nedeni gösterir.
 
 ### 4. Botu Başlatın
