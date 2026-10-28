@@ -10,6 +10,8 @@ import { etkinlikServisiniBaslat } from '../services/etkinlikServisi.js';
 
 export const name = Events.ClientReady;
 export const once = true;
+let komutSyncZamanlayici = null;
+let komutSyncCalisiyor = false;
 
 async function komutlariEslestir(client) {
   const komutlar = client.commands.map(cmd => cmd.data.toJSON());
@@ -27,7 +29,7 @@ async function komutlariEslestir(client) {
     }
     await Promise.race([
       client.application.commands.set(komutlar, hedefGuildId),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Guild komut sync 15 saniyede tamamlanmadı.')), 15_000))
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Guild komut sync 90 saniyede tamamlanmadı.')), 90_000))
     ]);
     console.log(`[Kage] ${komutlar.length} komut "${guild.name}" sunucusuna yüklendi.`);
     return;
@@ -35,7 +37,7 @@ async function komutlariEslestir(client) {
 
   await Promise.race([
     client.application.commands.set(komutlar),
-    new Promise((_, reject) => setTimeout(() => reject(new Error('Global komut sync 15 saniyede tamamlanmadı.')), 15_000))
+    new Promise((_, reject) => setTimeout(() => reject(new Error('Global komut sync 90 saniyede tamamlanmadı.')), 90_000))
   ]);
   console.log(`[Kage] ${komutlar.length} komut global olarak eşitlendi.`);
 }
@@ -77,8 +79,25 @@ export async function execute(client) {
     status: 'online'
   });
 
-  // Komut eşitlemesi Gateway hazır olmasını bloklamaz.
-  komutlariEslestir(client).catch(err => console.error('[Kage] Komutlar eşitlenemedi:', err));
+  // Komut eşitlemesi Gateway hazır olmasını bloklamaz; Discord REST 429 verirse arka planda tekrar denenir.
+  const komutSyncBaslat = () => {
+    if (komutSyncCalisiyor) return;
+    komutSyncCalisiyor = true;
+    komutlariEslestir(client)
+      .catch(err => {
+        console.error('[Kage] Komutlar eşitlenemedi:', err.message);
+        if (!komutSyncZamanlayici) {
+          komutSyncZamanlayici = setTimeout(() => {
+            komutSyncZamanlayici = null;
+            komutSyncBaslat();
+          }, 30_000);
+        }
+      })
+      .finally(() => {
+        komutSyncCalisiyor = false;
+      });
+  };
+  komutSyncBaslat();
 
   // Bölüm takip ve duyuru servisini başlat
   duyuruServisiniBaslat(client);
