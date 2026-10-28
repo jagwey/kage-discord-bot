@@ -166,7 +166,7 @@ http.createServer(async (req, res) => {
   // 1. Canlılık Kontrolü (Uptime / Health)
   if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/health')) {
     const durum = globalThis.__kageDurum || { durum: 'starting', detay: 'Başlatılıyor.' };
-    const kod = durum.durum === 'online' || durum.durum === 'starting' ? 200 : 503;
+    const kod = durum.durum === 'online' ? 200 : 503;
     res.writeHead(kod, { 'Content-Type': 'application/json; charset=utf-8' });
     res.end(JSON.stringify({
       status: durum.durum,
