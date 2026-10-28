@@ -25,6 +25,8 @@ let sonOzet = null;
 let yedeklemeAcik = false;
 let yedekleniyor = false;
 let zamanlayici = null;
+const GERI_YUKLEME_SINIRI_MS = 120 * 1000;
+let geriYuklemeIptal = false;
 
 function paketHazirla() {
   const dosyalar = {};
@@ -77,8 +79,24 @@ async function yedekMesajlari() {
  * çünkü bazı servisler veriyi belleğe alıp önbellekte tutar.
  */
 export async function yedektenGeriYukle() {
+  let zamanAsimi;
+  const sinir = new Promise(r => {
+    zamanAsimi = setTimeout(() => {
+      geriYuklemeIptal = true;
+      console.error('[Kalıcılık] Geri yükleme 120 sn içinde bitmedi, bot yedeksiz açılıyor. Bu oturumda yedekleme kapalı.');
+      r();
+    }, GERI_YUKLEME_SINIRI_MS);
+  });
+  try {
+    await Promise.race([geriYuklemeDene(), sinir]);
+  } finally {
+    clearTimeout(zamanAsimi);
+  }
+}
+
+async function geriYuklemeDene() {
   if (!process.env.DISCORD_TOKEN) return;
-  for (let deneme = 1; deneme <= 3; deneme++) {
+  for (let deneme = 1; deneme <= 3 && !geriYuklemeIptal; deneme++) {
     try {
       botId = botId || (await rest.get(Routes.user('@me'))).id;
       if (!(await yedekKanaliBul(false))) {
@@ -97,6 +115,8 @@ export async function yedektenGeriYukle() {
       const ek = son.attachments.find(a => a.filename === YEDEK_DOSYA_ADI);
       const { data } = await axios.get(ek.url, { responseType: 'text', timeout: 20000, transformResponse: x => x });
       const paket = JSON.parse(data);
+      // Süre dolduysa bot açılmıştır; geç gelen yedek canlı verinin üstüne yazılmaz
+      if (geriYuklemeIptal) return;
 
       fs.mkdirSync(DATA_DIR, { recursive: true });
       let sayi = 0;

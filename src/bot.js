@@ -109,6 +109,12 @@ function yardimHizSiniriGecer(ip) {
   return true;
 }
 
+if (globalThis.__erkenSunucu) {
+  globalThis.__erkenSunucu.closeAllConnections?.();
+  await new Promise(r => globalThis.__erkenSunucu.close(r));
+  globalThis.__erkenSunucu = null;
+}
+
 http.createServer(async (req, res) => {
   // CORS Başlıkları
   res.setHeader('Access-Control-Allow-Origin', '*');
