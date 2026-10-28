@@ -11,6 +11,30 @@ import { ortakHafizaBaglamiGetir, ogrenilenleriAyiklaVeKaydet } from './kageHafi
  * 4. Pollinations AI (%100 ÜCRETSİZ, SIFIR KEY - Metin ve Görsel Üretimi)
  */
 
+/** Sağlayıcı HTTP zaman aşımı: 10 sn (AbortSignal.timeout, 8–12 sn aralığı). */
+const SAGLAYICI_TIMEOUT_MS = 10_000;
+/** akilliAiUret ve belirliModelUret için tüm denemelerin toplam bütçesi. */
+export const AI_TOPLAM_BUTCE_MS = 20_000;
+
+function istekSinyali(butceSinyali) {
+  const hop = AbortSignal.timeout(SAGLAYICI_TIMEOUT_MS);
+  return butceSinyali ? AbortSignal.any([hop, butceSinyali]) : hop;
+}
+
+function butceKontrolcusu() {
+  const kontrol = new AbortController();
+  const zamanlayici = setTimeout(() => kontrol.abort(), AI_TOPLAM_BUTCE_MS);
+  return {
+    signal: kontrol.signal,
+    doldu: () => kontrol.signal.aborted,
+    kapat: () => clearTimeout(zamanlayici)
+  };
+}
+
+function butceAsildiLogla(baglam) {
+  console.warn(`[AI Router] Toplam bütçe aşıldı (${AI_TOPLAM_BUTCE_MS}ms, ${baglam}). Deneme kesildi.`);
+}
+
 const istatistik = {};
 
 function say(saglayici, basarili, hata = '') {
@@ -95,12 +119,13 @@ export async function gorselAnalizEt({ resimUrl, mimeType = 'image/jpeg', soru =
 /**
  * Pollinations AI metin üretimi (%100 Ücretsiz, key istemez)
  */
-async function pollinationsMetinUret(prompt, systemInstruction = '') {
+async function pollinationsMetinUret(prompt, systemInstruction = '', butceSinyali = null) {
   const url = 'https://text.pollinations.ai/';
   const fullPrompt = systemInstruction ? `${systemInstruction}\n\nKullanıcı: ${prompt}` : prompt;
   
   const res = await fetch(url + encodeURIComponent(fullPrompt), {
-    headers: { 'User-Agent': 'Kage-Bot/2.5 (JagTech)' }
+    headers: { 'User-Agent': 'Kage-Bot/2.5 (JagTech)' },
+    signal: istekSinyali(butceSinyali)
   });
   if (!res.ok) throw new Error(`Pollinations HTTP ${res.status}`);
   const text = await res.text();
@@ -110,7 +135,7 @@ async function pollinationsMetinUret(prompt, systemInstruction = '') {
 /**
  * Groq Cloud metin üretimi (GPT-OSS-120B / Llama 3.3 / Qwen - Dünyanın en hızlısı)
  */
-async function groqMetinUret(prompt, systemInstruction = '') {
+async function groqMetinUret(prompt, systemInstruction = '', butceSinyali = null) {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) throw new Error('GROQ_API_KEY yok');
 
@@ -128,6 +153,7 @@ async function groqMetinUret(prompt, systemInstruction = '') {
   let sonHata = null;
 
   for (const model of denenecekModeller) {
+    if (butceSinyali?.aborted) throw new Error('Toplam yapay zeka bütçesi aşıldı.');
     try {
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
@@ -142,7 +168,8 @@ async function groqMetinUret(prompt, systemInstruction = '') {
           // gpt-oss düşünme token'larını da bu sınırdan harcar; düşükse content boş döner.
           max_tokens: 4096,
           ...(model.startsWith('openai/gpt-oss') ? { reasoning_effort: 'low' } : {})
-        })
+        }),
+        signal: istekSinyali(butceSinyali)
       });
 
       if (!res.ok) {
@@ -154,6 +181,7 @@ async function groqMetinUret(prompt, systemInstruction = '') {
       const icerik = data.choices?.[0]?.message?.content?.trim();
       if (icerik) return icerik;
     } catch (err) {
+      if (butceSinyali?.aborted) throw err;
       sonHata = err;
       continue;
     }
@@ -165,7 +193,7 @@ async function groqMetinUret(prompt, systemInstruction = '') {
 /**
  * OpenRouter metin üretimi (DeepSeek -> Llama -> Gemini -> OpenRouter Free sıralı fallback)
  */
-async function openRouterMetinUret(prompt, systemInstruction = '', ozelModel = null) {
+async function openRouterMetinUret(prompt, systemInstruction = '', ozelModel = null, butceSinyali = null) {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) throw new Error('OPENROUTER_API_KEY yok');
 
@@ -187,6 +215,7 @@ async function openRouterMetinUret(prompt, systemInstruction = '', ozelModel = n
   let sonHata = null;
 
   for (const model of denenecekModeller) {
+    if (butceSinyali?.aborted) throw new Error('Toplam yapay zeka bütçesi aşıldı.');
     try {
       const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
@@ -201,7 +230,8 @@ async function openRouterMetinUret(prompt, systemInstruction = '', ozelModel = n
           messages,
           temperature: 0.7,
           max_tokens: 1500
-        })
+        }),
+        signal: istekSinyali(butceSinyali)
       });
 
       if (!res.ok) {
@@ -220,6 +250,7 @@ async function openRouterMetinUret(prompt, systemInstruction = '', ozelModel = n
         return yanit;
       }
     } catch (err) {
+      if (butceSinyali?.aborted) throw err;
       sonHata = err;
       console.warn(`[AI Router] OpenRouter modeli ${model} hata: ${err.message}`);
     }
@@ -241,75 +272,95 @@ async function openRouterMetinUret(prompt, systemInstruction = '', ozelModel = n
  * @returns {Promise<{ metin: string, saglayici: string }>}
  */
 export async function akilliAiUret({ prompt, system = '', gorevTipi = 'varsayilan', userId = 'anon', userName = 'Samuray' }) {
-  const durum = saglayiciDurumu();
-  const saglayiciSirasi = [];
+  const butce = butceKontrolcusu();
+  try {
+    const durum = saglayiciDurumu();
+    const saglayiciSirasi = [];
 
-  // Merkezi ortak hafıza bağlamını hazırla
-  const ortakBaglam = ortakHafizaBaglamiGetir({ userId, userName, prompt, ekBaglam: system });
-  const nihaiSistem = system ? `${ortakBaglam}\n\n${system}` : ortakBaglam;
+    // Merkezi ortak hafıza bağlamını hazırla
+    const ortakBaglam = ortakHafizaBaglamiGetir({ userId, userName, prompt, ekBaglam: system });
+    const nihaiSistem = system ? `${ortakBaglam}\n\n${system}` : ortakBaglam;
 
-  // Göreve göre öncelik sıralaması belirle
-  if (gorevTipi === 'hizli_sohbet') {
-    if (durum.groq) saglayiciSirasi.push('groq');
-    if (durum.gemini) saglayiciSirasi.push('gemini');
-    if (durum.openrouter) saglayiciSirasi.push('openrouter');
-    saglayiciSirasi.push('pollinations');
-  } else {
-    // derin analiz / varsayılan
-    if (durum.gemini) saglayiciSirasi.push('gemini');
-    if (durum.groq) saglayiciSirasi.push('groq');
-    if (durum.openrouter) saglayiciSirasi.push('openrouter');
-    saglayiciSirasi.push('pollinations');
-  }
-
-  const hatalar = [];
-
-  for (const saglayici of saglayiciSirasi) {
-    try {
-      if (saglayici === 'gemini') {
-        const { parts } = await geminiUret({
-          systemInstruction: `${nihaiSistem}\n\n${egitimBaglami(null, userId, prompt)}`,
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          userId,
-          maxOutputTokens: 1000
-        });
-        const ham = parts?.filter(p => p.text && !p.thought).map(p => p.text).join('').trim();
-        if (ham) {
-          say('gemini', true);
-          const { temizMetin } = ogrenilenleriAyiklaVeKaydet(userId, userName, ham);
-          return { metin: ciktiyiDenetle(temizMetin), saglayici: 'Gemini' };
-        }
-      } else if (saglayici === 'groq') {
-        const metin = await groqMetinUret(prompt, nihaiSistem);
-        if (metin) {
-          say('groq', true);
-          const { temizMetin } = ogrenilenleriAyiklaVeKaydet(userId, userName, metin);
-          return { metin: ciktiyiDenetle(temizMetin), saglayici: 'Groq' };
-        }
-      } else if (saglayici === 'openrouter') {
-        const metin = await openRouterMetinUret(prompt, nihaiSistem);
-        if (metin) {
-          say('openrouter', true);
-          const { temizMetin } = ogrenilenleriAyiklaVeKaydet(userId, userName, metin);
-          return { metin: ciktiyiDenetle(temizMetin), saglayici: 'OpenRouter' };
-        }
-      } else if (saglayici === 'pollinations') {
-        const metin = await pollinationsMetinUret(prompt, nihaiSistem);
-        if (metin) {
-          say('pollinations', true);
-          const { temizMetin } = ogrenilenleriAyiklaVeKaydet(userId, userName, metin);
-          return { metin: ciktiyiDenetle(temizMetin), saglayici: 'Pollinations AI (Ücretsiz)' };
-        }
-      }
-    } catch (err) {
-      say(saglayici, false, err.message);
-      hatalar.push(`[${saglayici}]: ${err.message}`);
-      // Sessizce sıradaki yedek yapay zekaya geç!
-      continue;
+    // Göreve göre öncelik sıralaması belirle
+    if (gorevTipi === 'hizli_sohbet') {
+      if (durum.groq) saglayiciSirasi.push('groq');
+      if (durum.gemini) saglayiciSirasi.push('gemini');
+      if (durum.openrouter) saglayiciSirasi.push('openrouter');
+      saglayiciSirasi.push('pollinations');
+    } else {
+      // derin analiz / varsayılan
+      if (durum.gemini) saglayiciSirasi.push('gemini');
+      if (durum.groq) saglayiciSirasi.push('groq');
+      if (durum.openrouter) saglayiciSirasi.push('openrouter');
+      saglayiciSirasi.push('pollinations');
     }
-  }
 
-  throw new Error(`Tüm yapay zeka servisleri başarısız oldu:\n${hatalar.join('\n')}`);
+    const hatalar = [];
+
+    for (const saglayici of saglayiciSirasi) {
+      if (butce.doldu()) {
+        butceAsildiLogla(`görev=${gorevTipi}`);
+        return { metin: '', saglayici: '', hata: 'zaman_butcesi' };
+      }
+      try {
+        if (saglayici === 'gemini') {
+          const { parts } = await geminiUret({
+            systemInstruction: `${nihaiSistem}\n\n${egitimBaglami(null, userId, prompt)}`,
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            userId,
+            maxOutputTokens: 1000,
+            signal: butce.signal,
+            zamanAsimiMs: SAGLAYICI_TIMEOUT_MS
+          });
+          const ham = parts?.filter(p => p.text && !p.thought).map(p => p.text).join('').trim();
+          if (ham) {
+            say('gemini', true);
+            const { temizMetin } = ogrenilenleriAyiklaVeKaydet(userId, userName, ham);
+            return { metin: ciktiyiDenetle(temizMetin), saglayici: 'Gemini' };
+          }
+        } else if (saglayici === 'groq') {
+          const metin = await groqMetinUret(prompt, nihaiSistem, butce.signal);
+          if (metin) {
+            say('groq', true);
+            const { temizMetin } = ogrenilenleriAyiklaVeKaydet(userId, userName, metin);
+            return { metin: ciktiyiDenetle(temizMetin), saglayici: 'Groq' };
+          }
+        } else if (saglayici === 'openrouter') {
+          const metin = await openRouterMetinUret(prompt, nihaiSistem, null, butce.signal);
+          if (metin) {
+            say('openrouter', true);
+            const { temizMetin } = ogrenilenleriAyiklaVeKaydet(userId, userName, metin);
+            return { metin: ciktiyiDenetle(temizMetin), saglayici: 'OpenRouter' };
+          }
+        } else if (saglayici === 'pollinations') {
+          const metin = await pollinationsMetinUret(prompt, nihaiSistem, butce.signal);
+          if (metin) {
+            say('pollinations', true);
+            const { temizMetin } = ogrenilenleriAyiklaVeKaydet(userId, userName, metin);
+            return { metin: ciktiyiDenetle(temizMetin), saglayici: 'Pollinations AI (Ücretsiz)' };
+          }
+        }
+      } catch (err) {
+        if (butce.doldu()) {
+          butceAsildiLogla(`görev=${gorevTipi}`);
+          return { metin: '', saglayici: '', hata: 'zaman_butcesi' };
+        }
+        say(saglayici, false, err.message);
+        hatalar.push(`[${saglayici}]: ${err.message}`);
+        // Sessizce sıradaki yedek yapay zekaya geç!
+        continue;
+      }
+    }
+
+    if (butce.doldu()) {
+      butceAsildiLogla(`görev=${gorevTipi}`);
+      return { metin: '', saglayici: '', hata: 'zaman_butcesi' };
+    }
+
+    throw new Error(`Tüm yapay zeka servisleri başarısız oldu:\n${hatalar.join('\n')}`);
+  } finally {
+    butce.kapat();
+  }
 }
 
 /**
@@ -330,7 +381,7 @@ export function gorselUrlUret({ prompt, genislik = 1024, yukseklik = 1024, seed 
 /**
  * Belirli bir Groq modelini doğrudan çağırır
  */
-async function groqTekModelUret(prompt, systemInstruction = '', model = 'openai/gpt-oss-120b') {
+async function groqTekModelUret(prompt, systemInstruction = '', model = 'openai/gpt-oss-120b', butceSinyali = null) {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) throw new Error('GROQ_API_KEY yok');
 
@@ -350,7 +401,8 @@ async function groqTekModelUret(prompt, systemInstruction = '', model = 'openai/
       temperature: 0.7,
       max_tokens: 4096,
       ...(model.startsWith('openai/gpt-oss') ? { reasoning_effort: 'low' } : {})
-    })
+    }),
+    signal: istekSinyali(butceSinyali)
   });
 
   if (!res.ok) {
@@ -419,54 +471,74 @@ export async function belirliModelUret({ prompt, system = '', modelKodu = 'auto'
     const res = await akilliAiUret({ prompt, system, userId, userName });
     return {
       metin: res.metin,
-      model: `${res.saglayici} (Otomatik)`,
-      sureMs: Date.now() - baslangic
+      model: res.hata ? 'zaman_butcesi' : `${res.saglayici} (Otomatik)`,
+      sureMs: Date.now() - baslangic,
+      ...(res.hata ? { hata: res.hata } : {})
     };
   }
 
-  if (cozulmusKod === 'gemini') {
-    const { parts, model } = await geminiUret({
-      systemInstruction: `${nihaiSistem}\n\n${egitimBaglami(null, userId, prompt)}`,
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      userId,
-      maxOutputTokens: 1500
-    });
-    sonucMetin = parts?.filter(p => p.text && !p.thought).map(p => p.text).join('').trim();
-    modelAdi = `Gemini (${model})`;
-    say('gemini', true);
-  } else if (cozulmusKod === 'groq_120b') {
-    sonucMetin = await groqTekModelUret(prompt, nihaiSistem, 'openai/gpt-oss-120b');
-    modelAdi = 'Groq (GPT-OSS-120B)';
-    say('groq', true);
-  } else if (cozulmusKod === 'groq_qwen') {
-    sonucMetin = await groqTekModelUret(prompt, nihaiSistem, 'qwen/qwen3.8-27b');
-    modelAdi = 'Groq (Qwen 27B)';
-    say('groq', true);
-  } else if (cozulmusKod === 'openrouter_free') {
-    sonucMetin = await openRouterMetinUret(prompt, nihaiSistem, 'openrouter/free');
-    modelAdi = 'OpenRouter (DeepSeek / Llama Free)';
-    say('openrouter', true);
-  } else if (cozulmusKod === 'pollinations') {
-    sonucMetin = await pollinationsMetinUret(prompt, nihaiSistem);
-    modelAdi = 'Pollinations AI (%100 Ücretsiz)';
-    say('pollinations', true);
-  } else {
-    const res = await akilliAiUret({ prompt, system, userId, userName });
+  const butce = butceKontrolcusu();
+  try {
+    if (cozulmusKod === 'gemini') {
+      const { parts, model } = await geminiUret({
+        systemInstruction: `${nihaiSistem}\n\n${egitimBaglami(null, userId, prompt)}`,
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        userId,
+        maxOutputTokens: 1500,
+        signal: butce.signal,
+        zamanAsimiMs: SAGLAYICI_TIMEOUT_MS
+      });
+      sonucMetin = parts?.filter(p => p.text && !p.thought).map(p => p.text).join('').trim();
+      modelAdi = `Gemini (${model})`;
+      say('gemini', true);
+    } else if (cozulmusKod === 'groq_120b') {
+      sonucMetin = await groqTekModelUret(prompt, nihaiSistem, 'openai/gpt-oss-120b', butce.signal);
+      modelAdi = 'Groq (GPT-OSS-120B)';
+      say('groq', true);
+    } else if (cozulmusKod === 'groq_qwen') {
+      sonucMetin = await groqTekModelUret(prompt, nihaiSistem, 'qwen/qwen3.8-27b', butce.signal);
+      modelAdi = 'Groq (Qwen 27B)';
+      say('groq', true);
+    } else if (cozulmusKod === 'openrouter_free') {
+      sonucMetin = await openRouterMetinUret(prompt, nihaiSistem, 'openrouter/free', butce.signal);
+      modelAdi = 'OpenRouter (DeepSeek / Llama Free)';
+      say('openrouter', true);
+    } else if (cozulmusKod === 'pollinations') {
+      sonucMetin = await pollinationsMetinUret(prompt, nihaiSistem, butce.signal);
+      modelAdi = 'Pollinations AI (%100 Ücretsiz)';
+      say('pollinations', true);
+    } else {
+      const res = await akilliAiUret({ prompt, system, userId, userName });
+      return {
+        metin: res.metin,
+        model: res.hata ? 'zaman_butcesi' : `${res.saglayici} (Otomatik)`,
+        sureMs: Date.now() - baslangic,
+        ...(res.hata ? { hata: res.hata } : {})
+      };
+    }
+
+    if (butce.doldu()) {
+      butceAsildiLogla(`model=${cozulmusKod}`);
+      return { metin: '', model: cozulmusKod, sureMs: Date.now() - baslangic, hata: 'zaman_butcesi' };
+    }
+
+    // Model çıktısından öğrenilen bilgileri yakala ve ortak hafızaya kalıcı olarak işle
+    const { temizMetin } = ogrenilenleriAyiklaVeKaydet(userId, userName, sonucMetin);
+
     return {
-      metin: res.metin,
-      model: `${res.saglayici} (Otomatik)`,
+      metin: ciktiyiDenetle(temizMetin),
+      model: modelAdi,
       sureMs: Date.now() - baslangic
     };
+  } catch (err) {
+    if (butce.doldu()) {
+      butceAsildiLogla(`model=${cozulmusKod}`);
+      return { metin: '', model: cozulmusKod, sureMs: Date.now() - baslangic, hata: 'zaman_butcesi' };
+    }
+    throw err;
+  } finally {
+    butce.kapat();
   }
-
-  // Model çıktısından öğrenilen bilgileri yakala ve ortak hafızaya kalıcı olarak işle
-  const { temizMetin } = ogrenilenleriAyiklaVeKaydet(userId, userName, sonucMetin);
-
-  return {
-    metin: ciktiyiDenetle(temizMetin),
-    model: modelAdi,
-    sureMs: Date.now() - baslangic
-  };
 }
 
 
