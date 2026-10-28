@@ -490,12 +490,35 @@ SITE_URL=https://kage95.com
    anahtarlarını aktif edin.
 3. OAuth2 -> URL Generator üzerinden `bot` ve `applications.commands` seçerek botu sunucunuza `Administrator` yetkisiyle davet edin.
 
+> **Çevrimiçi ama cevap vermiyor kontrolü:** Bot sekmesinde **Server Members Intent** ve
+> **Message Content Intent** açık olmalıdır. Bot davetinde `bot` ve `applications.commands`
+> kapsamları bulunmalı; botun komut kanallarında mesaj gönderme, mesaj geçmişini okuma,
+> tepki ekleme, dosya ekleme ve gerekli moderasyon izinleri olmalıdır. Render'da
+> `DISCORD_TOKEN`, `CLIENT_ID` ve gerekiyorsa `GUILD_ID` değişkenlerini tanımlayın.
+> `/health` endpoint'i başlangıçta HTTP 200 ile `status: starting`, hazır olduğunda
+> `status: online` döndürür. `offline` veya `error` ve HTTP 503 görülürse Render
+> loglarındaki ayrıntı asıl nedeni gösterir.
+
 ### 4. Botu Başlatın
 ```bash
 npm start
 # veya geliştirici modunda:
 npm run dev
 ```
+
+### Render dağıtım kontrol listesi
+
+- Bu repo kökündeki `render.yaml`, Render Blueprint için web servisini, `npm start`
+  komutunu ve `/health` kontrolünü hazırlar. Render Dashboard'da **New > Blueprint**
+  ile bu repoyu seçip Blueprint'i uygulatın.
+- Start command: `npm start`
+- Environment: `DISCORD_TOKEN`, `CLIENT_ID`; geliştirme sunucusu komutları için `GUILD_ID`
+- Discord Developer Portal: **Server Members Intent** ve **Message Content Intent** açık
+- Health check path: `/health`
+- Kalıcı yedek kullanılacaksa `WEBHOOK_SECRET` ve botun gizli yedek kanalını görebilme/gönderme izinleri
+- Deploy sonrası `/health` HTTP 200 ve JSON içinde `status: "online"` görülmeli
+- Blueprint'teki `sync: false` değişkenlerine gerçek secret değerlerini yalnızca Render
+  Environment ekranından girin; tokenları GitHub'a veya `render.yaml` dosyasına yazmayın.
 
 ### 5. Sunucuyu Otomatik Kurun
 Bot sunucunuza katıldıktan sonra:
