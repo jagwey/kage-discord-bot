@@ -1,3 +1,4 @@
+import { tekGorev } from './tekGorev.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -390,19 +391,21 @@ export async function periyodikKontrolEtVeDuyur(client) {
  * Arka plan zamanlayıcısını başlatır
  */
 export function duyuruServisiniBaslat(client) {
+  if (pollerInterval) return;
   gorulenleriYukle();
+  const tur = tekGorev(() => periyodikKontrolEtVeDuyur(client));
 
   console.log('[DuyuruServisi] Akıllı manga ve bölüm poller aktif edildi.');
 
   // İlk kontrol 15 saniye sonra
   setTimeout(() => {
-    periyodikKontrolEtVeDuyur(client);
+    tur();
   }, 15000);
 
   // Her 3 dakikada bir kontrol et
   if (pollerInterval) clearInterval(pollerInterval);
   pollerInterval = setInterval(() => {
-    periyodikKontrolEtVeDuyur(client);
+    tur();
   }, 3 * 60 * 1000);
 }
 

@@ -1,3 +1,4 @@
+import { tekGorev } from './tekGorev.js';
 import { jsonDepo } from './jsonDepo.js';
 import { ryoEkle } from './ekonomiServisi.js';
 import { profilGetir } from './kageHafizaServisi.js';
@@ -400,15 +401,18 @@ async function haftalikRaporlariGonder(client, simdi) {
  * Doğum günü, haftalık rapor ve kayıtsız hatırlatma için periyodik kontrolü kurar.
  * @param {import('discord.js').Client} client
  */
+let baslatildi = false;
 export function toplulukServisiniBaslat(client) {
+  if (baslatildi) return;
+  baslatildi = true;
   yukle();
-  const tur = async () => {
+  const tur = tekGorev(async () => {
     const simdi = trSimdi();
     await dogumGunleriniKutla(client, simdi).catch(err => console.error('[Topluluk] doğum günü:', err.message));
     await haftalikRaporlariGonder(client, simdi).catch(err => console.error('[Topluluk] rapor:', err.message));
     await kayitsizlariHatirlat(client).catch(err => console.error('[Topluluk] hatırlatma:', err.message));
     kaydet();
-  };
+  }, err => console.error('[Topluluk]', err.message));
   setTimeout(tur, 30_000);
   setInterval(tur, KONTROL_ARALIGI_MS);
   console.log('[Topluluk] doğum günü, haftalık rapor ve kayıt hatırlatma devrede.');

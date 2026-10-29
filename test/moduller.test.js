@@ -11,6 +11,13 @@ test('Tüm komutlar/olaylar izole klasörde yüklenir; sticker önce defer eder'
   const dir = fs.mkdtempSync(path.join(root, 'scratch', 'modul-test-'));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   fs.cpSync(path.join(root, 'src'), path.join(dir, 'src'), { recursive: true });
+  const { jsonDepo } = await import(pathToFileURL(path.join(dir, 'src/services/jsonDepo.js')).href);
+  const depo = jsonDepo('test.json', () => ({}));
+  assert.deepEqual(depo.oku(), {});
+  fs.mkdirSync(path.join(dir, 'data'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'data/test.json'), '{bozuk');
+  assert.throws(() => depo.oku(), /veri sıfırlanmadı/);
+  assert.equal(fs.readFileSync(path.join(dir, 'data/test.json'), 'utf8'), '{bozuk');
   const adlar = new Set();
   let sticker;
   for (const ad of fs.readdirSync(path.join(dir, 'src/commands')).filter(ad => ad.endsWith('.js'))) {

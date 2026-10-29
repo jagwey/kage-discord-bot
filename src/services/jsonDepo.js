@@ -7,7 +7,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /**
  * data/ altında tek bir JSON dosyasını okuyup yazan küçük depo.
- * Dosya yoksa veya bozuksa varsayılan değer kullanılır.
+ * Yalnızca dosya yoksa varsayılan değer kullanılır; bozuk veri hata verir.
  */
 export function jsonDepo(dosyaAdi, varsayilan) {
   const dosya = path.resolve(__dirname, '../../data', dosyaAdi);
@@ -15,8 +15,10 @@ export function jsonDepo(dosyaAdi, varsayilan) {
     oku() {
       try {
         const veri = JSON.parse(fs.readFileSync(dosya, 'utf8'));
-        return veri && typeof veri === 'object' ? veri : varsayilan();
-      } catch {
+        if (!veri || typeof veri !== 'object') throw new Error('Geçersiz JSON depo yapısı');
+        return veri;
+      } catch (err) {
+        if (err.code !== 'ENOENT') throw new Error(`${dosyaAdi} okunamadı; veri sıfırlanmadı.`, { cause: err });
         return varsayilan();
       }
     },
@@ -26,6 +28,7 @@ export function jsonDepo(dosyaAdi, varsayilan) {
         atomikYaz(dosya, JSON.stringify(veri, null, 2));
       } catch (err) {
         console.error(`[jsonDepo] ${dosyaAdi} yazılamadı:`, err.message);
+        throw err;
       }
     }
   };

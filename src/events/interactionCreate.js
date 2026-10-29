@@ -217,10 +217,12 @@ export async function execute(interaction) {
       const hataEmbed = kageEmbed({
         baslik: 'Gölge Hatası',
         renk: TEMA.RENKLER.HATA,
-        aciklama: `${TEMA.EMOJILER.KATANA} Bu komut yürütülürken beklenmedik bir gölge sisi ortaya çıktı.\n\`\`\`${err.message}\`\`\``
+        aciklama: `${TEMA.EMOJILER.KATANA} İşlem tamamlanamadı. Lütfen biraz sonra tekrar dene.`
       });
 
-      if (interaction.replied || interaction.deferred) {
+      if (interaction.deferred && !interaction.replied) {
+        await interaction.editReply({ embeds: [hataEmbed], content: '', components: [] }).catch(() => null);
+      } else if (interaction.replied) {
         await interaction.followUp({ embeds: [hataEmbed], flags: MessageFlags.Ephemeral }).catch(() => null);
       } else {
         await interaction.reply({ embeds: [hataEmbed], flags: MessageFlags.Ephemeral }).catch(() => null);

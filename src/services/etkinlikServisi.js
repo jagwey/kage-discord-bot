@@ -1,3 +1,4 @@
+import { tekGorev } from './tekGorev.js';
 import { TEMA, kageEmbed } from '../config/tema.js';
 import { haftayiKapat } from './klanSavasServisi.js';
 import { cekilisYap } from './piyangoServisi.js';
@@ -65,9 +66,12 @@ export async function haftalikSonuclariIsle(client, simdi = Date.now()) {
 }
 
 /** @param {import('discord.js').Client} client */
+let baslatildi = false;
 export function etkinlikServisiniBaslat(client) {
+  if (baslatildi) return;
+  baslatildi = true;
   baskinlariSurdur(client);
-  const tur = () => haftalikSonuclariIsle(client).catch(err => console.error('[Etkinlik] haftalık sonuç:', err.message));
+  const tur = tekGorev(() => haftalikSonuclariIsle(client), err => console.error('[Etkinlik]', err.message));
   setTimeout(tur, 45_000);
   setInterval(tur, KONTROL_ARALIGI_MS);
   console.log('[Etkinlik] klan savaşı, piyango ve baskın zamanlayıcıları devrede.');
