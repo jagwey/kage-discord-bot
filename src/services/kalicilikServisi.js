@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import { REST, Routes, ChannelType, PermissionFlagsBits } from 'discord.js';
 import { ajan } from '../ag.js';
 import { authFatalCikis, discordKimlikHatasiMi } from '../discordKimlik.js';
+import { eksikDosyalariGeriYukle } from './yedekDosyalari.js';
 
 // Render diski her deploy/yeniden başlatmada silinir. data/*.json dosyaları
 // özel bir Discord kanalına ek olarak yedeklenir ve açılışta geri yüklenir.
@@ -100,13 +101,16 @@ async function geriYuklemeDene() {
   for (let deneme = 1; deneme <= 3 && !geriYuklemeIptal; deneme++) {
     try {
       botId = botId || (await rest.get(Routes.user('@me'))).id;
+      if (geriYuklemeIptal) return;
       if (!(await yedekKanaliBul(false))) {
+        if (geriYuklemeIptal) return;
         console.log('[Kalıcılık] Yedek kanalı yok, ilk yedek açılışta alınacak.');
         yedeklemeAcik = true;
         return;
       }
 
       const [son] = await yedekMesajlari();
+      if (geriYuklemeIptal) return;
       if (!son) {
         console.log('[Kalıcılık] Kanalda yedek bulunamadı, mevcut veriyle devam.');
         yedeklemeAcik = true;
@@ -119,18 +123,14 @@ async function geriYuklemeDene() {
       // Süre dolduysa bot açılmıştır; geç gelen yedek canlı verinin üstüne yazılmaz
       if (geriYuklemeIptal) return;
 
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-      let sayi = 0;
-      for (const [ad, icerik] of Object.entries(paket.dosyalar || {})) {
-        if (!/^[\w.-]+\.json$/.test(ad)) continue;
-        fs.writeFileSync(path.join(DATA_DIR, ad), icerik, 'utf8');
-        sayi++;
-      }
-      sonOzet = paketHazirla().ozet;
+      const sayi = eksikDosyalariGeriYukle(DATA_DIR, paket);
+      // Yerel dosyalar yedekten yeni olabilir; ilk tur güncel diski yedeklesin.
+      sonOzet = null;
       yedeklemeAcik = true;
       console.log(`[Kalıcılık] ${sayi} veri dosyası ${paket.zaman || 'son'} tarihli yedekten geri yüklendi.`);
       return;
     } catch (err) {
+      if (geriYuklemeIptal) return;
       if (discordKimlikHatasiMi(err)) {
         console.error('[Kalıcılık] Discord token geçersiz veya yetkisiz (401). Yeniden deneme yok.');
         authFatalCikis('DISCORD_TOKEN geçersiz veya yetkisiz.');
@@ -151,6 +151,7 @@ export async function yedekle({ zorla = false } = {}) {
   yedekleniyor = true;
   try {
     await yedekKanaliBul(true);
+    if (!kanalId) return false;
     const zaman = new Date().toISOString();
     const icerik = `{"zaman":${JSON.stringify(zaman)},"dosyalar":${govde}}`;
     await rest.post(Routes.channelMessages(kanalId), {

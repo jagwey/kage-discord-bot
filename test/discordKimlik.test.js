@@ -57,6 +57,7 @@ test('pm2 ecosystem kimlik çıkışını durdurur ve restart sınırlar', () =>
   assert.equal(typeof app.exp_backoff_restart_delay, 'number');
   assert.ok(app.exp_backoff_restart_delay >= 1000);
   assert.equal(app.autorestart, true);
+  assert.ok(app.kill_timeout >= 25000, 'Kapanış yedeği için PM2 yeterli süre tanımalı');
 });
 
 test('auth fatal çıkışı 78 döner', async () => {

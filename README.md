@@ -537,7 +537,7 @@ pm2 restart kage-discord-bot --update-env
 - `DISCORD_TOKEN` ve `CLIENT_ID` zorunlu; geliştirme sunucusuna komut basılacaksa `GUILD_ID`.
 - Kalıcı Discord yedeği için `YEDEK_KANAL_ID` ve botun o kanalı okuyup yazma izni.
 
-**Güncelleme.** Betik makinede `~/kage-discord-bot/guncelle.sh` (bu deponun kökü) yolundadır. Akış: `git pull --ff-only`, bağımlılık kurulumu, `pm2 restart kage-discord-bot --update-env`. `package-lock.json` `.gitignore` içindedir; kilit dosyası makinede varsa betik `npm ci`, yoksa `npm install` çalıştırır.
+**Güncelleme.** Betik makinede `~/kage-discord-bot/guncelle.sh` (bu deponun kökü) yolundadır. Akış: `git pull --ff-only`, bağımlılık kurulumu, `pm2 startOrReload ecosystem.config.cjs --update-env`, `pm2 save`. Böylece güncel süreç korumaları da uygulanır. `package-lock.json` `.gitignore` içindedir; kilit dosyası makinede varsa betik `npm ci`, yoksa `npm install` çalıştırır.
 
 ```bash
 chmod +x ~/kage-discord-bot/guncelle.sh
@@ -552,9 +552,13 @@ pm2 start ecosystem.config.cjs --update-env
 pm2 save
 ```
 
-`ecosystem.config.cjs` süreç adını `kage-discord-bot` tutar ve `max_restarts: 10`, `min_uptime: 180000`, `exp_backoff_restart_delay: 1000`, `stop_exit_codes: [78]` tanımlar. Çıkış 78 (geçersiz token) yeniden başlatmayı keser. Çıkış 1 (ağ) üstel bekleme ile en fazla 10 kararsız yeniden başlatma alır. Süreç 180 sn'den uzun ayakta kaldıysa sonraki çökme normal şekilde yeniden başlatılır. `guncelle.sh` içindeki `pm2 restart` bu kaydı yüklemez; ecosystem bir kez yukarıdaki komutla alındıktan sonra restart env günceller. Token `.env` içinde düzeldikten ve süreç 78 ile durduktan sonra: `pm2 start kage-discord-bot --update-env`.
+`ecosystem.config.cjs` tek süreç çalıştırır; kararsız başlangıçları en fazla 10 kez yeniden dener ve çıkış 78'de durur. Kapanış yedeği için 25 saniye tanır. Geçici login hatasında PM2 altında 120 saniye beklenip süreç yenilenir; hatalı token/intent otomatik denenmez. Token düzeltildikten sonra ecosystem dosyasıyla yeniden başlatın.
 
-**İzleme.** UptimeRobot veya benzeri bir yoklayıcı eski Render URL'sini değil, Oracle adresini pinglesin: `http://89.168.86.54:3000/health`. Sağlıklı yanıt HTTP 200 ve JSON içinde `"status": "online"` olur. `offline` / `error` ve HTTP 503, `pm2 logs kage-discord-bot` ile bakılır. Geçersiz token `status: auth_failed` (HTTP 503) yazar ve süreç çıkar.
+Yeni Discord IDENTIFY oturumları en az 120 saniye aralıklıdır. `.runtime/discord-oturum.json` bu süreyi yeniden başlatmalarda korur; bu klasörü güncellemelerde silmeyin. RESUME bağlantı devamı bu sınıra girmez. Bu koruma aynı kurulum içindir: aynı tokenle Render, yerel bilgisayar ve Oracle kopyalarını eşzamanlı çalıştırmayın.
+
+Oracle'daki mevcut `data/` dosyaları açılışta eski Discord yedeğiyle değiştirilmez; yalnızca eksik dosyalar geri getirilir. Bozuk yerel dosyalar için yedekten kurtarma ayrı ve kontrollü yapılmalıdır. Yedek indirmesi zaman aşımına uğrarsa geç gelen işlem canlı dosyalara dokunmaz ve o oturumda uzak yedekleme kapalı kalır.
+
+**İzleme.** `/health` süreç ayaktaysa HTTP 200 verir; Discord kesintisinde restart fırtınası oluşturmak için kullanılmamalıdır. `/ready` bot Discord'a bağlı değilse HTTP 503 verir. Durum ayrıntıları ve `pm2 logs kage-discord-bot` birlikte incelenir. Eksik/geçersiz token açılış yedek kontrolünde çıkış 78'e, Gateway girişinde `auth_failed` durumunda beklemeye yol açabilir.
 
 ### 5. Sunucuyu Otomatik Kurun
 Bot sunucunuza katıldıktan sonra:
@@ -567,9 +571,9 @@ yazın ve açılan kartta **"Evet, Kaleyi İnşa Et"** butonuna basın. Kage san
 
 ## 🛡️ Güvenlik, Gizlilik & Performans
 - **API Key ve Veri İzolasyonu**: `.env` ve sunucunuzun tüm kullanıcı/ekonomi verilerini tutan `data/` dizini `.gitignore` ile korunmaktadır. Depoyu GitHub'a atsanız dahi hiçbir gizli anahtarınız veya veriniz internete sızmaz.
-- **Atomik Veri Yazımı**: JSON veritabanı işlemleri eşzamanlı çakışmaları ve veri kaybını önleyen güvenli kilit mekanizmasıyla (`jsonDepo.js`) korunur.
+- **Atomik Veri Yazımı**: `jsonDepo.js` önce geçici dosyaya yazar, ardından dosyayı değiştirir; yarım yazım eski JSON'u bozmaz. Birden fazla bot sürecinin aynı veriyi değiştirmesi desteklenmez.
 - **Yetki Hiyerarşisi**: Bot, kendisinden veya komutu kullanan yetkiliden daha üstün bir role ceza uygulayamaz veya yetkisiz müdahalede bulunamaz.
-- **Hata Toleransı**: Harici ağ kesintileri ve API çökmeleri botu düşürmez (`unhandledRejection` ve `uncaughtException` emniyet kalkanları devrededir).
+- **Hata Toleransı**: Olay hataları yakalanıp kaydedilir. Yakalanmamış süreç istisnasında bozulmuş süreçle devam etmek yerine sınırlı sürede kapanılır; PM2 yeniden başlatma korumalarını uygular.
 
 ---
 

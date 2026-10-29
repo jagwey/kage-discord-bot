@@ -17,4 +17,5 @@ else
   npm install
 fi
 
-pm2 restart kage-discord-bot --update-env
+pm2 startOrReload ecosystem.config.cjs --update-env
+pm2 save

@@ -21,6 +21,7 @@ function dosyalar(klasor, ek, duygular) {
 }
 
 export async function execute(interaction) {
+  await interaction.deferReply();
   const duygu = interaction.options.getString('duygu');
   const tur = interaction.options.getString('tur');
   const duygular = duygu ? [duygu] : STICKER_DUYGULARI;
@@ -29,8 +30,8 @@ export async function execute(interaction) {
   if (tur !== 'erkek') gruplar.push({ baslik: '🌸 **Kunoichi**', files: dosyalar(path.join(KLASOR, 'kunoichi'), 'kunoichi_', duygular) });
 
   const dolu = gruplar.filter(g => g.files.length);
-  if (!dolu.length) return interaction.reply({ content: '❌ Sticker dosyası bulunamadı.' });
+  if (!dolu.length) return interaction.editReply({ content: '❌ Sticker dosyası bulunamadı.' });
 
-  await interaction.reply({ content: `${dolu[0].baslik} • ${duygular.join(', ')}`, files: dolu[0].files });
+  await interaction.editReply({ content: `${dolu[0].baslik} • ${duygular.join(', ')}`, files: dolu[0].files });
   for (const g of dolu.slice(1)) await interaction.followUp({ content: g.baslik, files: g.files });
 }

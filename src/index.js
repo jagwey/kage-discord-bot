@@ -16,7 +16,7 @@ globalThis.__kageDurum = {
 globalThis.__erkenSunucu = http.createServer((req, res) => {
   const durum = globalThis.__kageDurum?.durum || 'starting';
   // Discord hatası süreç yeniden başlatmasını tetiklememeli.
-  res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+  res.writeHead(req.url?.split('?')[0] === '/ready' ? 503 : 200, { 'Content-Type': 'application/json; charset=utf-8' });
   res.end(JSON.stringify({
     status: durum,
     bot: 'Kage',

@@ -1,5 +1,6 @@
 # Bağımlılıklar
 node_modules/
+.runtime/
 package-lock.json
 
 # Ortam Değişkenleri ve Gizli API Anahtarları (ASLA GITHUB'A YÜKLENMEZ!)

@@ -72,6 +72,10 @@ export async function geminiUret({ systemInstruction, contents, functionDeclarat
 
   kotaIsle(userId);
 
+  // Model değiştirmek toplam süreyi baştan başlatmasın (5 x 30 sn bekleme yok).
+  const toplamSure = AbortSignal.timeout(30_000);
+  signal = signal ? AbortSignal.any([signal, toplamSure]) : toplamSure;
+
   let sonHata = null;
   for (const model of modelListesi()) {
     if (signal?.aborted) throw new Error('Gemini çağrısı süre bütçesini aştı.');

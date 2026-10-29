@@ -3,9 +3,10 @@ dns.setDefaultResultOrder('ipv4first');
 import 'dotenv/config';
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 import { Client, Collection, Events, GatewayIntentBits, Partials } from 'discord.js';
 import { authFatalCikis, discordKimlikHatasiMi } from './discordKimlik.js';
+import { oturumSinirlayici } from './oturumSiniri.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,6 +20,9 @@ if (!process.env.DISCORD_TOKEN) {
 
 // Discord İstemcisi - Bütün All-in-One Yönetim Intentleri
 const client = new Client({
+  ws: { buildIdentifyThrottler: () => oturumSinirlayici({
+    dosya: path.resolve(__dirname, '../.runtime/discord-oturum.json')
+  }) },
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
@@ -64,27 +68,15 @@ client.on(Events.ShardDisconnect, (closeEvent, shardId) => {
   gatewayHazir = false;
   durumGuncelle('offline', `Gateway bağlantısı koptu (kod ${closeEvent?.code ?? 'bilinmiyor'}).`);
 });
-// Tek süreçte bağlantı fırtınasını Discord'un 1000 oturum sınırından çok önce kes.
-let yenidenBaglantiPenceresi = [];
-let baglantiDurduruldu = false;
+// RESUME kesintilerini yeni oturum sayma; IDENTIFY kendi kalıcı sınırlayıcısından geçer.
 client.on(Events.ShardReconnecting, shardId => {
-  if (baglantiDurduruldu) return;
-  const simdi = Date.now();
-  yenidenBaglantiPenceresi = yenidenBaglantiPenceresi.filter(t => simdi - t < 60 * 60_000);
-  yenidenBaglantiPenceresi.push(simdi);
-  if (yenidenBaglantiPenceresi.length > 10) {
-    baglantiDurduruldu = true;
-    client.destroy();
-    durumGuncelle('error', 'Bir saatte 10 yeniden bağlantı aşıldı; tokeni korumak için bağlantı durduruldu. Ağ ve çalışan bot kopyalarını kontrol edin.');
-    console.error('[Discord] Bağlantı fırtınası durduruldu; otomatik login yapılmayacak.');
-    return;
-  }
   console.warn(`[Discord] Shard ${shardId} yeniden bağlanıyor...`);
   gatewayHazir = false;
   durumGuncelle('starting', 'Discord Gateway yeniden bağlanıyor.');
   // discord.js mevcut oturumu RESUME ile sürdürür; destroy/login kota tüketir.
 });
 client.on(Events.ClientReady, gatewayHazirIsaretle);
+client.on(Events.ShardResume, gatewayHazirIsaretle);
 client.on(Events.ShardError, (err, shardId) => {
   console.error(`[Discord] Shard ${shardId} Gateway hatası:`, err);
   durumGuncelle('error', `Shard ${shardId} Gateway hatası: ${err.message}`);
@@ -108,7 +100,7 @@ if (fs.existsSync(commandsPath)) {
   for (const file of commandFiles) {
     const filePath = path.join(commandsPath, file);
     try {
-      const command = await import(`file://${filePath}`);
+      const command = await import(pathToFileURL(filePath).href);
       if ('data' in command && 'execute' in command) {
         client.commands.set(command.data.name, command);
         console.log(`[Komut Yüklendi] /${command.data.name}`);
@@ -128,8 +120,8 @@ if (fs.existsSync(eventsPath)) {
   for (const file of eventFiles) {
     const filePath = path.join(eventsPath, file);
     try {
-      const event = await import(`file://${filePath}`);
-      const handler = (...args) => Promise.resolve(event.execute(...args)).catch(err => {
+      const event = await import(pathToFileURL(filePath).href);
+      const handler = (...args) => Promise.resolve().then(() => event.execute(...args)).catch(err => {
         console.error(`[Olay Hatası] ${event.name} (${file})`, err);
       });
       if (event.once) {
@@ -198,7 +190,14 @@ http.createServer(async (req, res) => {
     return;
   }
 
-  const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+  let url;
+  try {
+    url = new URL(req.url, 'http://localhost');
+  } catch {
+    res.writeHead(400);
+    res.end('Geçersiz URL');
+    return;
+  }
 
   // 1. Canlılık Kontrolü (Uptime / Health)
   if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/health' || url.pathname === '/ready')) {
@@ -229,8 +228,20 @@ http.createServer(async (req, res) => {
     }
 
     let body = '';
-    req.on('data', chunk => { body += chunk; });
+    let asildi = false;
+    req.on('data', chunk => {
+      if (asildi) return;
+      body += chunk;
+      if (Buffer.byteLength(body) > 64 * 1024) {
+        asildi = true;
+        body = '';
+        res.writeHead(413);
+        res.end('İstek çok büyük');
+        req.destroy();
+      }
+    });
     req.on('end', async () => {
+      if (asildi) return;
       try {
         const data = body ? JSON.parse(body) : {};
 
@@ -342,46 +353,59 @@ process.on('unhandledRejection', (reason, promise) => {
 process.on('uncaughtException', (err, origin) => {
   console.error('[Hata Koruması] Yakalanmamış İstisna:', err);
   durumGuncelle('error', `Yakalanmamış istisna: ${err.message}`);
+  void cikisYap(1);
 });
 
 // Temiz Kapanış (Graceful Shutdown)
 let kapaniyor = false;
-const cikisYap = async () => {
+const cikisYap = async (kod = 0) => {
   if (kapaniyor) return;
   kapaniyor = true;
   console.log('\n[Kage95-Bot] Gölgeye geri dönülüyor... Bot güvenle kapatılıyor.');
-  // Bekleyen hafıza yazımı yedek alınmadan önce tamamlanır.
-  await Promise.race([
-    import('./services/kageHafizaServisi.js').then(m => m.hafizaFlush()),
-    new Promise(r => setTimeout(r, 3000))
-  ]).catch(() => null);
-  // Render diski kapanınca silinir; son değişiklikler yedeklenmeden çıkılmaz (en fazla 15 sn)
-  const { kapanistaYedekle } = await import('./services/kalicilikServisi.js');
-  await Promise.race([kapanistaYedekle(), new Promise(r => setTimeout(r, 15000))]).catch(() => null);
-  client.destroy();
-  process.exit(0);
+  // Yeni mesajlar yedek alınırken veriyi değiştirmesin. Kapanış mutlaka sınırlı sürer.
+  const sonSinir = setTimeout(() => process.exit(kod), 20000);
+  sonSinir.unref();
+  try {
+    await client.destroy();
+    // Bekleyen hafıza yazımı yedek alınmadan önce tamamlanır.
+    await Promise.race([
+      import('./services/kageHafizaServisi.js').then(m => m.hafizaFlush()),
+      new Promise(r => setTimeout(r, 3000))
+    ]).catch(() => null);
+    const { kapanistaYedekle } = await import('./services/kalicilikServisi.js');
+    await Promise.race([kapanistaYedekle(), new Promise(r => setTimeout(r, 15000))]).catch(() => null);
+  } finally {
+    process.exit(kod);
+  }
 };
 
-process.on('SIGINT', cikisYap);
-process.on('SIGTERM', cikisYap);
+process.on('SIGINT', () => void cikisYap());
+process.on('SIGTERM', () => void cikisYap());
 
 // Süreç başına yalnızca bir login. Yeniden bağlantı ve RESUME discord.js'e aittir.
-// Kalıcı hata HTTP sunucusunu kapatmaz: hosting'in yeniden başlatıp kota tüketmesi önlenir.
+// Geçici açılış hatası PM2 altında gecikmeli yeniden başlatılır; kimlik/intent hatası bekler.
 async function girisYap() {
   durumGuncelle('starting', "Discord bağlantısı ve gerçek oturum kotası kontrol ediliyor.");
   try {
     await client.login(process.env.DISCORD_TOKEN);
   } catch (err) {
-    client.destroy();
+    await client.destroy();
     const kimlikHatasi = discordKimlikHatasiMi(err);
+    const intentHatasi = [4010, 4011, 4012, 4013, 4014].includes(Number(err?.code)) ||
+      /disallowed intents|invalid intents|invalid shard|sharding required/i.test(err?.message || '');
     const detay = kimlikHatasi
       ? 'DISCORD_TOKEN geçersiz veya Discord tarafından sıfırlanmış. Yeni token ayarlanıp servis bir kez başlatılmalı.'
-      : 'Discord bağlantısı durduruldu. Kota, ağ ve intent ayarlarını kontrol edin; otomatik yeni login yapılmayacak.';
+      : intentHatasi ? 'Discord intent/shard ayarları geçersiz. Developer Portal ayarlarını düzeltip yeniden başlatın.'
+        : 'Discord açılış bağlantısı başarısız. PM2 altında 120 saniye sonra kontrollü yeniden başlatılacak.';
     console.error('[Discord] ' + detay);
     // Hata nesnesi istek URL'sindeki gizli bilgileri içerebilir; yalnızca hata türünü kaydet.
     console.error('[Discord] Hata türü:', err?.name || 'Error', 'kod:', err?.code || '-');
-    durumGuncelle('error', detay);
+    durumGuncelle(kimlikHatasi ? 'auth_failed' : 'error', detay);
+    if (!kimlikHatasi && !intentHatasi && process.env.pm_id !== undefined) {
+      setTimeout(() => void cikisYap(1), 120_000).unref();
+    }
   }
 }
 
-await girisYap();
+// REST kota beklemesi index.js içindeki yedek zamanlayıcısını engellemesin.
+void girisYap();

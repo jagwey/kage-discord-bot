@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { atomikYaz } from './atomikDosya.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -22,7 +23,7 @@ export function jsonDepo(dosyaAdi, varsayilan) {
     yaz(veri) {
       try {
         fs.mkdirSync(path.dirname(dosya), { recursive: true });
-        fs.writeFileSync(dosya, JSON.stringify(veri, null, 2), 'utf8');
+        atomikYaz(dosya, JSON.stringify(veri, null, 2));
       } catch (err) {
         console.error(`[jsonDepo] ${dosyaAdi} yazılamadı:`, err.message);
       }

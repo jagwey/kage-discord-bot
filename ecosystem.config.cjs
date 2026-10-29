@@ -21,6 +21,7 @@ module.exports = {
       interpreter: 'node',
       exec_mode: 'fork',
       instances: 1,
+      kill_timeout: 25000,
       autorestart: true,
       max_restarts: 10,
       min_uptime: 180000,
