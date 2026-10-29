@@ -47,7 +47,7 @@ export async function execute(interaction) {
 
     const sonuc = await akilliAiUret({
       prompt,
-      gorevTipi: 'hizli_sohbet',
+      gorevTipi: 'ozel_baglam',
       userId: interaction.user.id,
       userName: interaction.user.username
     });

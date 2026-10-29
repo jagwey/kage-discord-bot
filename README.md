@@ -493,12 +493,11 @@ SITE_URL=https://kage95.com
 > **Çevrimiçi ama cevap vermiyor kontrolü:** Bot sekmesinde **Server Members Intent** ve
 > **Message Content Intent** açık olmalıdır. Bot davetinde `bot` ve `applications.commands`
 > kapsamları bulunmalı; botun komut kanallarında mesaj gönderme, mesaj geçmişini okuma,
-> tepki ekleme, dosya ekleme ve gerekli moderasyon izinleri olmalıdır. Render'da
-> `DISCORD_TOKEN`, `CLIENT_ID` ve gerekiyorsa `GUILD_ID` değişkenlerini tanımlayın.
-> `/health` endpoint'i Discord bağlantısı kurulana kadar HTTP 200 ile `status: starting`,
-> hazır olduğunda HTTP 200 ile `status: online` döndürür. `offline` veya `error` ve HTTP 503 görülürse Render
-> loglarındaki ayrıntı asıl nedeni gösterir. Geçersiz veya yetkisiz token `status: auth_failed` ve HTTP 503
-> yazar, ardından süreç çıkış kodu 78 ile durur.
+> tepki ekleme, dosya ekleme ve gerekli moderasyon izinleri olmalıdır. Üretim makinesindeki
+> `.env` dosyasında `DISCORD_TOKEN`, `CLIENT_ID` ve gerekiyorsa `GUILD_ID` tanımlı olmalıdır.
+> Hazır bot `GET /health` ile HTTP 200 ve JSON `"status": "online"` döner. `offline` veya
+> `error` (HTTP 503) görülürse `pm2 logs kage-discord-bot` çıktısındaki ayrıntı asıl nedeni gösterir.
+> Geçersiz veya yetkisiz token `status: auth_failed` ve HTTP 503 yazar, ardından süreç çıkış kodu 78 ile durur.
 
 ### 4. Botu Başlatın
 ```bash
@@ -507,31 +506,45 @@ npm start
 npm run dev
 ```
 
-### Render dağıtım kontrol listesi
+### Üretim: Oracle Cloud Always Free
 
-- Bu repo kökündeki `render.yaml`, Render Blueprint için web servisini, `npm start`
-  komutunu ve `/health` kontrolünü hazırlar. Render Dashboard'da **New > Blueprint**
-  ile bu repoyu seçip Blueprint'i uygulatın.
-- Start command: `npm start`
-- Environment: `DISCORD_TOKEN`, `CLIENT_ID`; geliştirme sunucusu komutları için `GUILD_ID`
-- Discord Developer Portal: **Server Members Intent** ve **Message Content Intent** açık
-- Health check path: `/health`
-- Kalıcı yedek kullanılacaksa `WEBHOOK_SECRET` ve botun gizli yedek kanalını görebilme/gönderme izinleri
-- Deploy sonrası `/health` HTTP 200 ve JSON içinde `status: "online"` görülmeli
-- Blueprint'teki `sync: false` değişkenlerine gerçek secret değerlerini yalnızca Render
-  Environment ekranından girin; tokenları GitHub'a veya `render.yaml` dosyasına yazmayın.
+Üretimdeki Kage botu **Oracle Cloud Always Free** sanal makinesinde çalışır. Render servisi `kage-bot` **askıya alındı** (silinmedi). Bu botu Render'a geri almayın ve izlemeyi eski Render adresine bağlamayın. Kökteki `render.yaml` eski blueprint kaydıdır; güncel dağıtım yolu bu bölümdür.
 
-### Oracle (pm2)
+| Alan | Değer |
+| --- | --- |
+| Genel IP | `89.168.86.54` |
+| SSH | `ssh ubuntu@89.168.86.54` |
+| İşletim sistemi | Ubuntu 22.04 |
+| Shape | `VM.Standard.A1.Flex`, 1 OCPU / 6 GB |
+| Bölge | Frankfurt, availability domain AD-1 |
+| Süreç | pm2 adı `kage-discord-bot`, Node.js 20 (`npm start` → `node src/index.js`) |
+| Sağlık | [http://89.168.86.54:3000/health](http://89.168.86.54:3000/health) |
 
-Süreç adı `kage-discord-bot`. Kökteki `ecosystem.config.cjs` şunları tanımlar:
-`max_restarts: 10`, `min_uptime: 180000`, `exp_backoff_restart_delay: 1000`,
-`stop_exit_codes: [78]`. Çıkış 78 (geçersiz token) pm2'nin süreci yeniden
-başlatmasını keser. Çıkış 1 (ağ) üstel bekleme ile en fazla 10 kararsız
-yeniden başlatma alır. Süreç 180 sn'den uzun ayakta kaldıysa sonraki çökme
-normal şekilde yeniden başlatılır.
+HTTP sunucusu `0.0.0.0` üzerinde `PORT` dinler (varsayılan `3000`). **3000 portu hem OCI Security List hem makinedeki iptables üzerinde açık olmalıdır**; aksi halde dışarıdan `/health` ve site webhook'ları ulaşmaz.
 
-`pm2 restart` eski başlatma kaydını korur. Bu dosyayı bir kez yüklemek için
-`~/kage-discord-bot` içinde:
+```bash
+ssh ubuntu@89.168.86.54
+pm2 status
+pm2 logs kage-discord-bot
+pm2 restart kage-discord-bot --update-env
+```
+
+**Ortam.** Repodaki `.env.example` dosyasını kopyalayın (`cp .env.example .env`) ve değerleri yalnızca makinede doldurun. Token ve anahtarları Git'e yazmayın.
+
+- `WEBHOOK_SECRET` dolu ve **sabit** olmalıdır. Site webhook'ları (`x-kage-secret`) bu değerle doğrulanır; her deploy'da değiştirmek kage95.com duyurularını düşürür.
+- `SITE_URL=https://kage95.com`
+- `API_BASE_URL=https://kage95.com/api`
+- `DISCORD_TOKEN` ve `CLIENT_ID` zorunlu; geliştirme sunucusuna komut basılacaksa `GUILD_ID`.
+- Kalıcı Discord yedeği için `YEDEK_KANAL_ID` ve botun o kanalı okuyup yazma izni.
+
+**Güncelleme.** Betik makinede `~/kage-discord-bot/guncelle.sh` (bu deponun kökü) yolundadır. Akış: `git pull --ff-only`, bağımlılık kurulumu, `pm2 restart kage-discord-bot --update-env`. `package-lock.json` `.gitignore` içindedir; kilit dosyası makinede varsa betik `npm ci`, yoksa `npm install` çalıştırır.
+
+```bash
+chmod +x ~/kage-discord-bot/guncelle.sh
+~/kage-discord-bot/guncelle.sh
+```
+
+İlk kez pm2'ye almak, veya eski `pm2 start npm` kaydını `ecosystem.config.cjs` ile değiştirmek için (`~/kage-discord-bot`):
 
 ```bash
 pm2 delete kage-discord-bot
@@ -539,9 +552,9 @@ pm2 start ecosystem.config.cjs --update-env
 pm2 save
 ```
 
-Token `.env` içinde güncellendikten sonra aynı komutla (veya süreç zaten bu
-ecosystem ile duruyorsa `pm2 start kage-discord-bot --update-env`) açılır.
-`guncelle.sh` yalnızca `pm2 restart` yapıyorsa stop kodu ve backoff devreye girmez.
+`ecosystem.config.cjs` süreç adını `kage-discord-bot` tutar ve `max_restarts: 10`, `min_uptime: 180000`, `exp_backoff_restart_delay: 1000`, `stop_exit_codes: [78]` tanımlar. Çıkış 78 (geçersiz token) yeniden başlatmayı keser. Çıkış 1 (ağ) üstel bekleme ile en fazla 10 kararsız yeniden başlatma alır. Süreç 180 sn'den uzun ayakta kaldıysa sonraki çökme normal şekilde yeniden başlatılır. `guncelle.sh` içindeki `pm2 restart` bu kaydı yüklemez; ecosystem bir kez yukarıdaki komutla alındıktan sonra restart env günceller. Token `.env` içinde düzeldikten ve süreç 78 ile durduktan sonra: `pm2 start kage-discord-bot --update-env`.
+
+**İzleme.** UptimeRobot veya benzeri bir yoklayıcı eski Render URL'sini değil, Oracle adresini pinglesin: `http://89.168.86.54:3000/health`. Sağlıklı yanıt HTTP 200 ve JSON içinde `"status": "online"` olur. `offline` / `error` ve HTTP 503, `pm2 logs kage-discord-bot` ile bakılır. Geçersiz token `status: auth_failed` (HTTP 503) yazar ve süreç çıkar.
 
 ### 5. Sunucuyu Otomatik Kurun
 Bot sunucunuza katıldıktan sonra:

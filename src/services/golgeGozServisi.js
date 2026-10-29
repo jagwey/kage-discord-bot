@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { kullaniciNotuEkle, profilGuncelle, bilgiOgren, hafizaKaydet } from './kageHafizaServisi.js';
-import { akilliAiUret, motorEtiketi } from './aiRouterServisi.js';
+import { akilliAiUret, motorEtiketi, AI_TOPLAM_BUTCE_MS } from './aiRouterServisi.js';
 import { sunucuAyarGetir } from './veritabaniServisi.js';
 import { yasakliBul, otomodAyarGetir, yetkiliMi } from './otomodServisi.js';
 import { sahipNotuKaydet } from './toplulukServisi.js';
@@ -395,14 +395,24 @@ function jsonCoz(metin) {
   try { return JSON.parse(parca[0]); } catch { return null; }
 }
 
+const ANALIZ_WATCHDOG_MS = AI_TOPLAM_BUTCE_MS + 5_000;
+
 /**
  * Gerilim eşiği aşılan kanalı yapay zekaya okutur: şaka mı kavga mı?
  * Hafif gerginlikte sakinleştirir, gerçek kavgada yetkiliyi çağırır ve Yargıç modunu açar.
  */
 async function kavgaAnalizEt(kanal, ayar) {
   const durum = kanalDurumu(kanal.id);
+  const nesil = (durum.analizNesil || 0) + 1;
+  durum.analizNesil = nesil;
   durum.analizSuruyor = true;
   durum.sonAnaliz = Date.now();
+  // Toplam AI bütçesi + pay: takılan çağrı bayrağı sonsuza dek kilitlemesin.
+  const watchdog = setTimeout(() => {
+    if (durum.analizNesil !== nesil || !durum.analizSuruyor) return;
+    durum.analizSuruyor = false;
+    console.warn(`[GolgeGoz] analizSuruyor zaman aşımıyla temizlendi (${ANALIZ_WATCHDOG_MS}ms, kanal=${kanal.id}).`);
+  }, ANALIZ_WATCHDOG_MS);
   try {
     const { metin, saglayici } = await akilliAiUret({
       system: 'Şu an Gölge Göz olarak bir Discord kanalındaki gerilimi değerlendiriyorsun. Sadece JSON döndür, başka hiçbir şey yazma.',
@@ -412,7 +422,7 @@ async function kavgaAnalizEt(kanal, ayar) {
         'seviye: 0 = şaka, arkadaşça atışma veya kavga yok; 1 = hafif gerginlik; 2 = gerçek kavga, karşılıklı hakaret; 3 = tehdit, nefret söylemi veya ağır taciz.\n' +
         'Arkadaşlar arası şakalaşma ve tek başına küfür kavga sayılmaz. taraflar sadece kavgaya karışanların id\'leri.\n' +
         'mesaj: Kage ağzından, sakin, kısa, düz yazı. Kimsenin ailesine, dinine, diline, ırkına laf etme.',
-      gorevTipi: 'hizli_sohbet',
+      gorevTipi: 'golge_goz',
       userId: 'golge_goz_sistemi',
       userName: 'Gölge Gözü'
     });
@@ -428,7 +438,7 @@ async function kavgaAnalizEt(kanal, ayar) {
     const ozet = String(sonuc.ozet || '').slice(0, 300);
     const motor = motorEtiketi(saglayici);
 
-    adminKanalaYaz(kanal.guild, `👁️ <#${kanal.id}> gerilim seviye ${seviye}: ${ozet}`);
+    adminKanalaYaz(kanal.guild, `👁️ <#${kanal.id}> gerilim seviye ${seviye}: ${ozet}\n-# Motor: ${motor}`);
 
     if (seviye >= 2 && ayar.hakimModu && taraflar.length >= 2) {
       await hakimDavasiBaslat(kanal, taraflar, { ozet, yetkiliCagir: seviye >= 3 });
@@ -446,7 +456,8 @@ async function kavgaAnalizEt(kanal, ayar) {
     await kanal.send({ content: `${satirlar.join('\n')}\n-# Gölge Göz • ${motor}`, allowedMentions: izin });
     durum.gerilim = [];
   } finally {
-    durum.analizSuruyor = false;
+    clearTimeout(watchdog);
+    if (durum.analizNesil === nesil) durum.analizSuruyor = false;
   }
 }
 
@@ -528,13 +539,14 @@ async function davaKarari(kanalId) {
         `Kanaldaki son mesajlar:\n${sohbetDokumu(kanalId, 20)}\n\nTarafların ifadeleri:\n${ifadeler}\n\n` +
         'En fazla 5 kısa satırla kararını yaz: kim nerede haklı ya da haksız, kim ne yapmalı, nasıl barışırlar. ' +
         'Son satır şöyle olsun: "Yaptırım önerisi: yok" ya da "Yaptırım önerisi: uyarı" ya da "Yaptırım önerisi: susturma (kim)".',
-      gorevTipi: 'hizli_sohbet',
+      gorevTipi: 'golge_goz',
       userId: 'golge_goz_hakim',
       userName: 'Yargıç Kage'
     });
 
     const karar = String(metin || '').replace(/\*\*/g, '').replace(/\n{2,}/g, '\n').trim().slice(0, 1500);
     if (!karar) throw new Error('boş karar');
+    const motor = motorEtiketi(saglayici);
     const izin = { users: taraflar.map(t => t.id), roles: [] };
     const satirlar = [`⚖️ ${taraflar.map(t => `<@${t.id}>`).join(' ')}`, karar];
     if (/yapt[ıi]r[ıi]m [öo]nerisi:\s*(sustur|timeout|ban|at)/i.test(karar)) {
@@ -543,8 +555,8 @@ async function davaKarari(kanalId) {
       if (etiket.izin.users) izin.users.push(...etiket.izin.users);
       if (etiket.izin.roles) izin.roles.push(...etiket.izin.roles);
     }
-    await kanal.send({ content: `${satirlar.join('\n')}\n-# Yargıç Kage • ${motorEtiketi(saglayici)}`, allowedMentions: izin });
-    adminKanalaYaz(kanal.guild, `⚖️ <#${kanalId}> davası kapandı (${taraflar.map(t => t.ad).join(', ')}).\n${karar.slice(0, 1500)}`);
+    await kanal.send({ content: `${satirlar.join('\n')}\n-# Yargıç Kage • ${motor}`, allowedMentions: izin });
+    adminKanalaYaz(kanal.guild, `⚖️ <#${kanalId}> davası kapandı (${taraflar.map(t => t.ad).join(', ')}).\n${karar.slice(0, 1500)}\n-# Motor: ${motor}`);
   } catch (err) {
     console.warn('[GolgeGoz] Hakim kararı verilemedi:', err.message);
     await kanal.send({ content: 'karar veremedim, yetkililer bakacak. şimdilik sakin olun.\n-# Yargıç Kage' }).catch(() => null);
@@ -576,7 +588,7 @@ export async function golgeGozTopluAnaliz(client) {
 
     const sonuc = await akilliAiUret({
       prompt,
-      gorevTipi: 'hizli_sohbet',
+      gorevTipi: 'golge_goz',
       userId: 'golge_goz_sistemi',
       userName: 'Gölge Gözü'
     });

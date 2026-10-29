@@ -400,6 +400,11 @@ const cikisYap = async () => {
   if (kapaniyor) return;
   kapaniyor = true;
   console.log('\n[Kage95-Bot] Gölgeye geri dönülüyor... Bot güvenle kapatılıyor.');
+  // Debounce edilmiş hafıza yazımı bitmeden yedek alınmaz. Discord kapanışından önce, kısa süre.
+  await Promise.race([
+    import('./services/kageHafizaServisi.js').then(m => m.hafizaFlush()),
+    new Promise(r => setTimeout(r, 3000))
+  ]).catch(() => null);
   // Render diski kapanınca silinir; son değişiklikler yedeklenmeden çıkılmaz (en fazla 15 sn)
   const { kapanistaYedekle } = await import('./services/kalicilikServisi.js');
   await Promise.race([kapanistaYedekle(), new Promise(r => setTimeout(r, 15000))]).catch(() => null);

@@ -188,6 +188,7 @@ Hedefler: docs/PROJE_HEDEFLERI.md. Kullanıcı istemeden commit atılmaz.
   - `/profil` PNG samuray kartı (`profilKartiServisi.js`, `@napi-rs/canvas`, Noto Sans).
   - `/envanter` 5 kategori, sayfalama, kalıcı butonlar.
   - `src/config/panel.js` geçiş butonları: günlük, görev, bakiye, başarım ve envanter panellerinde sıradaki adım satırı.
+62. **Oracle üretimi (2026-10-28):** Bot Render servisi `kage-bot` (askıda, silinmedi) yerine Oracle Cloud Always Free VM'de. Frankfurt AD-1, `89.168.86.54`, Ubuntu 22.04, `VM.Standard.A1.Flex` 1 OCPU / 6 GB, SSH kullanıcısı `ubuntu`. pm2 süreç `kage-discord-bot`, Node 20. Sağlık: `http://89.168.86.54:3000/health` (`status: online`). Güncelleme: `guncelle.sh` (`git pull`, `npm ci` veya kilit yoksa `npm install`, `pm2 restart`). UptimeRobot Oracle `/health` adresini yoklamalı. README üretim bölümü buna göre.
 
 ## Sürüyor
 

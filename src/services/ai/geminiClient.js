@@ -55,7 +55,7 @@ function kotaIsle(userId) {
  * Gemini generateContent çağrısı (model yedekli, anahtar header'da).
  * @returns {Promise<{parts: object[], model: string}>}
  */
-export async function geminiUret({ systemInstruction, contents, functionDeclarations = [], userId = null, temperature = 0.7, maxOutputTokens = 1500 }) {
+export async function geminiUret({ systemInstruction, contents, functionDeclarations = [], userId = null, temperature = 0.7, maxOutputTokens = 1500, signal = null, zamanAsimiMs = null }) {
   if (!anahtarVarMi()) throw new Error('GEMINI_API_KEY tanımlı değil.');
 
   const govde = {
@@ -74,10 +74,17 @@ export async function geminiUret({ systemInstruction, contents, functionDeclarat
 
   let sonHata = null;
   for (const model of modelListesi()) {
+    if (signal?.aborted) throw new Error('Gemini çağrısı süre bütçesini aştı.');
+    const parcalar = [];
+    if (zamanAsimiMs) parcalar.push(AbortSignal.timeout(zamanAsimiMs));
+    if (signal) parcalar.push(signal);
+    const istekSinyali = parcalar.length === 1 ? parcalar[0] : parcalar.length > 1 ? AbortSignal.any(parcalar) : undefined;
     try {
       const res = await axios.post(`${BASE}/${model}:generateContent`, govde, {
         headers: { 'x-goog-api-key': process.env.GEMINI_API_KEY, 'Content-Type': 'application/json' },
-        timeout: 30_000
+        // Doğrudan çağrı 30 sn; router hop'u zamanAsimiMs ile AbortSignal.timeout kullanır.
+        timeout: zamanAsimiMs || 30_000,
+        ...(istekSinyali ? { signal: istekSinyali } : {})
       });
       const aday = res.data?.candidates?.[0];
       const parts = aday?.content?.parts;
@@ -88,6 +95,7 @@ export async function geminiUret({ systemInstruction, contents, functionDeclarat
       }
       return { parts, model };
     } catch (err) {
+      if (signal?.aborted) throw err;
       const durum = err.response?.status;
       sonHata = new Error(err.response?.data?.error?.message || err.message);
       // 404 (model yok) ve 429/5xx için sıradaki modele geç; 400/401/403 kalıcı hata
