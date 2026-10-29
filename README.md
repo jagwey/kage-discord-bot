@@ -537,7 +537,7 @@ pm2 restart kage-discord-bot --update-env
 - `DISCORD_TOKEN` ve `CLIENT_ID` zorunlu; geliştirme sunucusuna komut basılacaksa `GUILD_ID`.
 - Kalıcı Discord yedeği için `YEDEK_KANAL_ID` ve botun o kanalı okuyup yazma izni.
 
-**Güncelleme.** Betik makinede `~/kage-discord-bot/guncelle.sh` (bu deponun kökü) yolundadır. Akış: `git pull --ff-only`, bağımlılık kurulumu, `pm2 startOrReload ecosystem.config.cjs --update-env`, `pm2 save`. Böylece güncel süreç korumaları da uygulanır. `package-lock.json` `.gitignore` içindedir; kilit dosyası makinede varsa betik `npm ci`, yoksa `npm install` çalıştırır.
+**Güncelleme.** Betik makinede `~/kage-discord-bot/guncelle.sh` (bu deponun kökü) yolundadır. Akış: `git pull --ff-only`, bağımlılık kurulumu, süreç çevrimiçiyse `pm2 startOrReload ecosystem.config.cjs --update-env`, `pm2 save`. Durmuş süreç başlatılmaz. `package-lock.json` `.gitignore` içindedir; kilit dosyası makinede varsa betik `npm ci`, yoksa `npm install` çalıştırır.
 
 ```bash
 chmod +x ~/kage-discord-bot/guncelle.sh
@@ -552,13 +552,22 @@ pm2 start ecosystem.config.cjs --update-env
 pm2 save
 ```
 
-`ecosystem.config.cjs` tek süreç çalıştırır; kararsız başlangıçları en fazla 10 kez yeniden dener ve çıkış 78'de durur. Kapanış yedeği için 25 saniye tanır. Geçici login hatasında PM2 altında 120 saniye beklenip süreç yenilenir; hatalı token/intent otomatik denenmez. Token düzeltildikten sonra ecosystem dosyasıyla yeniden başlatın.
+`ecosystem.config.cjs` tek süreç çalıştırır. Kararsız başlangıç en fazla 3 kez yeniden denenir (`max_restarts: 3`, `min_uptime` 180 sn). Çıkış **78** (geçersiz veya sıfırlanmış token, Gateway 4004/401, Invalidated) ve çıkış **79** (saatte 5 IDENTIFY) `stop_exit_codes` içindedir; pm2 bu kodlarda süreci durdurur. Kapanış yedeği için 25 saniye tanır. Geçici login hatasında PM2 altında 120 saniye beklenip süreç yenilenir; hatalı token otomatik denenmez.
 
-Yeni Discord IDENTIFY oturumları en az 120 saniye aralıklıdır. `.runtime/discord-oturum.json` bu süreyi yeniden başlatmalarda korur; bu klasörü güncellemelerde silmeyin. RESUME bağlantı devamı bu sınıra girmez. Bu koruma aynı kurulum içindir: aynı tokenle Render, yerel bilgisayar ve Oracle kopyalarını eşzamanlı çalıştırmayın.
+**Discord token sıfırlama DM'i gelirse** önce pm2'yi durdur, tokeni değiştir, düzeltmeyi al, süreci **bir kez** başlat. `pm2 restart` döngüsü kurma. `guncelle.sh` durmuş botu açmaz.
+
+```bash
+pm2 stop kage-discord-bot
+# .env içinde yeni DISCORD_TOKEN
+pm2 start ecosystem.config.cjs --update-env
+pm2 save
+```
+
+Yeni Discord IDENTIFY oturumu en az 120 saniye aralıklıdır ve kayan bir saatte en fazla 5 kez verilir. Altıncı deneme IDENTIFY göndermeden çıkış 79 ile durur. Sayaç `.runtime/discord-oturum.json` dosyasındadır; güncellemede ve pm2 yeniden başlatmada bu dosyayı silmeyin. Dosya yoksa sayaç sıfırdan başlar, yine 5'te kapanır. Çıkış 79'dan hemen sonra start, pencerede beş kayıt duruyorsa yine 79 verir; bir kayıt saat penceresinden düşünce tek start yeter. Geçici kopmada `destroy()` + `login()` yok; süreç başına tek `login()` vardır, devamı discord.js RESUME ile gider. Aynı tokenle Render, yerel bilgisayar ve Oracle kopyalarını eşzamanlı çalıştırmayın.
 
 Oracle'daki mevcut `data/` dosyaları açılışta eski Discord yedeğiyle değiştirilmez; yalnızca eksik dosyalar geri getirilir. Bozuk yerel dosyalar için yedekten kurtarma ayrı ve kontrollü yapılmalıdır. Yedek indirmesi zaman aşımına uğrarsa geç gelen işlem canlı dosyalara dokunmaz ve o oturumda uzak yedekleme kapalı kalır.
 
-**İzleme.** `/health` süreç ayaktaysa HTTP 200 verir; Discord kesintisinde restart fırtınası oluşturmak için kullanılmamalıdır. `/ready` bot Discord'a bağlı değilse HTTP 503 verir. Durum ayrıntıları ve `pm2 logs kage-discord-bot` birlikte incelenir. Eksik/geçersiz token açılış yedek kontrolünde çıkış 78'e, Gateway girişinde `auth_failed` durumunda beklemeye yol açabilir.
+**İzleme.** `/health` süreç ayaktaysa HTTP 200 verir; Discord kesintisinde restart fırtınası oluşturmak için kullanılmamalıdır. `/ready` bot Discord'a bağlı değilse HTTP 503 verir. Durum ayrıntıları ve `pm2 logs kage-discord-bot` birlikte incelenir. Eksik veya geçersiz token, Gateway 4004/401 ve Invalidated çıkış 78'dir; yeniden denenmez.
 
 ### 5. Sunucuyu Otomatik Kurun
 Bot sunucunuza katıldıktan sonra:

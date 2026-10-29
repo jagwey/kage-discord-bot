@@ -67,23 +67,28 @@ client.on(Events.ShardDisconnect, (closeEvent, shardId) => {
   console.error(`[Discord] Shard ${shardId} bağlantısı koptu:`, closeEvent?.code, closeEvent?.reason || '');
   gatewayHazir = false;
   durumGuncelle('offline', `Gateway bağlantısı koptu (kod ${closeEvent?.code ?? 'bilinmiyor'}).`);
+  if (discordKimlikHatasiMi(closeEvent) || discordKimlikHatasiMi(closeEvent?.code)) {
+    authFatalCikis(`Discord bağlantıyı kimlik hatasıyla kapattı (kod ${closeEvent?.code ?? '-'}). Yeniden deneme yok.`);
+  }
 });
 // RESUME kesintilerini yeni oturum sayma; IDENTIFY kendi kalıcı sınırlayıcısından geçer.
+// Geçici kopmada destroy()+login() yok.
 client.on(Events.ShardReconnecting, shardId => {
   console.warn(`[Discord] Shard ${shardId} yeniden bağlanıyor...`);
   gatewayHazir = false;
   durumGuncelle('starting', 'Discord Gateway yeniden bağlanıyor.');
-  // discord.js mevcut oturumu RESUME ile sürdürür; destroy/login kota tüketir.
 });
 client.on(Events.ClientReady, gatewayHazirIsaretle);
 client.on(Events.ShardResume, gatewayHazirIsaretle);
 client.on(Events.ShardError, (err, shardId) => {
   console.error(`[Discord] Shard ${shardId} Gateway hatası:`, err);
-  durumGuncelle('error', `Shard ${shardId} Gateway hatası: ${err.message}`);
+  durumGuncelle('error', `Shard ${shardId} Gateway hatası: ${err?.message || err}`);
+  if (discordKimlikHatasiMi(err)) {
+    authFatalCikis('Discord kimlik hatası (4004/401). Yeniden deneme yok.');
+  }
 });
 client.on(Events.Invalidated, () => {
-  console.error('[Discord] Gateway oturumu geçersiz kılındı; process yeniden başlatılmalı.');
-  durumGuncelle('error', 'Discord Gateway oturumu geçersiz.');
+  authFatalCikis('Discord oturumu geçersiz kılındı. Yeniden deneme yok.');
 });
 
 client.commands = new Collection();
@@ -383,13 +388,18 @@ process.on('SIGINT', () => void cikisYap());
 process.on('SIGTERM', () => void cikisYap());
 
 // Süreç başına yalnızca bir login. Yeniden bağlantı ve RESUME discord.js'e aittir.
-// Geçici açılış hatası PM2 altında gecikmeli yeniden başlatılır; kimlik/intent hatası bekler.
+// Geçici kopmada destroy()+login() yok. Kimlik hatası 78 ile hemen çıkar.
+let girisYapildi = false;
 async function girisYap() {
+  if (girisYapildi) {
+    console.error('[Discord] İkinci login engellendi. Kopan oturum discord.js RESUME ile sürer.');
+    return;
+  }
+  girisYapildi = true;
   durumGuncelle('starting', "Discord bağlantısı ve gerçek oturum kotası kontrol ediliyor.");
   try {
     await client.login(process.env.DISCORD_TOKEN);
   } catch (err) {
-    await client.destroy();
     const kimlikHatasi = discordKimlikHatasiMi(err);
     const intentHatasi = [4010, 4011, 4012, 4013, 4014].includes(Number(err?.code)) ||
       /disallowed intents|invalid intents|invalid shard|sharding required/i.test(err?.message || '');
@@ -400,8 +410,10 @@ async function girisYap() {
     console.error('[Discord] ' + detay);
     // Hata nesnesi istek URL'sindeki gizli bilgileri içerebilir; yalnızca hata türünü kaydet.
     console.error('[Discord] Hata türü:', err?.name || 'Error', 'kod:', err?.code || '-');
-    durumGuncelle(kimlikHatasi ? 'auth_failed' : 'error', detay);
-    if (!kimlikHatasi && !intentHatasi && process.env.pm_id !== undefined) {
+    if (kimlikHatasi) authFatalCikis(detay);
+    await client.destroy();
+    durumGuncelle('error', detay);
+    if (!intentHatasi && process.env.pm_id !== undefined) {
       setTimeout(() => void cikisYap(1), 120_000).unref();
     }
   }
