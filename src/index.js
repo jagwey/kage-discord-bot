@@ -2,7 +2,6 @@ import dns from 'dns';
 dns.setDefaultResultOrder('ipv4first');
 import 'dotenv/config';
 import http from 'http';
-import { saglikHttpKodu } from './discordKimlik.js';
 import { yedektenGeriYukle, yedeklemeyiBaslat } from './services/kalicilikServisi.js';
 
 globalThis.__kageDurum = {
@@ -16,7 +15,8 @@ globalThis.__kageDurum = {
 // bot.js bu yer tutucuyu kapatır.
 globalThis.__erkenSunucu = http.createServer((req, res) => {
   const durum = globalThis.__kageDurum?.durum || 'starting';
-  res.writeHead(saglikHttpKodu(durum, false), { 'Content-Type': 'application/json; charset=utf-8' });
+  // Discord hatası süreç yeniden başlatmasını tetiklememeli.
+  res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
   res.end(JSON.stringify({
     status: durum,
     bot: 'Kage',

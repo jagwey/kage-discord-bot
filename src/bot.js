@@ -5,7 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { Client, Collection, Events, GatewayIntentBits, Partials } from 'discord.js';
-import { authFatalCikis, discordKimlikHatasiMi, saglikHttpKodu } from './discordKimlik.js';
+import { authFatalCikis, discordKimlikHatasiMi } from './discordKimlik.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -37,34 +37,10 @@ client.rest.on('rateLimited', info => {
 
 client.rest.on('response', (istek, yanit) => {
   if (yanit.status < 400) return;
-  console.warn(`[Discord REST] ${istek.method} ${istek.route} -> ${yanit.status} retry-after=${yanit.headers.get('retry-after') || '-'} global=${yanit.headers.get('x-ratelimit-global') || '-'} scope=${yanit.headers.get('x-ratelimit-scope') || '-'}`);
+  const rota = istek.route?.startsWith('/interactions/') ? 'interaction callback' : 'Discord API';
+  console.warn(`[Discord REST] ${istek.method} ${rota} -> ${yanit.status} retry-after=${yanit.headers.get('retry-after') || '-'}`);
 });
-client.rest.on('restDebug', mesaj => {
-  if (/429|global|sublimit|invalid|cloudflare|wait/i.test(mesaj)) console.warn('[Discord REST Debug]', mesaj.slice(0, 300));
-});
-
-const discordRestGet = client.rest.get.bind(client.rest);
-client.rest.get = async (route, options) => {
-  if (route === '/gateway/bot') {
-    console.warn('[Discord] /gateway/bot çağrısı atlandı; tek shard için güvenli Gateway metadata kullanılıyor.');
-    return {
-      url: 'wss://gateway.discord.gg',
-      shards: 1,
-      session_start_limit: {
-        total: 1000,
-        remaining: 1000,
-        reset_after: 0,
-        max_concurrency: 1
-      }
-    };
-  }
-
-  try {
-    return await discordRestGet(route, options);
-  } catch (err) {
-    throw err;
-  }
-};
+// Gateway adresi ve oturum kotası Discord'dan alınır; kota asla uydurulmaz.
 
 console.warn('[Discord] Gerekli privileged intentler: Message Content Intent ve Server Members Intent.');
 console.warn('[Discord] Bu intentler Developer Portal > Bot > Privileged Gateway Intents bölümünde açık değilse mesaj olayları, AI, karşılama ve oto-rol çalışmaz.');
@@ -80,51 +56,37 @@ function durumGuncelle(durum, detay) {
 
 client.on(Events.Error, err => {
   console.error('[Discord Gateway Hatası]', err);
-  if (discordKimlikHatasiMi(err)) {
-    authFatalCikis('Discord Gateway kimlik doğrulaması başarısız. DISCORD_TOKEN geçersiz veya yetkisiz.');
-  }
   durumGuncelle('error', `Discord Gateway hatası: ${err.message}`);
 });
 client.on(Events.Warn, mesaj => console.warn('[Discord Gateway Uyarısı]', mesaj));
 client.on(Events.ShardDisconnect, (closeEvent, shardId) => {
-  const kod = closeEvent?.code;
-  console.error(`[Discord] Shard ${shardId} bağlantısı koptu:`, kod, closeEvent?.reason || '');
-  if (kod === 4004) {
-    authFatalCikis('Discord Gateway kimlik doğrulaması başarısız (4004). DISCORD_TOKEN geçersiz veya yetkisiz.');
-  }
+  console.error(`[Discord] Shard ${shardId} bağlantısı koptu:`, closeEvent?.code, closeEvent?.reason || '');
   gatewayHazir = false;
-  durumGuncelle('offline', `Gateway bağlantısı koptu (kod ${kod ?? 'bilinmiyor'}).`);
+  durumGuncelle('offline', `Gateway bağlantısı koptu (kod ${closeEvent?.code ?? 'bilinmiyor'}).`);
 });
+// Tek süreçte bağlantı fırtınasını Discord'un 1000 oturum sınırından çok önce kes.
+let yenidenBaglantiPenceresi = [];
+let baglantiDurduruldu = false;
 client.on(Events.ShardReconnecting, shardId => {
+  if (baglantiDurduruldu) return;
+  const simdi = Date.now();
+  yenidenBaglantiPenceresi = yenidenBaglantiPenceresi.filter(t => simdi - t < 60 * 60_000);
+  yenidenBaglantiPenceresi.push(simdi);
+  if (yenidenBaglantiPenceresi.length > 10) {
+    baglantiDurduruldu = true;
+    client.destroy();
+    durumGuncelle('error', 'Bir saatte 10 yeniden bağlantı aşıldı; tokeni korumak için bağlantı durduruldu. Ağ ve çalışan bot kopyalarını kontrol edin.');
+    console.error('[Discord] Bağlantı fırtınası durduruldu; otomatik login yapılmayacak.');
+    return;
+  }
   console.warn(`[Discord] Shard ${shardId} yeniden bağlanıyor...`);
   gatewayHazir = false;
   durumGuncelle('starting', 'Discord Gateway yeniden bağlanıyor.');
-  yenidenBaglantiZamanlayicisiniTemizle();
-  yenidenBaglantiZamanlayici = setTimeout(() => {
-    yenidenBaglantiZamanlayici = null;
-    if (gatewayHazir || yenidenGirisCalisiyor) return;
-
-    console.error('[Discord] Gateway 30 saniyede toparlanmadı; temiz login yeniden başlatılıyor.');
-    yenidenGirisCalisiyor = true;
-    client.destroy();
-    girisYap()
-      .catch(err => {
-        console.error('[Kritik Yeniden Giriş Hatası]', err);
-        if (discordKimlikHatasiMi(err)) authFatalCikis('DISCORD_TOKEN geçersiz veya yetkisiz.');
-        durumGuncelle('error', `Yeniden giriş başarısız: ${err.message}`);
-        process.exit(1);
-      })
-      .finally(() => {
-        yenidenGirisCalisiyor = false;
-      });
-  }, 30_000);
+  // discord.js mevcut oturumu RESUME ile sürdürür; destroy/login kota tüketir.
 });
 client.on(Events.ClientReady, gatewayHazirIsaretle);
 client.on(Events.ShardError, (err, shardId) => {
   console.error(`[Discord] Shard ${shardId} Gateway hatası:`, err);
-  if (discordKimlikHatasiMi(err)) {
-    authFatalCikis('Discord Gateway kimlik doğrulaması başarısız. DISCORD_TOKEN geçersiz veya yetkisiz.');
-  }
   durumGuncelle('error', `Shard ${shardId} Gateway hatası: ${err.message}`);
 });
 client.on(Events.Invalidated, () => {
@@ -134,18 +96,8 @@ client.on(Events.Invalidated, () => {
 
 client.commands = new Collection();
 let gatewayHazir = false;
-let yenidenBaglantiZamanlayici = null;
-let yenidenGirisCalisiyor = false;
-
-function yenidenBaglantiZamanlayicisiniTemizle() {
-  if (!yenidenBaglantiZamanlayici) return;
-  clearTimeout(yenidenBaglantiZamanlayici);
-  yenidenBaglantiZamanlayici = null;
-}
-
 function gatewayHazirIsaretle() {
   gatewayHazir = true;
-  yenidenBaglantiZamanlayicisiniTemizle();
   durumGuncelle('online', 'Discord Gateway bağlantısı hazır.');
 }
 
@@ -249,11 +201,11 @@ http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
 
   // 1. Canlılık Kontrolü (Uptime / Health)
-  if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/health')) {
+  if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/health' || url.pathname === '/ready')) {
     const durum = globalThis.__kageDurum || { durum: 'starting', detay: 'Başlatılıyor.' };
-    // Olay hataları gateway'i düşürmez; 503 yalnızca bağlantı yokken dönmeli, yoksa Render sürekli restart eder.
-    // auth_failed ise istemci hâlâ ready görünse bile 503: geçersiz token çevrimiçi sayılmaz.
-    const kod = saglikHttpKodu(durum.durum, client.isReady());
+    // Canlılık süreç sağlığını ölçer. Discord arızası hosting restart döngüsü yaratmamalı.
+    // Ayrı /ready rotası botun gerçekten bağlı olup olmadığını bildirir.
+    const kod = url.pathname === '/ready' && !client.isReady() ? 503 : 200;
     res.writeHead(kod, { 'Content-Type': 'application/json; charset=utf-8' });
     res.end(JSON.stringify({
       status: durum.durum,
@@ -383,14 +335,12 @@ if (disAdres) {
 }
 
 // Beklenmeyen Hataları Yakalama (Çökme Koruması)
-process.on('unhandledRejection', (reason) => {
+process.on('unhandledRejection', (reason, promise) => {
   console.error('[Hata Koruması] Yakalanmamış Promise Reddi:', reason);
-  if (discordKimlikHatasiMi(reason)) authFatalCikis('DISCORD_TOKEN geçersiz veya yetkisiz.');
 });
 
-process.on('uncaughtException', (err) => {
+process.on('uncaughtException', (err, origin) => {
   console.error('[Hata Koruması] Yakalanmamış İstisna:', err);
-  if (discordKimlikHatasiMi(err)) authFatalCikis('DISCORD_TOKEN geçersiz veya yetkisiz.');
   durumGuncelle('error', `Yakalanmamış istisna: ${err.message}`);
 });
 
@@ -400,7 +350,7 @@ const cikisYap = async () => {
   if (kapaniyor) return;
   kapaniyor = true;
   console.log('\n[Kage95-Bot] Gölgeye geri dönülüyor... Bot güvenle kapatılıyor.');
-  // Debounce edilmiş hafıza yazımı bitmeden yedek alınmaz. Discord kapanışından önce, kısa süre.
+  // Bekleyen hafıza yazımı yedek alınmadan önce tamamlanır.
   await Promise.race([
     import('./services/kageHafizaServisi.js').then(m => m.hafizaFlush()),
     new Promise(r => setTimeout(r, 3000))
@@ -415,74 +365,23 @@ const cikisYap = async () => {
 process.on('SIGINT', cikisYap);
 process.on('SIGTERM', cikisYap);
 
-// Botu sınırlı retry ile başlat. Geçersiz token çıkış kodu 78 ile durur (pm2
-// restart etmez). Ağ hataları çıkış 1 ile sınırlı restart hakkını korur.
-// Health, kimlik hatasında auth_failed ve HTTP 503 döner.
+// Süreç başına yalnızca bir login. Yeniden bağlantı ve RESUME discord.js'e aittir.
+// Kalıcı hata HTTP sunucusunu kapatmaz: hosting'in yeniden başlatıp kota tüketmesi önlenir.
 async function girisYap() {
-  const maxDeneme = 3;
-  const loginTimeoutMs = 45000;
-  const preflightTimeoutMs = 8000;
-  const token = process.env.DISCORD_TOKEN;
-
-  console.log(`[Discord] Login öncesi ağ kontrolü başlıyor (Node ${process.version}).`);
+  durumGuncelle('starting', "Discord bağlantısı ve gerçek oturum kotası kontrol ediliyor.");
   try {
-    const preflight = await fetch('https://discord.com/api/v10/users/@me', {
-      headers: {
-        Authorization: `Bot ${token}`,
-        'User-Agent': 'DiscordBot (https://github.com/jagwey/kage-discord-bot, 1.0.0)'
-      },
-      signal: AbortSignal.timeout(preflightTimeoutMs)
-    });
-    const preflightBody = await preflight.text();
-    if (!preflight.ok) {
-      const detay = preflight.status === 401
-        ? 'DISCORD_TOKEN geçersiz veya yetkisiz.'
-        : `Discord REST HTTP ${preflight.status}.`;
-      console.error(`[Discord] Login öncesi REST kontrolü başarısız: ${detay}`);
-      if (preflight.status === 429) {
-        const tur = /cloudflare|<!doctype|<html/i.test(preflightBody) ? 'Cloudflare' : 'Discord/API';
-        console.warn(`[Discord] 429 kaynağı: ${tur}; retry-after=${preflight.headers.get('retry-after') || 'belirtilmedi'}.`);
-      }
-      if (preflight.status === 401) {
-        authFatalCikis(detay);
-      }
-      if (preflight.status !== 429) console.error('[Discord] REST yanıt gövdesi:', preflightBody.slice(0, 300));
-    } else {
-      console.log('[Discord] Login öncesi REST kontrolü başarılı; Gateway bağlantısı deneniyor.');
-    }
+    await client.login(process.env.DISCORD_TOKEN);
   } catch (err) {
-    console.error('[Discord] Login öncesi REST kontrolü başarısız:', err.message);
-    console.error('[Discord] Render dış ağ/DNS erişimini ve Discord durumunu kontrol edin.');
+    client.destroy();
+    const kimlikHatasi = discordKimlikHatasiMi(err);
+    const detay = kimlikHatasi
+      ? 'DISCORD_TOKEN geçersiz veya Discord tarafından sıfırlanmış. Yeni token ayarlanıp servis bir kez başlatılmalı.'
+      : 'Discord bağlantısı durduruldu. Kota, ağ ve intent ayarlarını kontrol edin; otomatik yeni login yapılmayacak.';
+    console.error('[Discord] ' + detay);
+    // Hata nesnesi istek URL'sindeki gizli bilgileri içerebilir; yalnızca hata türünü kaydet.
+    console.error('[Discord] Hata türü:', err?.name || 'Error', 'kod:', err?.code || '-');
+    durumGuncelle('error', detay);
   }
-
-  for (let deneme = 1; deneme <= maxDeneme; deneme++) {
-    durumGuncelle('starting', `Discord'a bağlanılıyor (${deneme}/${maxDeneme}).`);
-    try {
-      await Promise.race([
-        client.login(token),
-        new Promise((_, reject) => {
-          setTimeout(() => reject(new Error(`Discord login ${loginTimeoutMs / 1000} saniyede tamamlanmadı.`)), loginTimeoutMs);
-        })
-      ]);
-      return;
-    } catch (err) {
-      const mesaj = String(err?.message || err);
-      console.error(`[Giriş Hatası] Deneme ${deneme}/${maxDeneme}:`, mesaj);
-      if (discordKimlikHatasiMi(err) || discordKimlikHatasiMi(mesaj)) {
-        authFatalCikis('DISCORD_TOKEN geçersiz veya yetkisiz.');
-      }
-      client.destroy();
-      if (deneme < maxDeneme) await new Promise(resolve => setTimeout(resolve, deneme * 2000));
-    }
-  }
-  durumGuncelle('error', 'Discord bağlantısı kurulamadı; process yeniden başlatılmalı.');
-  process.exitCode = 1;
-  process.exit(1);
 }
 
-girisYap().catch(err => {
-  console.error('[Kritik Giriş Hatası]', err);
-  if (discordKimlikHatasiMi(err)) authFatalCikis('DISCORD_TOKEN geçersiz veya yetkisiz.');
-  durumGuncelle('error', err.message);
-  process.exit(1);
-});
+await girisYap();
