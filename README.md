@@ -495,9 +495,10 @@ SITE_URL=https://kage95.com
 > kapsamları bulunmalı; botun komut kanallarında mesaj gönderme, mesaj geçmişini okuma,
 > tepki ekleme, dosya ekleme ve gerekli moderasyon izinleri olmalıdır. Render'da
 > `DISCORD_TOKEN`, `CLIENT_ID` ve gerekiyorsa `GUILD_ID` değişkenlerini tanımlayın.
-> `/health` endpoint'i Discord bağlantısı kurulana kadar HTTP 503 ile `status: starting`,
+> `/health` endpoint'i Discord bağlantısı kurulana kadar HTTP 200 ile `status: starting`,
 > hazır olduğunda HTTP 200 ile `status: online` döndürür. `offline` veya `error` ve HTTP 503 görülürse Render
-> loglarındaki ayrıntı asıl nedeni gösterir.
+> loglarındaki ayrıntı asıl nedeni gösterir. Geçersiz veya yetkisiz token `status: auth_failed` ve HTTP 503
+> yazar, ardından süreç çıkış kodu 78 ile durur.
 
 ### 4. Botu Başlatın
 ```bash
@@ -519,6 +520,28 @@ npm run dev
 - Deploy sonrası `/health` HTTP 200 ve JSON içinde `status: "online"` görülmeli
 - Blueprint'teki `sync: false` değişkenlerine gerçek secret değerlerini yalnızca Render
   Environment ekranından girin; tokenları GitHub'a veya `render.yaml` dosyasına yazmayın.
+
+### Oracle (pm2)
+
+Süreç adı `kage-discord-bot`. Kökteki `ecosystem.config.cjs` şunları tanımlar:
+`max_restarts: 10`, `min_uptime: 180000`, `exp_backoff_restart_delay: 1000`,
+`stop_exit_codes: [78]`. Çıkış 78 (geçersiz token) pm2'nin süreci yeniden
+başlatmasını keser. Çıkış 1 (ağ) üstel bekleme ile en fazla 10 kararsız
+yeniden başlatma alır. Süreç 180 sn'den uzun ayakta kaldıysa sonraki çökme
+normal şekilde yeniden başlatılır.
+
+`pm2 restart` eski başlatma kaydını korur. Bu dosyayı bir kez yüklemek için
+`~/kage-discord-bot` içinde:
+
+```bash
+pm2 delete kage-discord-bot
+pm2 start ecosystem.config.cjs --update-env
+pm2 save
+```
+
+Token `.env` içinde güncellendikten sonra aynı komutla (veya süreç zaten bu
+ecosystem ile duruyorsa `pm2 start kage-discord-bot --update-env`) açılır.
+`guncelle.sh` yalnızca `pm2 restart` yapıyorsa stop kodu ve backoff devreye girmez.
 
 ### 5. Sunucuyu Otomatik Kurun
 Bot sunucunuza katıldıktan sonra:
