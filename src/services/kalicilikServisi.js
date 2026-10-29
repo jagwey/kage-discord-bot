@@ -5,6 +5,7 @@ import axios from 'axios';
 import { fileURLToPath } from 'url';
 import { REST, Routes, ChannelType, PermissionFlagsBits } from 'discord.js';
 import { ajan } from '../ag.js';
+import { authFatalCikis, discordKimlikHatasiMi } from '../discordKimlik.js';
 
 // Render diski her deploy/yeniden başlatmada silinir. data/*.json dosyaları
 // özel bir Discord kanalına ek olarak yedeklenir ve açılışta geri yüklenir.
@@ -130,6 +131,10 @@ async function geriYuklemeDene() {
       console.log(`[Kalıcılık] ${sayi} veri dosyası ${paket.zaman || 'son'} tarihli yedekten geri yüklendi.`);
       return;
     } catch (err) {
+      if (discordKimlikHatasiMi(err)) {
+        console.error('[Kalıcılık] Discord token geçersiz veya yetkisiz (401). Yeniden deneme yok.');
+        authFatalCikis('DISCORD_TOKEN geçersiz veya yetkisiz.');
+      }
       console.error(`[Kalıcılık] Geri yükleme denemesi ${deneme}/3 başarısız:`, err.message);
       await new Promise(r => setTimeout(r, 3000 * deneme));
     }
@@ -161,6 +166,7 @@ export async function yedekle({ zorla = false } = {}) {
     return true;
   } catch (err) {
     console.error('[Kalıcılık] Yedekleme hatası:', err.message);
+    if (discordKimlikHatasiMi(err)) authFatalCikis('DISCORD_TOKEN geçersiz veya yetkisiz.');
     return false;
   } finally {
     yedekleniyor = false;

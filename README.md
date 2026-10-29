@@ -497,6 +497,7 @@ SITE_URL=https://kage95.com
 > `.env` dosyasında `DISCORD_TOKEN`, `CLIENT_ID` ve gerekiyorsa `GUILD_ID` tanımlı olmalıdır.
 > Hazır bot `GET /health` ile HTTP 200 ve JSON `"status": "online"` döner. `offline` veya
 > `error` (HTTP 503) görülürse `pm2 logs kage-discord-bot` çıktısındaki ayrıntı asıl nedeni gösterir.
+> Geçersiz veya yetkisiz token `status: auth_failed` ve HTTP 503 yazar, ardından süreç çıkış kodu 78 ile durur.
 
 ### 4. Botu Başlatın
 ```bash
@@ -543,15 +544,17 @@ chmod +x ~/kage-discord-bot/guncelle.sh
 ~/kage-discord-bot/guncelle.sh
 ```
 
-İlk kez pm2'ye almak için (süreç henüz yoksa):
+İlk kez pm2'ye almak, veya eski `pm2 start npm` kaydını `ecosystem.config.cjs` ile değiştirmek için (`~/kage-discord-bot`):
 
 ```bash
-cd ~/kage-discord-bot
-pm2 start npm --name kage-discord-bot -- start
+pm2 delete kage-discord-bot
+pm2 start ecosystem.config.cjs --update-env
 pm2 save
 ```
 
-**İzleme.** UptimeRobot veya benzeri bir yoklayıcı eski Render URL'sini değil, Oracle adresini pinglesin: `http://89.168.86.54:3000/health`. Sağlıklı yanıt HTTP 200 ve JSON içinde `"status": "online"` olur. `offline` / `error` ve HTTP 503, `pm2 logs kage-discord-bot` ile bakılır.
+`ecosystem.config.cjs` süreç adını `kage-discord-bot` tutar ve `max_restarts: 10`, `min_uptime: 180000`, `exp_backoff_restart_delay: 1000`, `stop_exit_codes: [78]` tanımlar. Çıkış 78 (geçersiz token) yeniden başlatmayı keser. Çıkış 1 (ağ) üstel bekleme ile en fazla 10 kararsız yeniden başlatma alır. Süreç 180 sn'den uzun ayakta kaldıysa sonraki çökme normal şekilde yeniden başlatılır. `guncelle.sh` içindeki `pm2 restart` bu kaydı yüklemez; ecosystem bir kez yukarıdaki komutla alındıktan sonra restart env günceller. Token `.env` içinde düzeldikten ve süreç 78 ile durduktan sonra: `pm2 start kage-discord-bot --update-env`.
+
+**İzleme.** UptimeRobot veya benzeri bir yoklayıcı eski Render URL'sini değil, Oracle adresini pinglesin: `http://89.168.86.54:3000/health`. Sağlıklı yanıt HTTP 200 ve JSON içinde `"status": "online"` olur. `offline` / `error` ve HTTP 503, `pm2 logs kage-discord-bot` ile bakılır. Geçersiz token `status: auth_failed` (HTTP 503) yazar ve süreç çıkar.
 
 ### 5. Sunucuyu Otomatik Kurun
 Bot sunucunuza katıldıktan sonra:
