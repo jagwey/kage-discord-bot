@@ -8,6 +8,7 @@ import {
   discordKimlikHatasiMi,
   saglikHttpKodu
 } from '../src/discordKimlik.js';
+import { IDENTIFY_TAVAN_CIKIS } from '../src/oturumSiniri.js';
 
 const require = createRequire(import.meta.url);
 
@@ -51,7 +52,9 @@ test('pm2 ecosystem kimlik çıkışını durdurur ve restart sınırlar', () =>
   assert.equal(app.name, 'kage-discord-bot');
   assert.equal(app.script, 'src/index.js');
   assert.ok(app.stop_exit_codes.includes(FATAL_AUTH_CIKIS));
-  assert.equal(app.max_restarts, 10);
+  assert.ok(app.stop_exit_codes.includes(IDENTIFY_TAVAN_CIKIS));
+  assert.equal(IDENTIFY_TAVAN_CIKIS, 79);
+  assert.equal(app.max_restarts, 3);
   assert.equal(typeof app.min_uptime, 'number');
   assert.ok(app.min_uptime >= 180000);
   assert.equal(typeof app.exp_backoff_restart_delay, 'number');
