@@ -43,4 +43,20 @@ test('Tüm komutlar/olaylar izole klasörde yüklenir; sticker önce defer eder'
   assert.equal(sira[1], 'edit');
   assert.ok(adlar.size > 70);
   t.diagnostic(`${adlar.size} slash komutu doğrulandı.`);
+  const router = await import(pathToFileURL(path.join(dir, 'src/services/aiRouterServisi.js')).href);
+  const eskiGroq = process.env.GROQ_API_KEY;
+  process.env.GROQ_API_KEY = 'test-only';
+  t.after(() => { if (eskiGroq === undefined) delete process.env.GROQ_API_KEY; else process.env.GROQ_API_KEY = eskiGroq; });
+  let request;
+  t.mock.method(globalThis, 'fetch', async (_url, options) => {
+    request = JSON.parse(options.body);
+    return { ok: true, json: async () => ({ choices: [{ message: { content: '{"ids":[1]}' } }] }) };
+  });
+  const web = await router.akilliAiUret({ prompt: 'test catalogue', system: 'Only catalogue', gorevTipi: 'ozel_baglam', hafizasiz: true });
+  assert.equal(web.metin, '{"ids":[1]}');
+  assert.equal(request.messages[0].content.trim(), 'Only catalogue');
+  assert.equal(request.max_tokens, 1024);
+  const discord = await router.belirliModelUret({ prompt: 'test', modelKodu: 'groq_120b' });
+  assert.ok(discord.metin);
+  assert.equal(request.max_tokens, 4096);
 });
