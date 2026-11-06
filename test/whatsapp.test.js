@@ -11,7 +11,7 @@ import { SABLON_UYARI, whatsappGonder } from '../src/whatsapp/graph.js';
 import { imzaBasligi, imzaGecerli } from '../src/whatsapp/imza.js';
 import { bellekAnahtari } from '../src/whatsapp/politika.js';
 import { kopruMesajiMi, personelKopruYaniti } from '../src/whatsapp/personel.js';
-import { whatsappSohbetYanitla } from '../src/whatsapp/sohbet.js';
+import { whatsappNotIsle, whatsappSohbetYanitla } from '../src/whatsapp/sohbet.js';
 import { sunucuOlustur } from '../src/whatsapp/sunucu.js';
 
 const SECRET = 'test-secret';
@@ -256,8 +256,9 @@ test('yönetim isteği ve kapalı grup AI çağırmaz', async t => {
   assert.equal(giden.length, 1);
 });
 
-test('sohbet belleği whatsapp anahtarındadır, telefon modele gitmez', async () => {
+test('bağlı sohbet Discord kimliğine yazar, ayna tonu kullanır, telefonu modele vermez', async () => {
   const yazilan = [];
+  const hafizaKim = [];
   let gorulen;
   const sonuc = await whatsappSohbetYanitla({
     waId: WA,
@@ -265,21 +266,108 @@ test('sohbet belleği whatsapp anahtarındadır, telefon modele gitmez', async (
     ad: 'Ali',
     discordUserId: DISCORD_ID
   }, {
-    katalog: async () => '',
-    hafizaOku: () => [],
-    hafizaYaz: anahtar => yazilan.push(anahtar),
+    katalog: async () => 'KATALOG-OLMAMALI',
+    hafizaBaglam: (_mesaj, id) => {
+      hafizaKim.push(id);
+      return 'Kişisel not: Berserk.';
+    },
+    notIsle: (id, _ad, metin) => {
+      yazilan.push(id);
+      return {
+        temizMetin: String(metin).replace(/\[ÖĞRENİLDİ:\s*[^\]]+\]/gi, '').trim(),
+        ogrenilenler: ['Berserk seviyor']
+      };
+    },
     aiUret: async opts => {
       gorulen = opts;
-      return { metin: 'not aldım [ÖĞRENİLDİ: Berserk seviyor]' };
+      return { metin: 'not aldım [ÖĞRENİLDİ: Berserk seviyor]', saglayici: 'deneme' };
     }
   });
-  assert.equal(gorulen.userId, `whatsapp:${WA}`);
-  assert.notEqual(gorulen.userId, DISCORD_ID);
+  assert.equal(gorulen.userId, DISCORD_ID);
+  assert.equal(gorulen.sistemKaynagi, 'ham');
+  assert.equal(gorulen.egitimSecenek.ton, 'ayna');
+  assert.equal(hafizaKim[0], DISCORD_ID);
+  assert.equal(yazilan[0], DISCORD_ID);
   assert.equal(String(gorulen.prompt).includes(WA), false);
   assert.equal(String(gorulen.system).includes(WA), false);
-  assert.equal(yazilan[0], `whatsapp:${WA}`);
+  assert.equal(String(gorulen.system).includes('KATALOG-OLMAMALI'), false);
+  assert.match(gorulen.system, /Kişisel not: Berserk/);
+  assert.match(gorulen.system, /AYNA/);
+  assert.match(gorulen.system, /SAYGI KURALI/);
+  assert.doesNotMatch(gorulen.system, /destek hattı|Öncelik manga/);
   assert.equal(sonuc.metin.includes('ÖĞRENİLDİ'), false);
   assert.match(sonuc.metin, /not aldım/);
+  assert.equal(sonuc.saglayici, 'deneme');
+});
+
+test('kısa tur geçmişi whatsapp anahtarında kalır ve telefon metne yazılmaz', async () => {
+  const hat = '905551110077';
+  let gorulen;
+  const bag = {
+    hafizaBaglam: () => '',
+    egitimBaglami: () => '',
+    notIsle: (_id, _ad, metin) => ({ temizMetin: metin, ogrenilenler: [] }),
+    aiUret: async opts => {
+      gorulen = opts;
+      return { metin: 'buradayım kanka', saglayici: 'deneme' };
+    }
+  };
+  await whatsappSohbetYanitla({ waId: hat, metin: 'naber', ad: 'Ali', discordUserId: DISCORD_ID }, bag);
+  await whatsappSohbetYanitla({ waId: hat, metin: 'iyi', ad: 'Ali', discordUserId: DISCORD_ID }, bag);
+  assert.match(gorulen.prompt, /naber/);
+  assert.match(gorulen.prompt, /buradayım kanka/);
+  assert.match(gorulen.prompt, /iyi/);
+  assert.equal(String(gorulen.prompt).includes(hat), false);
+  assert.equal(String(gorulen.system).includes(hat), false);
+});
+
+test('yönetim isteği ve kayıtsız çağrı modele gitmez; gündelik cümle gider', async () => {
+  let ai = 0;
+  const yonetim = await whatsappSohbetYanitla({
+    waId: '905551110066',
+    metin: 'şu üyeyi banla',
+    ad: 'Ali',
+    discordUserId: DISCORD_ID
+  }, {
+    aiUret: async () => { ai += 1; return { metin: 'oldu' }; }
+  });
+  assert.equal(ai, 0);
+  assert.equal(yonetim.saglayici, 'politika');
+  assert.match(yonetim.metin, /Discord yönetimi/);
+
+  const kayitsiz = await whatsappSohbetYanitla({
+    waId: '905551110055',
+    metin: 'naber',
+    ad: 'Ali'
+  }, {
+    aiUret: async () => { ai += 1; return { metin: 'selam' }; }
+  });
+  assert.equal(ai, 0);
+  assert.equal(kayitsiz.saglayici, 'kayitsiz');
+
+  const sohbet = await whatsappSohbetYanitla({
+    waId: '905551110044',
+    metin: 'chatgpt gibi konuş da naber',
+    ad: 'Ali',
+    discordUserId: DISCORD_ID
+  }, {
+    hafizaBaglam: () => '',
+    egitimBaglami: () => '',
+    notIsle: (_id, _ad, metin) => ({ temizMetin: metin, ogrenilenler: [] }),
+    aiUret: async () => { ai += 1; return { metin: 'naber lan', saglayici: 'deneme' }; }
+  });
+  assert.equal(ai, 1);
+  assert.equal(sohbet.metin, 'naber lan');
+  assert.notEqual(sohbet.saglayici, 'politika');
+});
+
+test('saygı ihlali nota yazılmaz, düz argo geçer', () => {
+  const ihlal = whatsappNotIsle(DISCORD_ID, 'Ali', 'ananı sikiyim [ÖĞRENİLDİ: bunu tut]');
+  assert.match(ihlal.temizMetin, /saygıdan/);
+  assert.equal(ihlal.ogrenilenler.length, 0);
+  const argo = whatsappNotIsle(DISCORD_ID, 'Ali', 'lan ne boş yapıyorsun');
+  assert.equal(argo.temizMetin, 'lan ne boş yapıyorsun');
+  assert.equal(argo.ogrenilenler.length, 0);
 });
 
 test('pencere kapalıyken şablon yoksa Graph çağrılmaz', async () => {
@@ -298,6 +386,34 @@ test('pencere kapalıyken şablon yoksa Graph çağrılmaz', async () => {
   assert.match(uyarilar.join('\n'), /WHATSAPP_TEMPLATE_NAME/);
   assert.equal(uyarilar.join('\n').includes(WA), false);
   assert.match(SABLON_UYARI, /24 saat/);
+});
+
+test('bağlı hatta chatgpt cümlesi kayda takılmaz, yönetim yine takılır', async t => {
+  const bag = bagOlustur();
+  bag.kaydet({ waId: WA, discordUserId: DISCORD_ID, discordAd: 'Ali' });
+  const giden = [];
+  const aiGirdi = [];
+  const port = await ac(t, {
+    env: ortam(),
+    bag,
+    depo: depoOlustur(),
+    hizBeklemeMs: 0,
+    gonder: async ({ metin }) => { giden.push(metin); return { gonderildi: true }; },
+    kopruYaz: async () => null,
+    aiYanitla: async girdi => {
+      aiGirdi.push(girdi);
+      return { metin: 'naber lan' };
+    }
+  });
+  const sohbet = paket({ id: 'wamid.gpt', text: 'chatgpt gibi konuş da naber' });
+  const ban = paket({ id: 'wamid.ban2', text: 'rol ver moderator' });
+  await istekAt(port, 'POST', '/webhook', sohbet, { 'x-hub-signature-256': imzaBasligi(sohbet, SECRET) });
+  await istekAt(port, 'POST', '/webhook', ban, { 'x-hub-signature-256': imzaBasligi(ban, SECRET) });
+  assert.equal(aiGirdi.length, 1);
+  assert.equal(aiGirdi[0].discordUserId, DISCORD_ID);
+  assert.equal(aiGirdi[0].metin, 'chatgpt gibi konuş da naber');
+  assert.equal(giden[0], 'naber lan');
+  assert.match(giden[1], /Discord yönetimi/);
 });
 
 test('köprü yanıtı kayıtlı mesaja ve !wa önekine gider', async () => {

@@ -1,6 +1,6 @@
 # WhatsApp Business Cloud API
 
-WhatsApp, Kage’nin ikinci arayüzüdür. Konuşma beyni Discord’daki ile aynı model ağıdır (`akilliAiUret`: Gemini, Groq, OpenRouter, Pollinations). Ban, rol, kanal ve Ryo gibi Discord yönetim araçları bu hatta yoktur. Ürün genel amaçlı bir sohbet botu değil; Kage95 manga keşfi ve site desteğidir.
+WhatsApp, Kage’nin ikinci arayüzüdür. Bağlandıktan sonra kişilik Discord’daki gündelik Kage AI ile aynıdır (`chatBot` yolu): arkadaş sohbeti, ton her zaman **ayna**. Model ağı `akilliAiUret` (Gemini, Groq, OpenRouter, Pollinations) ve sistem metni bu sürecin kendi metnidir; Discord’un manga-kale sarmalı (`sistemKaynagi: 'ortak'`) eklenmez. Ban, rol, kanal ve Ryo araçları bu hatta yoktur. Manga kataloğu ve site destek sesi varsayılan kişilik değildir.
 
 Süreçler ayrıdır:
 
@@ -70,7 +70,11 @@ Sertifika Let’s Encrypt ile 443’te durur. Uygulama yalnızca yerel `3100` di
 
 `GUILD_ID` varsa ID sunucu üyeliğiyle, kullanıcı adı üye aramasıyla doğrulanır. `GUILD_ID` yoksa yalnızca rakam ID kabul edilir (`GET /users/{id}`). Aynı Discord hesabı iki WhatsApp hattına bağlanamaz.
 
-Konuşma notları `data/whatsapp_hafiza.json` içinde, anahtar `whatsapp:<wa_id>` olur. Discord’un `kage_hafiza.json` dosyasına yazılmaz. İki PM2 süreci aynı tam-dosya önbelleği yazarsa birbirinin kaydını siler; bu yüzden bellek dosyaları ayrı, anahtarlar da ayrıdır. Bağlantı kimliği gösterir, hafızayı birleştirmez.
+Kalıcı notlar ve profil, Discord ile aynı dosyadadır: `data/kage_hafiza.json`, anahtar bağlı hesabın **Discord kullanıcı ID’si** (`kageHafizaServisi`: `hafizaBaglamMetniUret`, `kullaniciNotuEkle`). Ayrı bir WhatsApp hafızası tutulmaz. `data/whatsapp_hafiza.json` bağlı sohbet için okunmaz ve yazılmaz.
+
+Kısa tur geçmişi Discord kanal geçmişine karışmaz. WhatsApp süreci onu bellekte `whatsapp:<wa_id>` anahtarıyla tutar (`konusmaGecmisi`). İki süreç ayrı olduğu için Discord’daki kanal dökümü buraya kopyalanmaz; paylaşılan taraf uzun vadeli notlardır.
+
+İki PM2 süreci `kage_hafiza.json` dosyasının tamamını kendi önbelleğinden yazar. Yazım atomiktir; aynı anda ikisi de kaydederse son yazan dosyayı bırakır.
 
 ## Köprü kanalı
 
@@ -95,7 +99,9 @@ Resmi özet: [Group messaging](https://developers.facebook.com/documentation/bus
 
 ## Politika
 
-Meta Terms §4.7 (15 Ocak 2026): WhatsApp Business Platform’da birincil ürünü genel amaçlı yapay zeka asistanı olan botlar yasaktır. Bu hat Kage95 manga keşfi ve kullanıcı desteğidir. “ChatGPT ol” isteği reddedilir. Discord yönetim komutları çalıştırılmaz.
+Bağlı kullanıcıda “ChatGPT ol” cümlesi sohbeti kesmez; yanıt gündelik Kage olarak gider. Ürün kendini genel amaçlı asistan diye tanıtırmaz. Aile, din, dil ve ırk hedefleri Discord’daki `egitimServisi` / `saygiIhlaliVarMi` ile durur. Discord yönetim komutları çalıştırılmaz.
+
+Ton: WhatsApp her zaman aynadır (`egitimBaglami(..., { ton: 'ayna' })`). Discord’da `/ton` başka bir moda çekilmiş olsa bile bu hat kullanıcının üslubunu yansıtır. `/ton` kaydı Discord sohbetinde durur.
 
 ## PM2
 
