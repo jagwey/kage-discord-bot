@@ -21,18 +21,21 @@ export function yonetimIstegiMi(metin) {
   return YONETIM.test(String(metin || ''));
 }
 
-export const YONETIM_YANITI = 'Discord yönetimi bu hatta yok. Ban, rol, kanal ve Ryo işlemleri yalnızca Discord sunucusunda yapılır. Manga veya kage95.com desteği için yazabilirsin.';
+export const YONETIM_YANITI = 'Discord yönetimi bu hatta yok. Ban, rol, kanal ve Ryo işlemleri yalnızca Discord sunucusunda yapılır.';
 
 const GENEL_ASISTAN = /(chatgpt|chat\s*gpt|gpt-?4|genel amaçlı (yapay zeka|asistan)|genel amacli (yapay zeka|asistan))/iu;
 
-/** Ürün genel amaçlı asistan gibi konumlanmasın. */
+/**
+ * Eski ürün konumu denetimi. Sohbeti kesmez; bağlı kullanıcı gündelik Kage sohbetine girer.
+ * @deprecated Kapı olarak kullanma.
+ */
 export function genelAsistanTalebiMi(metin) {
   return GENEL_ASISTAN.test(String(metin || ''));
 }
 
 export const GENEL_ASISTAN_YANITI = 'Ben genel amaçlı bir sohbet ürünü değilim. Kage95 manga keşfi ve site desteği için buradayım. Hangi seriyi arıyorsun?';
 
-export const KAYIT_ISTEGI = 'Bu hat Kage95 manga keşfi ve site desteği. Devam etmek için Discord kullanıcı adını veya kullanıcı ID\'ni yaz (örnek: jagwey veya 123456789012345678).';
+export const KAYIT_ISTEGI = 'Bu hat Discord\'daki Kage ile aynı sohbet. Devam etmek için Discord kullanıcı adını veya kullanıcı ID\'ni yaz (örnek: jagwey veya 123456789012345678).';
 
 /**
  * Kayıt mesajından Discord kimliği ayıklar. Cümleleri kullanıcı adı saymaz.

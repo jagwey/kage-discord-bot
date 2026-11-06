@@ -216,8 +216,14 @@ export function stickerKurali(guildId, userId, mesaj) {
 
 /**
  * Yapay zeka istemine eklenecek blok: ton + öğretilmiş kurallar + saygı kuralı.
+ * `secenek.ton` doluysa kayıtlı Discord tonunun yerine geçer (WhatsApp her zaman ayna).
+ * Discord çağrıları bu alanı geçmez; kayıtlı ton aynı kalır.
+ * @param {string|null} guildId
+ * @param {string|null} userId
+ * @param {string} mesaj
+ * @param {{ ton?: string }} [secenek]
  */
-export function egitimBaglami(guildId, userId, mesaj) {
+export function egitimBaglami(guildId, userId, mesaj, secenek = {}) {
   const db = depo.oku();
   const nm = normalize(mesaj);
   const kurallar = gorunenKurallar(db, guildId, userId);
@@ -235,6 +241,7 @@ export function egitimBaglami(guildId, userId, mesaj) {
   const duyguNotu = duyguIpucuMetni(mesaj);
   if (duyguNotu) satirlar.push(duyguNotu);
 
-  const ton = tonMetni(tonGetir(userId));
+  const sec = secenek && typeof secenek === 'object' ? secenek : {};
+  const ton = tonMetni(sec.ton || tonGetir(userId));
   return [ton, satirlar.join('\n\n'), SAYGI_KURALI].filter(Boolean).join('\n\n');
 }

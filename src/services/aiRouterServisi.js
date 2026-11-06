@@ -316,8 +316,9 @@ export function saglayiciZinciri(gorevTipi, durum) {
  * @param {'hizli_sohbet'|'derin_analiz'|'yaratici'|'varsayilan'|'golge_goz'|'moderasyon'|'ozel_baglam'} [secenekler.gorevTipi]
  * @param {string} [secenekler.userId]
  * @param {string} [secenekler.userName]
- * @param {'ortak'|'ham'} [secenekler.sistemKaynagi] 'ham' Discord kişilik sarmalını eklemez.
+ * @param {'ortak'|'ham'} [secenekler.sistemKaynagi] 'ham' Discord kişilik sarmalını eklemez; çağıran kendi sistem metnini verir.
  * @param {Function} [secenekler.ogrenilenIsle] Öğrenilen etiketleri işler. Varsayılan merkezi hafızaya yazar.
+ * @param {{ ton?: string }} [secenekler.egitimSecenek] Doluysa Gemini eğitim bloğunda bu tonu kullanır. Discord yolu geçirmez.
  * @returns {Promise<{ metin: string, saglayici: string, ogrenilenler?: string[] }>}
  */
 export async function akilliAiUret({
@@ -327,7 +328,8 @@ export async function akilliAiUret({
   userId = 'anon',
   userName = 'Samuray',
   sistemKaynagi = 'ortak',
-  ogrenilenIsle = ogrenilenleriAyiklaVeKaydet
+  ogrenilenIsle = ogrenilenleriAyiklaVeKaydet,
+  egitimSecenek = null
 }) {
   const butce = butceKontrolcusu();
   try {
@@ -335,7 +337,7 @@ export async function akilliAiUret({
     const ozel = ozelBaglamGoreviMi(gorevTipi);
     const saglayiciSirasi = saglayiciZinciri(gorevTipi, durum);
 
-    // 'ham': çağıran kendi sistem metnini verir (WhatsApp destek hattı).
+    // 'ham': çağıran kendi sistem metnini verir (WhatsApp arkadaş sohbeti).
     // Varsayılan yol Discord ortak hafıza sarmalını eskisi gibi ekler.
     const hamSistem = sistemKaynagi === 'ham';
     const ortakBaglam = hamSistem ? '' : ortakHafizaBaglamiGetir({ userId, userName, prompt, ekBaglam: system });
@@ -358,7 +360,7 @@ export async function akilliAiUret({
       try {
         if (saglayici === 'gemini') {
           const { parts } = await geminiUret({
-            systemInstruction: `${nihaiSistem}\n\n${egitimBaglami(null, userId, prompt)}`,
+            systemInstruction: `${nihaiSistem}\n\n${egitimBaglami(null, userId, prompt, egitimSecenek || {})}`,
             contents: [{ role: 'user', parts: [{ text: prompt }] }],
             userId,
             maxOutputTokens: 1000,

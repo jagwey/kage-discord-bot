@@ -6,8 +6,6 @@ import { whatsappGonder } from './graph.js';
 import { imzaGecerli } from './imza.js';
 import {
   discordKimligiAyikla,
-  genelAsistanTalebiMi,
-  GENEL_ASISTAN_YANITI,
   kayitHataMetni,
   KAYIT_ISTEGI,
   kopruMetni,
@@ -136,7 +134,7 @@ export async function gelenMesajiIsle(mesaj, ctx) {
       return;
     }
     await yanitVeAyna(
-      `Tamam, Discord hesabın bağlandı (${cozum.discordAd}). Manga veya kage95.com desteği için yazabilirsin.`,
+      `Tamam, Discord hesabın bağlandı (${cozum.discordAd}). Burada da aynı Kage; yaz, konuşalım.`,
       cozum.discordAd
     );
     return;
@@ -144,10 +142,6 @@ export async function gelenMesajiIsle(mesaj, ctx) {
 
   if (yonetimIstegiMi(gelen)) {
     await yanitVeAyna(YONETIM_YANITI);
-    return;
-  }
-  if (genelAsistanTalebiMi(gelen)) {
-    await yanitVeAyna(GENEL_ASISTAN_YANITI);
     return;
   }
 
@@ -161,7 +155,7 @@ export async function gelenMesajiIsle(mesaj, ctx) {
     await yanitVeAyna(sonuc?.metin || '…', bagli.discordAd);
   } catch (err) {
     console.error('[WhatsApp] Yapay zeka hatası:', err.message);
-    await yanitVeAyna('Şu an yanıt üretemedim. Biraz sonra manga veya siteyle ilgili tekrar yaz.', bagli.discordAd);
+    await yanitVeAyna('Şu an yanıt üretemedim. Biraz sonra tekrar yaz.', bagli.discordAd);
   }
 }
 

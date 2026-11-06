@@ -3,7 +3,10 @@ import { bellekAnahtari } from './politika.js';
 
 const dosyaDeposu = jsonDepo('whatsapp_hafiza.json', () => ({ notlar: {} }));
 
-/** WhatsApp notları Discord kage_hafiza.json dosyasına yazılmaz. */
+/**
+ * Eski WhatsApp-yalnız not dosyası. Bağlı sohbet bunu kullanmaz;
+ * kalıcı notlar kageHafizaServisi ile discordUserId altında kage_hafiza.json'a yazılır.
+ */
 export function hafizaDeposuOlustur(depo = dosyaDeposu) {
   return {
     oku(anahtar) {
