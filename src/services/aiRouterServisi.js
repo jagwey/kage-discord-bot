@@ -316,18 +316,37 @@ export function saglayiciZinciri(gorevTipi, durum) {
  * @param {'hizli_sohbet'|'derin_analiz'|'yaratici'|'varsayilan'|'golge_goz'|'moderasyon'|'ozel_baglam'} [secenekler.gorevTipi]
  * @param {string} [secenekler.userId]
  * @param {string} [secenekler.userName]
- * @returns {Promise<{ metin: string, saglayici: string }>}
+ * @param {'ortak'|'ham'} [secenekler.sistemKaynagi] 'ham' Discord kişilik sarmalını eklemez.
+ * @param {Function} [secenekler.ogrenilenIsle] Öğrenilen etiketleri işler. Varsayılan merkezi hafızaya yazar.
+ * @returns {Promise<{ metin: string, saglayici: string, ogrenilenler?: string[] }>}
  */
-export async function akilliAiUret({ prompt, system = '', gorevTipi = 'varsayilan', userId = 'anon', userName = 'Samuray' }) {
+export async function akilliAiUret({
+  prompt,
+  system = '',
+  gorevTipi = 'varsayilan',
+  userId = 'anon',
+  userName = 'Samuray',
+  sistemKaynagi = 'ortak',
+  ogrenilenIsle = ogrenilenleriAyiklaVeKaydet
+}) {
   const butce = butceKontrolcusu();
   try {
     const durum = saglayiciDurumu();
     const ozel = ozelBaglamGoreviMi(gorevTipi);
     const saglayiciSirasi = saglayiciZinciri(gorevTipi, durum);
 
-    // Merkezi ortak hafıza bağlamını hazırla
-    const ortakBaglam = ortakHafizaBaglamiGetir({ userId, userName, prompt, ekBaglam: system });
-    const nihaiSistem = system ? `${ortakBaglam}\n\n${system}` : ortakBaglam;
+    // 'ham': çağıran kendi sistem metnini verir (WhatsApp destek hattı).
+    // Varsayılan yol Discord ortak hafıza sarmalını eskisi gibi ekler.
+    const hamSistem = sistemKaynagi === 'ham';
+    const ortakBaglam = hamSistem ? '' : ortakHafizaBaglamiGetir({ userId, userName, prompt, ekBaglam: system });
+    const nihaiSistem = hamSistem ? system : (system ? `${ortakBaglam}\n\n${system}` : ortakBaglam);
+    const metniIsle = (ham) => {
+      const islenmis = ogrenilenIsle(userId, userName, ham) || {};
+      return {
+        temizMetin: islenmis.temizMetin ?? ham,
+        ogrenilenler: Array.isArray(islenmis.ogrenilenler) ? islenmis.ogrenilenler : []
+      };
+    };
 
     const hatalar = [];
 
@@ -349,33 +368,33 @@ export async function akilliAiUret({ prompt, system = '', gorevTipi = 'varsayila
           const ham = parts?.filter(p => p.text && !p.thought).map(p => p.text).join('').trim();
           if (ham) {
             say('gemini', true);
-            const { temizMetin } = ogrenilenleriAyiklaVeKaydet(userId, userName, ham);
+            const { temizMetin, ogrenilenler } = metniIsle(ham);
             if (ozel) console.info(`[AI Router] görev=${gorevTipi} sağlayıcı=Gemini`);
-            return { metin: ciktiyiDenetle(temizMetin), saglayici: 'Gemini' };
+            return { metin: ciktiyiDenetle(temizMetin), saglayici: 'Gemini', ogrenilenler };
           }
         } else if (saglayici === 'groq') {
           const metin = await groqMetinUret(prompt, nihaiSistem, butce.signal);
           if (metin) {
             say('groq', true);
-            const { temizMetin } = ogrenilenleriAyiklaVeKaydet(userId, userName, metin);
+            const { temizMetin, ogrenilenler } = metniIsle(metin);
             if (ozel) console.info(`[AI Router] görev=${gorevTipi} sağlayıcı=Groq`);
-            return { metin: ciktiyiDenetle(temizMetin), saglayici: 'Groq' };
+            return { metin: ciktiyiDenetle(temizMetin), saglayici: 'Groq', ogrenilenler };
           }
         } else if (saglayici === 'openrouter') {
           const metin = await openRouterMetinUret(prompt, nihaiSistem, null, butce.signal);
           if (metin) {
             say('openrouter', true);
-            const { temizMetin } = ogrenilenleriAyiklaVeKaydet(userId, userName, metin);
+            const { temizMetin, ogrenilenler } = metniIsle(metin);
             if (ozel) console.info(`[AI Router] görev=${gorevTipi} sağlayıcı=OpenRouter`);
-            return { metin: ciktiyiDenetle(temizMetin), saglayici: 'OpenRouter' };
+            return { metin: ciktiyiDenetle(temizMetin), saglayici: 'OpenRouter', ogrenilenler };
           }
         } else if (saglayici === 'pollinations') {
           if (ozel) continue;
           const metin = await pollinationsMetinUret(prompt, nihaiSistem, butce.signal);
           if (metin) {
             say('pollinations', true);
-            const { temizMetin } = ogrenilenleriAyiklaVeKaydet(userId, userName, metin);
-            return { metin: ciktiyiDenetle(temizMetin), saglayici: 'Pollinations AI (Ücretsiz)' };
+            const { temizMetin, ogrenilenler } = metniIsle(metin);
+            return { metin: ciktiyiDenetle(temizMetin), saglayici: 'Pollinations AI (Ücretsiz)', ogrenilenler };
           }
         }
       } catch (err) {

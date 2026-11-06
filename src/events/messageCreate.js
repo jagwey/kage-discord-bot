@@ -16,6 +16,7 @@ import { modelKoduCozumle, DESTEKLENEN_MODELLER, gorselAnalizEt, motorEtiketi } 
 import { golgeGozMesajIsle } from '../services/golgeGozServisi.js';
 import { mesajSay } from '../services/toplulukServisi.js';
 import { kisaKomutuIsle, komutNiyetiniIsle } from '../services/komutNiyetServisi.js';
+import { kopruMesajiMi, personelKopruYaniti } from '../whatsapp/personel.js';
 
 export const name = Events.MessageCreate;
 
@@ -168,6 +169,16 @@ async function tumStickerlariGonder(message) {
 export async function execute(message) {
   // Botları ve DM'leri yoksay
   if (message.author.bot || !message.guild) return;
+
+  // WhatsApp köprü kanalı: personel yanıtı Cloud API'ye gider. Ekonomi ve Kage sohbeti burada çalışmaz.
+  if (kopruMesajiMi(message.channelId)) {
+    try {
+      await personelKopruYaniti(message);
+    } catch (err) {
+      console.error('[WhatsApp Köprü]', err.message);
+    }
+    return;
+  }
 
   // Gölge Gözü: Tüm sunucu mesajlarını 0 ms'de izler, reklam/şüphe tarar ve otonom öğrenme havuzuna iletir.
   golgeGozMesajIsle(message).catch(() => null);
